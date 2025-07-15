@@ -1,4 +1,4 @@
-export const baseURL = "https://saree-shops.onrender.com";
+export const baseURL = https://saree-shops.onrender.com;
 
 
 const SummaryApi = {
