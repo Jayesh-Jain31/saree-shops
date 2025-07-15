@@ -1,4 +1,4 @@
-export const baseURL = import.meta.env.VITE_BACKEND_URL;
+export const baseURL = "https://saree-shops.onrender.com";
 
 
 const SummaryApi = {
