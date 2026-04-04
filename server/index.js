@@ -5,6 +5,8 @@ dotenv.config()
 import cookieParser from 'cookie-parser'
 import morgan from 'morgan'
 import helmet from 'helmet'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import connectDB from './config/connectDB.js'
 import userRouter from './route/user.route.js'
 import categoryRouter from './route/category.route.js'
@@ -14,6 +16,9 @@ import productRouter from './route/product.route.js'
 import cartRouter from './route/cart.route.js'
 import addressRouter from './route/address.route.js'
 import orderRouter from './route/order.route.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const app = express()
 app.use(cors({
@@ -27,14 +32,7 @@ app.use(helmet({
     crossOriginResourcePolicy : false
 }))
 
-const PORT = 8080 || process.env.PORT 
-
-app.get("/",(request,response)=>{
-    ///server to client
-    response.json({
-        message : "Server is running " + PORT
-    })
-})
+const PORT = process.env.PORT || 8080
 
 app.use('/api/user',userRouter)
 app.use("/api/category",categoryRouter)
@@ -45,9 +43,22 @@ app.use("/api/cart",cartRouter)
 app.use("/api/address",addressRouter)
 app.use('/api/order',orderRouter)
 
+if (process.env.NODE_ENV === 'production') {
+    const clientDistPath = path.join(__dirname, '../client/dist')
+    app.use(express.static(clientDistPath))
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(clientDistPath, 'index.html'))
+    })
+} else {
+    app.get("/",(request,response)=>{
+        response.json({
+            message : "Server is running " + PORT
+        })
+    })
+}
+
 connectDB().then(()=>{
     app.listen(PORT,()=>{
         console.log("Server is running",PORT)
     })
 })
-
