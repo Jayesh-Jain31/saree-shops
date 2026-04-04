@@ -154,6 +154,18 @@ const SummaryApi = {
     getOrderItems : {
         url : '/api/order/order-list',
         method : 'get'
+    },
+    razorpayOrder : {
+        url : '/api/order/razorpay',
+        method : 'post'
+    },
+    razorpayVerify : {
+        url : '/api/order/razorpay-verify',
+        method : 'post'
+    },
+    validateCoupon : {
+        url : '/api/coupon/validate',
+        method : 'post'
     }
 }
 
