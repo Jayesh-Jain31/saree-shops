@@ -60,6 +60,10 @@ localPort = 5001
 externalPort = 3000
 
 [[ports]]
+localPort = 5002
+externalPort = 3001
+
+[[ports]]
 localPort = 8080
 externalPort = 8080
 
@@ -67,3 +71,12 @@ externalPort = 8080
 deploymentTarget = "autoscale"
 run = ["node", "server/index.js"]
 build = ["bash", "-c", "cd client && npm install && npm run build"]
+
+[rules]
+
+[rules.formatter]
+
+[rules.formatter.fileExtensions]
+
+[rules.formatter.fileExtensions.".js"]
+id = "module:nodejs-20/formatter:prettier"
