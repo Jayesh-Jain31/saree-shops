@@ -45,6 +45,10 @@ app.use("/api/address",addressRouter)
 app.use('/api/order',orderRouter)
 app.use('/api/coupon',couponRouter)
 
+app.get('/api/config/razorpay-key', (req, res) => {
+    res.json({ keyId: process.env.RAZORPAY_KEY_ID })
+})
+
 if (process.env.NODE_ENV === 'production') {
     const clientDistPath = path.join(__dirname, '../client/dist')
     app.use(express.static(clientDistPath))
