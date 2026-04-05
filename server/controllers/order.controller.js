@@ -108,8 +108,9 @@ export async function razorpayOrderController(request, response) {
         })
 
     } catch (error) {
+        console.log("Razorpay order creation error:", error?.error?.description || error?.message || error)
         return response.status(500).json({
-            message: error.message || error,
+            message: error?.error?.description || error.message || error,
             error: true,
             success: false
         })
