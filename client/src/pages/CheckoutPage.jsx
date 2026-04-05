@@ -8,7 +8,8 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
-import { FaTag, FaTimes, FaCheckCircle } from 'react-icons/fa'
+import { FaTag, FaTimes, FaCheckCircle, FaTruck } from 'react-icons/fa'
+import { MdDeliveryDining } from 'react-icons/md'
 import { addNotification } from '../components/NotificationBell'
 
 const loadRazorpayScript = () => {
@@ -34,13 +35,44 @@ const CheckoutPage = () => {
   const cartItemsList = useSelector(state => state.cartItem.cart)
   const navigate = useNavigate()
 
-  // Coupon state
+  const [deliveryInfo, setDeliveryInfo] = useState(null)
+  const [deliveryLoading, setDeliveryLoading] = useState(false)
+
   const [couponCode, setCouponCode] = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
   const [appliedCoupon, setAppliedCoupon] = useState(null)
 
-  const finalAmount = appliedCoupon ? appliedCoupon.finalAmount : totalPrice
+  const deliveryCharge = (deliveryInfo && deliveryInfo.available && deliveryInfo.deliveryCharge > 0) ? deliveryInfo.deliveryCharge : 0
+  const baseAmount = appliedCoupon ? appliedCoupon.finalAmount : totalPrice
+  const finalAmount = baseAmount + deliveryCharge
   const couponDiscount = appliedCoupon ? appliedCoupon.discountAmount : 0
+
+  const checkDeliveryPincode = async (pincode) => {
+    if (!pincode) return
+    setDeliveryLoading(true)
+    try {
+      const response = await Axios({
+        ...SummaryApi.checkPincode,
+        data: { pincode }
+      })
+      if (response.data.success) {
+        setDeliveryInfo(response.data.data)
+      }
+    } catch (error) {
+      setDeliveryInfo(null)
+    } finally {
+      setDeliveryLoading(false)
+    }
+  }
+
+  React.useEffect(() => {
+    const selectedAddr = addressList[selectAddress]
+    if (selectedAddr && selectedAddr.pincode) {
+      checkDeliveryPincode(selectedAddr.pincode)
+    } else {
+      setDeliveryInfo(null)
+    }
+  }, [selectAddress, addressList])
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -220,6 +252,39 @@ const CheckoutPage = () => {
               + Add address
             </div>
           </div>
+
+          {deliveryLoading && (
+            <div className='bg-gray-50 border rounded-lg p-3 flex items-center gap-2 mt-2'>
+              <div className='w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin'></div>
+              <span className='text-sm text-gray-500'>Checking delivery availability...</span>
+            </div>
+          )}
+
+          {!deliveryLoading && deliveryInfo && deliveryInfo.available && (
+            <div className='bg-green-50 border border-green-200 rounded-lg p-3 mt-2 flex items-center gap-3'>
+              <div className='w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0'>
+                <MdDeliveryDining className='text-green-600' size={22} />
+              </div>
+              <div>
+                <p className='text-sm font-semibold text-green-800'>
+                  Delivery in {deliveryInfo.estimatedTime}
+                </p>
+                <p className='text-xs text-green-600'>
+                  {deliveryInfo.zoneName} — {deliveryInfo.deliveryCharge === 0 ? 'Free delivery' : `₹${deliveryInfo.deliveryCharge} delivery charge`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!deliveryLoading && deliveryInfo && !deliveryInfo.available && (
+            <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2 flex items-center gap-3'>
+              <FaTruck className='text-yellow-500 flex-shrink-0' size={18} />
+              <div>
+                <p className='text-sm font-semibold text-yellow-800'>Standard delivery</p>
+                <p className='text-xs text-yellow-600'>Express delivery not available for this pincode</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right panel */}
@@ -288,7 +353,11 @@ const CheckoutPage = () => {
               </div>
               <div className='flex justify-between'>
                 <p className='text-gray-600'>Delivery Charge</p>
-                <p className='text-green-600 font-medium'>Free</p>
+                <p className='text-green-600 font-medium'>
+                  {deliveryInfo && deliveryInfo.available && deliveryInfo.deliveryCharge > 0
+                    ? DisplayPriceInRupees(deliveryInfo.deliveryCharge)
+                    : 'Free'}
+                </p>
               </div>
               {appliedCoupon && (
                 <div className='flex justify-between text-green-600'>

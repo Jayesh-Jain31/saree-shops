@@ -28,6 +28,7 @@ import OrderDetails from "../pages/OrderDetails";
 import Wishlist from "../pages/Wishlist";
 import AdminDashboard from "../pages/AdminDashboard";
 import AdminOrders from "../pages/AdminOrders";
+import DeliveryZoneAdmin from "../pages/DeliveryZoneAdmin";
 
 const router = createBrowserRouter([
     {
@@ -117,6 +118,10 @@ const router = createBrowserRouter([
                     {
                         path : 'admin-dashboard',
                         element : <AdminPermision><AdminDashboard/></AdminPermision>
+                    },
+                    {
+                        path : 'delivery-zones',
+                        element : <AdminPermision><DeliveryZoneAdmin/></AdminPermision>
                     }
                 ]
             },

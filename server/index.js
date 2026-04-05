@@ -20,6 +20,7 @@ import couponRouter from './route/coupon.route.js'
 import wishlistRouter from './route/wishlist.route.js'
 import reviewRouter from './route/review.route.js'
 import analyticsRouter from './route/analytics.route.js'
+import deliveryZoneRouter from './route/deliveryZone.route.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -50,6 +51,7 @@ app.use('/api/coupon',couponRouter)
 app.use('/api/wishlist',wishlistRouter)
 app.use('/api/review',reviewRouter)
 app.use('/api/analytics',analyticsRouter)
+app.use('/api/delivery-zone',deliveryZoneRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })

@@ -59,6 +59,7 @@ A full-stack quick-commerce (Blinkit Clone) application built with the MERN stac
 - **Invoice Download**: Print-ready invoice generation from Order Details page
 - **Email Order Confirmation**: Automated email via Resend after both COD and Razorpay orders
 - **Notifications**: In-app notification bell with persistent notifications for orders and actions
+- **Delivery Zones** (`/dashboard/delivery-zones`): Admin configurable pincode-based delivery time estimates. Add Jodhpur pincodes to show "10-20 min" delivery to customers. Checkout page auto-checks selected address pincode and shows delivery estimate banner + charge in bill details.
 - **Admin**: Category/subcategory/product management, coupon management
 
 ## API Endpoints (New)
@@ -70,6 +71,11 @@ A full-stack quick-commerce (Blinkit Clone) application built with the MERN stac
 - `GET /api/analytics/dashboard` — Admin analytics data
 - `POST /api/analytics/orders` — Admin: list all orders with filters
 - `PUT /api/analytics/order-status` — Admin: update order status
+- `POST /api/delivery-zone/create` — Admin: create delivery zone
+- `GET /api/delivery-zone/get` — Get all delivery zones
+- `PUT /api/delivery-zone/update` — Admin: update delivery zone
+- `DELETE /api/delivery-zone/delete` — Admin: delete delivery zone
+- `POST /api/delivery-zone/check-pincode` — Check delivery availability for pincode
 
 ## Order API Endpoints
 - `GET /api/order/order-list` — All orders for logged-in user

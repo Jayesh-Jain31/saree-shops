@@ -55,6 +55,11 @@ const SummaryApi = {
     getAnalytics : { url : '/api/analytics/dashboard', method : 'get' },
     getAllOrdersAdmin : { url : '/api/analytics/orders', method : 'post' },
     updateOrderStatusAdmin : { url : '/api/analytics/order-status', method : 'put' },
+    createDeliveryZone : { url : '/api/delivery-zone/create', method : 'post' },
+    getDeliveryZones : { url : '/api/delivery-zone/get', method : 'get' },
+    updateDeliveryZone : { url : '/api/delivery-zone/update', method : 'put' },
+    deleteDeliveryZone : { url : '/api/delivery-zone/delete', method : 'delete' },
+    checkPincode : { url : '/api/delivery-zone/check-pincode', method : 'post' },
 }
 
 export default SummaryApi
