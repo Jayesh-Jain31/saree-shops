@@ -78,6 +78,7 @@ const CheckoutPage = () => {
           addressId: addressList[selectAddress]?._id,
           subTotalAmt: totalPrice,
           totalAmt: finalAmount,
+          discountAmt: couponDiscount,
         }
       })
       const { data: responseData } = response
@@ -146,6 +147,7 @@ const CheckoutPage = () => {
                 addressId: addressList[selectAddress]?._id,
                 subTotalAmt: totalPrice,
                 totalAmt: finalAmount,
+                discountAmt: couponDiscount,
               }
             })
             toast.dismiss(verifyToastId)

@@ -24,6 +24,7 @@ import CheckoutPage from "../pages/CheckoutPage";
 import Success from "../pages/Success";
 import Cancel from "../pages/Cancel";
 import CouponAdmin from "../pages/CouponAdmin";
+import OrderDetails from "../pages/OrderDetails";
 
 const router = createBrowserRouter([
     {
@@ -97,6 +98,10 @@ const router = createBrowserRouter([
                     {
                         path : 'coupons',
                         element : <AdminPermision><CouponAdmin/></AdminPermision>
+                    },
+                    {
+                        path : 'order/:id',
+                        element : <OrderDetails/>
                     }
                 ]
             },

@@ -38,11 +38,11 @@ const SummaryApi = {
     disableAddress : { url : '/api/address/disable', method : 'delete' },
     CashOnDeliveryOrder : { url : "/api/order/cash-on-delivery", method : 'post' },
     getOrderItems : { url : '/api/order/order-list', method : 'get' },
+    getOrderById : { url : '/api/order/order-details', method : 'get' },
+    cancelOrder : { url : '/api/order/cancel', method : 'put' },
     razorpayOrder : { url : '/api/order/razorpay', method : 'post' },
     razorpayVerify : { url : '/api/order/razorpay-verify', method : 'post' },
-    // Coupon - user
     validateCoupon : { url : '/api/coupon/validate', method : 'post' },
-    // Coupon - admin
     getAllCoupons : { url : '/api/coupon/all', method : 'get' },
     createCoupon : { url : '/api/coupon/create', method : 'post' },
     updateCoupon : { url : '/api/coupon/update', method : 'put' },
