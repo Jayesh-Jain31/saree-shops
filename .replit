@@ -10,6 +10,7 @@ channel = "stable-25_05"
 [userenv.shared]
 VITE_BACKEND_URL = ""
 FRONTEND_URL = "https://24f38671-74ca-4b63-ae8e-f4f594005ead-00-26qswtsu902ku.pike.replit.dev"
+PORT = "8080"
 
 [workflows]
 runButton = "Project"
