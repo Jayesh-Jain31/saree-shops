@@ -72,7 +72,6 @@ const OrderTimeline = ({ currentStatus }) => {
 
         return (
           <div key={step.key} className='flex'>
-            {/* Timeline column */}
             <div className='flex flex-col items-center mr-4'>
               <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all
                 ${isDone
@@ -87,8 +86,6 @@ const OrderTimeline = ({ currentStatus }) => {
                 <div className={`w-0.5 h-8 my-1 ${isDone && i < currentIndex ? 'bg-green-400' : 'bg-gray-200'}`} />
               )}
             </div>
-
-            {/* Content */}
             <div className={`pb-6 ${isLast ? 'pb-0' : ''}`}>
               <p className={`text-sm font-semibold ${isDone ? 'text-gray-800' : 'text-gray-400'}`}>
                 {step.label}
@@ -190,6 +187,8 @@ const OrderDetails = () => {
   }
 
   const addr = order?.delivery_address
+  const items = order?.items || []
+  const totalItemCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
   const canCancel = order?.orderStatus && !['Delivered', 'Cancelled'].includes(order.orderStatus)
 
   return (
@@ -218,42 +217,39 @@ const OrderDetails = () => {
       </div>
 
       <div className='max-w-3xl mx-auto p-4 space-y-4'>
-        {/* Product Card */}
+        {/* Items Card */}
         <div className='bg-white rounded-xl border p-4'>
-          <div className='flex gap-4'>
-            <div className='w-28 h-28 rounded-xl border bg-gray-50 overflow-hidden flex-shrink-0 p-1.5'>
-              <img
-                src={order.product_details?.image?.[0]}
-                alt={order.product_details?.name}
-                className='w-full h-full object-contain'
-              />
-            </div>
-            <div className='flex-1 min-w-0'>
-              <p className='font-bold text-gray-800 text-base leading-snug line-clamp-2'>
-                {order.product_details?.name}
-              </p>
-              <p className='text-xs text-gray-400 mt-1'>
-                Qty: {order?.quantity || 1}
-              </p>
-              <p className='text-xl font-bold text-green-700 mt-2'>
-                {DisplayPriceInRupees(order?.totalAmt)}
-              </p>
-            </div>
+          <h2 className='font-bold text-gray-800 text-sm mb-3 flex items-center gap-2'>
+            <FaShoppingBag className='text-green-600' size={14} />
+            Items Ordered
+            <span className='text-xs font-normal text-gray-400'>({totalItemCount} item{totalItemCount !== 1 ? 's' : ''})</span>
+          </h2>
+          <div className='space-y-3'>
+            {items.map((item, i) => (
+              <div key={i} className={`flex gap-3 ${i < items.length - 1 ? 'pb-3 border-b border-gray-100' : ''}`}>
+                <div className='w-16 h-16 sm:w-20 sm:h-20 rounded-lg border bg-gray-50 overflow-hidden flex-shrink-0 p-1'>
+                  <img
+                    src={item.product_details?.image?.[0]}
+                    alt={item.product_details?.name}
+                    className='w-full h-full object-contain'
+                  />
+                </div>
+                <div className='flex-1 min-w-0'>
+                  <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-2'>
+                    {item.product_details?.name}
+                  </p>
+                  <p className='text-xs text-gray-400 mt-1'>
+                    Qty: {item.quantity || 1}
+                  </p>
+                  {item.price > 0 && (
+                    <p className='text-sm font-semibold text-gray-700 mt-1'>
+                      {DisplayPriceInRupees(item.price)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-
-          {/* Product Gallery */}
-          {order.product_details?.image?.length > 1 && (
-            <div className='flex gap-2 mt-3 overflow-x-auto pb-1'>
-              {order.product_details.image.map((img, i) => (
-                <img
-                  key={i}
-                  src={img}
-                  alt={`${i + 1}`}
-                  className='w-14 h-14 object-contain rounded-lg border bg-gray-50 flex-shrink-0 p-0.5'
-                />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Order Tracking */}
@@ -281,6 +277,10 @@ const OrderDetails = () => {
             <div className='flex items-center justify-between'>
               <span className='text-xs text-gray-500'>Time</span>
               <span className='text-xs text-gray-700'>{formatTime(order?.createdAt)}</span>
+            </div>
+            <div className='flex items-center justify-between'>
+              <span className='text-xs text-gray-500'>Items</span>
+              <span className='text-xs text-gray-700'>{totalItemCount} item{totalItemCount !== 1 ? 's' : ''}</span>
             </div>
           </div>
         </div>
@@ -404,7 +404,6 @@ const OrderDetails = () => {
           </div>
         )}
 
-        {/* Bottom spacing */}
         <div className='h-4'></div>
       </div>
     </div>

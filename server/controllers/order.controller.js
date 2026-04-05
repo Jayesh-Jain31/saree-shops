@@ -10,36 +10,37 @@ export async function CashOnDeliveryOrderController(request, response) {
         const userId = request.userId
         const { list_items, totalAmt, addressId, subTotalAmt, discountAmt = 0 } = request.body
 
-        const payload = list_items.map(el => {
-            return ({
-                userId: userId,
-                orderId: `ORD-${new mongoose.Types.ObjectId()}`,
-                productId: el.productId._id,
-                product_details: {
-                    name: el.productId.name,
-                    image: el.productId.image
-                },
-                quantity: el.quantity || 1,
-                paymentId: "",
-                payment_status: "CASH ON DELIVERY",
-                delivery_address: addressId,
-                subTotalAmt: subTotalAmt,
-                totalAmt: totalAmt,
-                discountAmt: discountAmt,
-                orderStatus: "Confirmed",
-            })
-        })
+        const items = list_items.map(el => ({
+            productId: el.productId._id,
+            product_details: {
+                name: el.productId.name,
+                image: el.productId.image
+            },
+            quantity: el.quantity || 1,
+            price: el.productId.price || 0,
+        }))
 
-        const generatedOrder = await OrderModel.insertMany(payload)
+        const order = await OrderModel.create({
+            userId: userId,
+            orderId: `ORD-${new mongoose.Types.ObjectId()}`,
+            items: items,
+            paymentId: "",
+            payment_status: "CASH ON DELIVERY",
+            delivery_address: addressId,
+            subTotalAmt: subTotalAmt,
+            totalAmt: totalAmt,
+            discountAmt: discountAmt,
+            orderStatus: "Confirmed",
+        })
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
 
         return response.json({
-            message: "Order successfully",
+            message: "Order placed successfully",
             error: false,
             success: true,
-            data: generatedOrder
+            data: order
         })
 
     } catch (error) {
@@ -123,15 +124,20 @@ export async function razorpayVerifyController(request, response) {
             })
         }
 
-        const payload = list_items.map(el => ({
-            userId: userId,
-            orderId: `ORD-${new mongoose.Types.ObjectId()}`,
+        const items = list_items.map(el => ({
             productId: el.productId._id,
             product_details: {
                 name: el.productId.name,
                 image: el.productId.image
             },
             quantity: el.quantity || 1,
+            price: el.productId.price || 0,
+        }))
+
+        const order = await OrderModel.create({
+            userId: userId,
+            orderId: `ORD-${new mongoose.Types.ObjectId()}`,
+            items: items,
             paymentId: razorpay_payment_id,
             payment_status: "PAID",
             delivery_address: addressId,
@@ -139,9 +145,7 @@ export async function razorpayVerifyController(request, response) {
             totalAmt: totalAmt,
             discountAmt: discountAmt,
             orderStatus: "Confirmed",
-        }))
-
-        const generatedOrder = await OrderModel.insertMany(payload)
+        })
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
@@ -150,7 +154,7 @@ export async function razorpayVerifyController(request, response) {
             message: "Payment verified and order placed successfully!",
             error: false,
             success: true,
-            data: generatedOrder
+            data: order
         })
 
     } catch (error) {
@@ -202,7 +206,6 @@ export async function getOrderByIdController(request, response) {
 
         const order = await OrderModel.findOne({ _id: id, userId: userId })
             .populate('delivery_address')
-            .populate('productId')
 
         if (!order) {
             return response.status(404).json({

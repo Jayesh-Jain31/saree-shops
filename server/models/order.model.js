@@ -10,18 +10,26 @@ const orderSchema = new mongoose.Schema({
         required: [true, "Provide orderId"],
         unique: true
     },
-    productId: {
-        type: mongoose.Schema.ObjectId,
-        ref: "product"
-    },
-    product_details: {
-        name: String,
-        image: Array,
-    },
-    quantity: {
-        type: Number,
-        default: 1
-    },
+    items: [
+        {
+            productId: {
+                type: mongoose.Schema.ObjectId,
+                ref: "product"
+            },
+            product_details: {
+                name: String,
+                image: Array,
+            },
+            quantity: {
+                type: Number,
+                default: 1
+            },
+            price: {
+                type: Number,
+                default: 0
+            }
+        }
+    ],
     paymentId: {
         type: String,
         default: ""

@@ -5,8 +5,7 @@ import NoData from '../components/NoData'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import {
   FaBoxOpen, FaCheckCircle, FaMoneyBillWave, FaCreditCard,
-  FaSearch, FaFilter, FaReceipt, FaShoppingBag,
-  FaChevronRight, FaTimes, FaTruck
+  FaSearch, FaFilter, FaChevronRight, FaTimes, FaTruck
 } from 'react-icons/fa'
 import { MdAccessTime, MdDeliveryDining, MdDone, MdInventory, MdPending } from 'react-icons/md'
 
@@ -66,6 +65,11 @@ const PaymentBadge = ({ status }) => {
 }
 
 const OrderCard = ({ order, onClick }) => {
+  const items = order?.items || []
+  const totalItems = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
+  const previewImages = items.slice(0, 4).map(item => item.product_details?.image?.[0]).filter(Boolean)
+  const firstName = items[0]?.product_details?.name || 'Order'
+
   return (
     <div
       onClick={onClick}
@@ -73,31 +77,44 @@ const OrderCard = ({ order, onClick }) => {
     >
       <div className='p-4'>
         <div className='flex items-start gap-3'>
-          {/* Product Image */}
-          <div className='w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-gray-100 bg-gray-50 overflow-hidden flex-shrink-0 p-1'>
-            <img
-              src={order.product_details?.image?.[0]}
-              alt={order.product_details?.name}
-              className='w-full h-full object-contain'
-            />
+          {/* Product Images Preview */}
+          <div className='flex-shrink-0'>
+            {previewImages.length === 1 && (
+              <div className='w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-gray-100 bg-gray-50 overflow-hidden p-1'>
+                <img src={previewImages[0]} alt='' className='w-full h-full object-contain' />
+              </div>
+            )}
+            {previewImages.length >= 2 && (
+              <div className='w-20 h-20 sm:w-24 sm:h-24 grid grid-cols-2 gap-0.5 rounded-xl border border-gray-100 bg-gray-50 overflow-hidden p-0.5'>
+                {previewImages.slice(0, 4).map((img, i) => (
+                  <div key={i} className='bg-white rounded overflow-hidden flex items-center justify-center'>
+                    <img src={img} alt='' className='w-full h-full object-contain p-0.5' />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Order Info */}
           <div className='flex-1 min-w-0'>
             <div className='flex items-start justify-between gap-2'>
-              <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-2'>
-                {order.product_details?.name}
-              </p>
+              <div className='min-w-0'>
+                <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-1'>
+                  {items.length === 1
+                    ? firstName
+                    : `${firstName} + ${items.length - 1} more item${items.length - 1 > 1 ? 's' : ''}`
+                  }
+                </p>
+                <p className='text-[11px] font-mono text-gray-400 mt-0.5'>{order?.orderId}</p>
+              </div>
               <FaChevronRight className='text-gray-300 group-hover:text-green-500 transition-colors flex-shrink-0 mt-1' size={12} />
             </div>
-
-            <p className='text-[11px] font-mono text-gray-400 mt-0.5'>{order?.orderId}</p>
 
             <div className='flex items-center gap-1.5 text-[11px] text-gray-400 mt-1'>
               <MdAccessTime size={12} />
               <span>{formatRelative(order.createdAt)}</span>
               <span className='text-gray-200'>·</span>
-              <span>{formatDate(order.createdAt)}</span>
+              <span>{totalItems} item{totalItems !== 1 ? 's' : ''}</span>
             </div>
 
             <div className='flex flex-wrap items-center gap-1.5 mt-2'>
@@ -126,7 +143,9 @@ const MyOrders = () => {
     return orders.filter(order => {
       const matchesSearch = searchQuery === '' ||
         order?.orderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order?.product_details?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        order?.items?.some(item =>
+          item?.product_details?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
 
       const matchesStatus = filterStatus === 'all' ||
         order?.orderStatus === filterStatus
@@ -231,7 +250,6 @@ const MyOrders = () => {
 
       {/* Content */}
       <div className='max-w-3xl mx-auto p-4'>
-        {/* Empty State */}
         {!orders.length && (
           <div className='mt-8'>
             <NoData />
@@ -247,7 +265,6 @@ const MyOrders = () => {
           </div>
         )}
 
-        {/* No results */}
         {orders.length > 0 && filteredOrders.length === 0 && (
           <div className='flex flex-col items-center justify-center py-16 text-gray-400'>
             <FaSearch size={28} className='mb-3' />
@@ -256,7 +273,6 @@ const MyOrders = () => {
           </div>
         )}
 
-        {/* Orders */}
         <div className='space-y-3'>
           {filteredOrders.map((order, index) => (
             <OrderCard

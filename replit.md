@@ -44,11 +44,13 @@ A full-stack quick-commerce (Blinkit Clone) application built with the MERN stac
 - **Checkout**: Razorpay online payment + Cash on Delivery
 - **Coupons**: Percentage/flat discounts, admin CRUD, user validation at checkout
 - **Orders**:
+  - **Grouped orders**: All items from one checkout are stored as a single order with an `items[]` array
   - Order List page (`/dashboard/myorders`) with stats, search, filters by status & payment
-  - Order Details page (`/dashboard/order/:id`) with tracking timeline, price breakdown, address, payment info
+  - Each order card shows product image grid preview, item count, and total amount
+  - Order Details page (`/dashboard/order/:id`) with all ordered items, tracking timeline, price breakdown, address, payment info
   - Cancel order functionality (for non-delivered orders)
   - Order status tracking: Pending → Confirmed → Shipped → Out for Delivery → Delivered
-  - Order model stores: orderStatus, quantity, discountAmt
+  - Order model stores: items[] (productId, product_details, quantity, price), orderStatus, discountAmt
 - **Admin**: Category/subcategory/product management, coupon management
 
 ## Order API Endpoints
