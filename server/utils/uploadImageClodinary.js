@@ -11,6 +11,10 @@ const uploadImageClodinary = async(image)=>{
 
     const uploadImage = await new Promise((resolve,reject)=>{
         cloudinary.uploader.upload_stream({ folder : "binkeyit"},(error,uploadResult)=>{
+            if(error){
+                console.log("Cloudinary upload error:", error)
+                return reject(error)
+            }
             return resolve(uploadResult)
         }).end(buffer)
     })
