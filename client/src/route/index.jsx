@@ -25,6 +25,9 @@ import Success from "../pages/Success";
 import Cancel from "../pages/Cancel";
 import CouponAdmin from "../pages/CouponAdmin";
 import OrderDetails from "../pages/OrderDetails";
+import Wishlist from "../pages/Wishlist";
+import AdminDashboard from "../pages/AdminDashboard";
+import AdminOrders from "../pages/AdminOrders";
 
 const router = createBrowserRouter([
     {
@@ -102,6 +105,18 @@ const router = createBrowserRouter([
                     {
                         path : 'order/:id',
                         element : <OrderDetails/>
+                    },
+                    {
+                        path : 'wishlist',
+                        element : <Wishlist/>
+                    },
+                    {
+                        path : 'admin-orders',
+                        element : <AdminPermision><AdminOrders/></AdminPermision>
+                    },
+                    {
+                        path : 'admin-dashboard',
+                        element : <AdminPermision><AdminDashboard/></AdminPermision>
                     }
                 ]
             },

@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux'
 import { valideURLConvert } from '../utils/valideURLConvert'
 import {Link, useNavigate} from 'react-router-dom'
 import CategoryWiseProductDisplay from '../components/CategoryWiseProductDisplay'
+import RecentlyViewed from '../components/RecentlyViewed'
 
 const Home = () => {
   const loadingCategory = useSelector(state => state.product.loadingCategory)
@@ -35,16 +36,16 @@ const Home = () => {
               <img
                 src={banner}
                 className='w-full h-full hidden lg:block'
-                alt='banner' 
+                alt='banner'
               />
               <img
                 src={bannerMobile}
                 className='w-full h-full lg:hidden'
-                alt='banner' 
+                alt='banner'
               />
           </div>
       </div>
-      
+
       <div className='container mx-auto px-4 my-2 grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10  gap-2'>
           {
             loadingCategory ? (
@@ -61,7 +62,7 @@ const Home = () => {
                 return(
                   <div key={cat._id+"displayCategory"} className='w-full h-full' onClick={()=>handleRedirectProductListpage(cat._id,cat.name)}>
                     <div>
-                        <img 
+                        <img
                           src={cat.image}
                           className='w-full h-full object-scale-down'
                         />
@@ -69,25 +70,24 @@ const Home = () => {
                   </div>
                 )
               })
-              
+
             )
           }
       </div>
 
-      {/***display category product */}
       {
         categoryData?.map((c,index)=>{
           return(
-            <CategoryWiseProductDisplay 
-              key={c?._id+"CategorywiseProduct"} 
-              id={c?._id} 
+            <CategoryWiseProductDisplay
+              key={c?._id+"CategorywiseProduct"}
+              id={c?._id}
               name={c?.name}
             />
           )
         })
       }
 
-
+      <RecentlyViewed />
 
    </section>
   )

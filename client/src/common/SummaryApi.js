@@ -47,6 +47,14 @@ const SummaryApi = {
     createCoupon : { url : '/api/coupon/create', method : 'post' },
     updateCoupon : { url : '/api/coupon/update', method : 'put' },
     deleteCoupon : { url : '/api/coupon/delete', method : 'delete' },
+    toggleWishlist : { url : '/api/wishlist/toggle', method : 'post' },
+    getWishlist : { url : '/api/wishlist/get', method : 'get' },
+    addReview : { url : '/api/review/add', method : 'post' },
+    getProductReviews : { url : '/api/review/get', method : 'post' },
+    deleteReview : { url : '/api/review/delete', method : 'delete' },
+    getAnalytics : { url : '/api/analytics/dashboard', method : 'get' },
+    getAllOrdersAdmin : { url : '/api/analytics/orders', method : 'post' },
+    updateOrderStatusAdmin : { url : '/api/analytics/order-status', method : 'put' },
 }
 
 export default SummaryApi

@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import {
   FaArrowLeft, FaCheckCircle, FaMoneyBillWave, FaCreditCard,
   FaReceipt, FaTruck, FaTimes, FaShoppingBag, FaBoxOpen,
-  FaPhoneAlt, FaRegCopy
+  FaPhoneAlt, FaRegCopy, FaDownload
 } from 'react-icons/fa'
 import {
   MdAccessTime, MdLocationOn, MdDeliveryDining, MdDone,
@@ -150,6 +150,135 @@ const OrderDetails = () => {
     } finally {
       setCancelling(false)
     }
+  }
+
+  const esc = (str) => {
+    if (!str) return ''
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  }
+
+  const handleDownloadInvoice = () => {
+    const invoiceHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice - ${order?.orderId}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
+          .brand { font-size: 24px; font-weight: 700; color: #16a34a; }
+          .invoice-title { font-size: 28px; font-weight: 700; color: #333; text-align: right; }
+          .invoice-meta { text-align: right; font-size: 13px; color: #666; margin-top: 5px; }
+          .section { margin-bottom: 25px; }
+          .section-title { font-size: 14px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+          .address { font-size: 14px; line-height: 1.6; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+          th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; color: #666; border-bottom: 2px solid #e5e7eb; }
+          td { padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+          .text-right { text-align: right; }
+          .totals { margin-top: 20px; }
+          .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+          .total-row.grand { border-top: 2px solid #333; padding-top: 12px; margin-top: 8px; font-size: 18px; font-weight: 700; color: #16a34a; }
+          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #999; }
+          .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+          .badge-green { background: #dcfce7; color: #16a34a; }
+          .badge-amber { background: #fef3c7; color: #d97706; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="brand">Binkeyit</div>
+            <p style="font-size:12px;color:#999;margin-top:4px">Quick Commerce</p>
+          </div>
+          <div>
+            <div class="invoice-title">INVOICE</div>
+            <div class="invoice-meta">
+              <div>#${order?.orderId}</div>
+              <div>${formatFullDate(order?.createdAt)}</div>
+            </div>
+          </div>
+        </div>
+
+        ${addr ? `
+        <div class="section">
+          <div class="section-title">Delivery Address</div>
+          <div class="address">
+            ${esc(addr.address_line)}<br>
+            ${[esc(addr.city), esc(addr.state)].filter(Boolean).join(', ')}<br>
+            ${[esc(addr.country), esc(addr.pincode)].filter(Boolean).join(' - ')}
+            ${addr.mobile ? `<br>Phone: ${esc(addr.mobile)}` : ''}
+          </div>
+        </div>
+        ` : ''}
+
+        <div class="section">
+          <div class="section-title">Payment</div>
+          <span class="badge ${order?.payment_status?.toUpperCase() === 'PAID' ? 'badge-green' : 'badge-amber'}">
+            ${order?.payment_status?.toUpperCase() === 'PAID' ? 'Paid Online' : 'Cash on Delivery'}
+          </span>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Items</div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Product</th>
+                <th class="text-right">Qty</th>
+                <th class="text-right">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>${esc(item.product_details?.name || 'Product')}</td>
+                  <td class="text-right">${item.quantity || 1}</td>
+                  <td class="text-right">${DisplayPriceInRupees(item.price || 0)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="totals">
+          <div class="total-row">
+            <span>Subtotal</span>
+            <span>${DisplayPriceInRupees(order?.subTotalAmt)}</span>
+          </div>
+          ${order?.discountAmt > 0 ? `
+          <div class="total-row">
+            <span>Discount</span>
+            <span style="color:#16a34a">- ${DisplayPriceInRupees(order.discountAmt)}</span>
+          </div>
+          ` : ''}
+          <div class="total-row">
+            <span>Delivery</span>
+            <span style="color:#16a34a">FREE</span>
+          </div>
+          <div class="total-row grand">
+            <span>Grand Total</span>
+            <span>${DisplayPriceInRupees(order?.totalAmt)}</span>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Thank you for shopping with Binkeyit!</p>
+          <p style="margin-top:4px">This is a computer-generated invoice.</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    printWindow.document.write(invoiceHtml)
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => { printWindow.print() }, 300)
   }
 
   const copyOrderId = () => {
@@ -309,6 +438,14 @@ const OrderDetails = () => {
             </div>
           </div>
         </div>
+
+        {/* Download Invoice */}
+        <button
+          onClick={handleDownloadInvoice}
+          className='w-full bg-white rounded-xl border p-4 flex items-center justify-center gap-2 text-green-700 font-semibold text-sm hover:bg-green-50 transition-colors'
+        >
+          <FaDownload size={14} /> Download Invoice / Receipt
+        </button>
 
         {/* Payment */}
         <div className='bg-white rounded-xl border p-4'>

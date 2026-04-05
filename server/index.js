@@ -17,6 +17,9 @@ import cartRouter from './route/cart.route.js'
 import addressRouter from './route/address.route.js'
 import orderRouter from './route/order.route.js'
 import couponRouter from './route/coupon.route.js'
+import wishlistRouter from './route/wishlist.route.js'
+import reviewRouter from './route/review.route.js'
+import analyticsRouter from './route/analytics.route.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -44,6 +47,9 @@ app.use("/api/cart",cartRouter)
 app.use("/api/address",addressRouter)
 app.use('/api/order',orderRouter)
 app.use('/api/coupon',couponRouter)
+app.use('/api/wishlist',wishlistRouter)
+app.use('/api/review',reviewRouter)
+app.use('/api/analytics',analyticsRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })

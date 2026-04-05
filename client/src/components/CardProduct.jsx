@@ -3,29 +3,22 @@ import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import { Link } from 'react-router-dom'
 import { valideURLConvert } from '../utils/valideURLConvert'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
-import SummaryApi from '../common/SummaryApi'
-import AxiosToastError from '../utils/AxiosToastError'
-import Axios from '../utils/Axios'
-import toast from 'react-hot-toast'
-import { useState } from 'react'
-import { useGlobalContext } from '../provider/GlobalProvider'
 import AddToCartButton from './AddToCartButton'
 
 const CardProduct = ({data}) => {
     const url = `/product/${valideURLConvert(data.name)}-${data._id}`
-    const [loading,setLoading] = useState(false)
-  
+
   return (
     <Link to={url} className='border py-2 lg:p-4 grid gap-1 lg:gap-3 min-w-36 lg:min-w-52 rounded cursor-pointer bg-white' >
       <div className='min-h-20 w-full max-h-24 lg:max-h-32 rounded overflow-hidden'>
-            <img 
+            <img
                 src={data.image[0]}
                 className='w-full h-full object-scale-down lg:scale-125'
             />
       </div>
       <div className='flex items-center gap-1'>
         <div className='rounded text-xs w-fit p-[1px] px-2 text-green-600 bg-green-50'>
-              10 min 
+              10 min
         </div>
         <div>
             {
@@ -39,17 +32,22 @@ const CardProduct = ({data}) => {
         {data.name}
       </div>
       <div className='w-fit gap-1 px-2 lg:px-0 text-sm lg:text-base'>
-        {data.unit} 
-        
+        {data.unit}
       </div>
+
+      {data.stock > 0 && data.stock <= 5 && (
+        <div className='px-2 lg:px-0'>
+          <p className='text-orange-600 bg-orange-50 px-2 py-0.5 text-[10px] rounded-full w-fit font-semibold'>
+            Only {data.stock} left!
+          </p>
+        </div>
+      )}
 
       <div className='px-2 lg:px-0 flex items-center justify-between gap-1 lg:gap-3 text-sm lg:text-base'>
         <div className='flex items-center gap-1'>
           <div className='font-semibold'>
-              {DisplayPriceInRupees(pricewithDiscount(data.price,data.discount))} 
+              {DisplayPriceInRupees(pricewithDiscount(data.price,data.discount))}
           </div>
-          
-          
         </div>
         <div className=''>
           {
@@ -59,7 +57,6 @@ const CardProduct = ({data}) => {
               <AddToCartButton data={data} />
             )
           }
-            
         </div>
       </div>
 

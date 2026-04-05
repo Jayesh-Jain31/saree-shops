@@ -4,6 +4,8 @@ import OrderModel from "../models/order.model.js";
 import UserModel from "../models/user.model.js";
 import mongoose from "mongoose";
 import crypto from "crypto";
+import sendEmail from "../config/sendEmail.js";
+import orderConfirmationTemplate from "../utils/orderConfirmationTemplate.js";
 
 export async function CashOnDeliveryOrderController(request, response) {
     try {
@@ -35,6 +37,24 @@ export async function CashOnDeliveryOrderController(request, response) {
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
+
+        try {
+            const user = await UserModel.findById(userId)
+            if (user?.email) {
+                await sendEmail({
+                    sendTo: user.email,
+                    subject: `Order Confirmed - ${order.orderId}`,
+                    html: orderConfirmationTemplate({
+                        orderId: order.orderId,
+                        items: order.items,
+                        totalAmt: order.totalAmt,
+                        payment_status: order.payment_status,
+                    })
+                })
+            }
+        } catch (emailErr) {
+            console.log("Order confirmation email failed:", emailErr.message)
+        }
 
         return response.json({
             message: "Order placed successfully",
@@ -149,6 +169,24 @@ export async function razorpayVerifyController(request, response) {
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
+
+        try {
+            const user = await UserModel.findById(userId)
+            if (user?.email) {
+                await sendEmail({
+                    sendTo: user.email,
+                    subject: `Order Confirmed - ${order.orderId}`,
+                    html: orderConfirmationTemplate({
+                        orderId: order.orderId,
+                        items: order.items,
+                        totalAmt: order.totalAmt,
+                        payment_status: order.payment_status,
+                    })
+                })
+            }
+        } catch (emailErr) {
+            console.log("Order confirmation email failed:", emailErr.message)
+        }
 
         return response.json({
             message: "Payment verified and order placed successfully!",

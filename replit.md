@@ -44,14 +44,32 @@ A full-stack quick-commerce (Blinkit Clone) application built with the MERN stac
 - **Checkout**: Razorpay online payment + Cash on Delivery
 - **Coupons**: Percentage/flat discounts, admin CRUD, user validation at checkout
 - **Orders**:
-  - **Grouped orders**: All items from one checkout are stored as a single order with an `items[]` array
+  - Grouped orders: All items from one checkout stored as single order with `items[]` array
   - Order List page (`/dashboard/myorders`) with stats, search, filters by status & payment
-  - Each order card shows product image grid preview, item count, and total amount
-  - Order Details page (`/dashboard/order/:id`) with all ordered items, tracking timeline, price breakdown, address, payment info
+  - Order Details page (`/dashboard/order/:id`) with items, tracking timeline, price breakdown, address, payment info
   - Cancel order functionality (for non-delivered orders)
   - Order status tracking: Pending → Confirmed → Shipped → Out for Delivery → Delivered
-  - Order model stores: items[] (productId, product_details, quantity, price), orderStatus, discountAmt
+- **Wishlist** (`/dashboard/wishlist`): Toggle products to wishlist, view saved items with add-to-cart
+- **Reviews & Ratings**: Star ratings and comments on product detail pages
+- **Stock Warning**: "Only X left!" badge on products with low stock (≤5), "Out of stock" for zero
+- **Recently Viewed**: LocalStorage-based recently viewed products section on Home page
+- **Share Product**: WhatsApp share and copy-link on product detail page
+- **Admin Order Management** (`/dashboard/admin-orders`): View all customer orders, search/filter, update status
+- **Admin Analytics Dashboard** (`/dashboard/admin-dashboard`): Revenue, orders, products, users stats; order status breakdown; payment methods; monthly revenue chart; top products; recent orders
+- **Invoice Download**: Print-ready invoice generation from Order Details page
+- **Email Order Confirmation**: Automated email via Resend after both COD and Razorpay orders
+- **Notifications**: In-app notification bell with persistent notifications for orders and actions
 - **Admin**: Category/subcategory/product management, coupon management
+
+## API Endpoints (New)
+- `POST /api/wishlist/toggle` — Add/remove product from wishlist
+- `GET /api/wishlist/get` — Get user's wishlist
+- `POST /api/review/add` — Add product review
+- `POST /api/review/get` — Get reviews for a product
+- `DELETE /api/review/delete` — Delete own review
+- `GET /api/analytics/dashboard` — Admin analytics data
+- `POST /api/analytics/orders` — Admin: list all orders with filters
+- `PUT /api/analytics/order-status` — Admin: update order status
 
 ## Order API Endpoints
 - `GET /api/order/order-list` — All orders for logged-in user

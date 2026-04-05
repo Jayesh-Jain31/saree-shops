@@ -9,6 +9,7 @@ import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { FaTag, FaTimes, FaCheckCircle } from 'react-icons/fa'
+import { addNotification } from '../components/NotificationBell'
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -84,6 +85,7 @@ const CheckoutPage = () => {
       const { data: responseData } = response
       if (responseData.success) {
         toast.success(responseData.message)
+        addNotification('Your Cash on Delivery order has been placed successfully!', 'success')
         if (fetchCartItem) fetchCartItem()
         if (fetchOrder) fetchOrder()
         navigate('/success', { state: { text: "Order" } })
@@ -154,6 +156,7 @@ const CheckoutPage = () => {
             const { data: verifyData } = verifyRes
             if (verifyData.success) {
               toast.success('Payment successful! Order placed.')
+              addNotification('Your order has been placed successfully! Payment received via Razorpay.', 'success')
               if (fetchCartItem) fetchCartItem()
               if (fetchOrder) fetchOrder()
               navigate('/success', { state: { text: "Order" } })
