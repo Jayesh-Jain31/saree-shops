@@ -6,6 +6,9 @@ import { FaWhatsapp } from 'react-icons/fa'
 import { MdSettings, MdSave, MdPalette } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { colorPresets, applyTheme } from '../utils/themeColors'
+import uploadImage from '../utils/UploadImage'
+import { useDispatch } from 'react-redux'
+import { setLogoUrl as setLogoUrlAction } from '../store/siteSlice'
 
 const POLICIES = [
   { key: 'page_privacy',  label: 'Privacy Policy',    slug: 'privacy-policy'  },
@@ -23,6 +26,7 @@ const SOCIAL_FIELDS = [
 ]
 
 const SiteSettings = () => {
+  const dispatch = useDispatch()
   const [whatsapp, setWhatsapp] = useState('')
   const [enabled, setEnabled] = useState(true)
   const [themeColor, setThemeColor] = useState('green')
@@ -30,6 +34,8 @@ const SiteSettings = () => {
   const [activePolicyTab, setActivePolicyTab] = useState(POLICIES[0].key)
   const [social, setSocial] = useState({})
   const [storeName, setStoreName] = useState('')
+  const [logoPreview, setLogoPreview] = useState('')
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingTheme, setSavingTheme] = useState(false)
@@ -46,6 +52,7 @@ const SiteSettings = () => {
           setEnabled(s.whatsapp_enabled !== 'false')
           if (s.theme_color) setThemeColor(s.theme_color)
           setStoreName(s.store_name || '')
+          setLogoPreview(s.store_logo || '')
 
           const policies = {}
           POLICIES.forEach(p => { policies[p.key] = s[p.key] || '' })
@@ -126,6 +133,34 @@ const SiteSettings = () => {
     } finally {
       setSavingPolicy(false)
     }
+  }
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return toast.error('Please select an image file')
+    setUploadingLogo(true)
+    try {
+      const res = await uploadImage(file)
+      const url = res?.data?.data?.url
+      if (!url) throw new Error('No URL returned')
+      await saveSetting('store_logo', url)
+      setLogoPreview(url)
+      dispatch(setLogoUrlAction(url))
+      toast.success('Logo updated! Reload the page to see it in the header.')
+    } catch {
+      toast.error('Failed to upload logo')
+    } finally {
+      setUploadingLogo(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleRemoveLogo = async () => {
+    await saveSetting('store_logo', '')
+    setLogoPreview('')
+    dispatch(setLogoUrlAction(''))
+    toast.success('Logo removed — site name will be shown instead')
   }
 
   const handleSaveSocial = async () => {
@@ -271,7 +306,52 @@ const SiteSettings = () => {
             <h2 className='font-bold text-gray-800'>Store Info & Social Links</h2>
             <p className='text-xs text-gray-500'>These appear in the footer of your website</p>
           </div>
-          <div className='p-5 space-y-3'>
+          <div className='p-5 space-y-4'>
+
+            {/* Logo Upload */}
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-2'>
+                Website Logo
+                <span className='ml-2 font-normal text-primary-text bg-primary-light px-2 py-0.5 rounded text-[10px]'>
+                  Shown in header &amp; footer — replaces text name
+                </span>
+              </label>
+              <div className='flex items-center gap-4'>
+                {/* Preview box */}
+                <div className='w-24 h-16 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center bg-gray-50 flex-shrink-0 overflow-hidden'>
+                  {uploadingLogo ? (
+                    <div className='w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin' />
+                  ) : logoPreview ? (
+                    <img src={logoPreview} alt='Logo preview' className='w-full h-full object-contain p-1' />
+                  ) : (
+                    <span className='text-[10px] text-gray-400 text-center px-1'>No logo</span>
+                  )}
+                </div>
+                <div className='flex flex-col gap-2 flex-1'>
+                  <label className='cursor-pointer'>
+                    <span className='inline-flex items-center gap-1.5 btn-primary text-xs font-semibold px-4 py-2 rounded-lg'>
+                      {uploadingLogo ? 'Uploading...' : logoPreview ? 'Change Logo' : 'Upload Logo'}
+                    </span>
+                    <input
+                      type='file'
+                      accept='image/*'
+                      onChange={handleLogoUpload}
+                      disabled={uploadingLogo}
+                      className='hidden'
+                    />
+                  </label>
+                  {logoPreview && (
+                    <button onClick={handleRemoveLogo} className='text-xs text-red-500 hover:text-red-700 text-left'>
+                      Remove logo (use text name instead)
+                    </button>
+                  )}
+                  <p className='text-[11px] text-gray-400'>PNG, JPG, SVG — recommended width: 170px. Transparent background works best.</p>
+                </div>
+              </div>
+            </div>
+
+            <hr className='border-gray-100' />
+
             <div>
               <label className='block text-xs font-semibold text-gray-600 mb-1'>
                 Website Name

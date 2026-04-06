@@ -15,7 +15,7 @@ import GlobalProvider from './provider/GlobalProvider';
 import { FaWhatsapp } from "react-icons/fa";
 import CartMobileLink from './components/CartMobile';
 import { applyTheme } from './utils/themeColors';
-import { setSiteName } from './store/siteSlice';
+import { setSiteName, setLogoUrl } from './store/siteSlice';
 
 function App() {
   const dispatch = useDispatch()
@@ -69,6 +69,11 @@ function App() {
         if (s.store_name) {
           dispatch(setSiteName(s.store_name))
           document.title = s.store_name
+        }
+
+        // Apply logo
+        if (s.store_logo) {
+          dispatch(setLogoUrl(s.store_logo))
         }
       }
     } catch (error) {}
