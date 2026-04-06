@@ -3,7 +3,7 @@ import './App.css'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import toast, { Toaster } from 'react-hot-toast';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import fetchUserDetails from './utils/fetchUserDetails';
 import { setUserDetails } from './store/userSlice';
 import { setAllCategory,setAllSubCategory,setLoadingCategory } from './store/productSlice';
@@ -16,12 +16,10 @@ import { FaCartShopping } from "react-icons/fa6";
 import { FaWhatsapp } from "react-icons/fa";
 import CartMobileLink from './components/CartMobile';
 
-const WHATSAPP_NUMBER = '919XXXXXXXXX'
-
 function App() {
   const dispatch = useDispatch()
   const location = useLocation()
-  
+  const [whatsappNumber, setWhatsappNumber] = useState('')
 
   const fetchUser = async()=>{
       const userData = await fetchUserDetails()
@@ -62,12 +60,20 @@ function App() {
     }
   }
 
-  
+  const fetchSettings = async () => {
+    try {
+      const response = await Axios({ ...SummaryApi.getSettings })
+      if (response.data.success && response.data.data.whatsapp_number) {
+        setWhatsappNumber(response.data.data.whatsapp_number)
+      }
+    } catch (error) {}
+  }
 
   useEffect(()=>{
     fetchUser()
     fetchCategory()
     fetchSubCategory()
+    fetchSettings()
   },[])
 
   return (
@@ -80,15 +86,17 @@ function App() {
       <Toaster/>
 
       {/* WhatsApp floating button - bottom left */}
-      <a
-        href={`https://wa.me/${WHATSAPP_NUMBER}`}
-        target='_blank'
-        rel='noopener noreferrer'
-        className='fixed bottom-20 left-4 z-50 flex items-center justify-center w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110'
-        aria-label='Chat on WhatsApp'
-      >
-        <FaWhatsapp size={30} />
-      </a>
+      {whatsappNumber && (
+        <a
+          href={`https://wa.me/${whatsappNumber}`}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='fixed bottom-20 left-4 z-50 flex items-center justify-center w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110'
+          aria-label='Chat on WhatsApp'
+        >
+          <FaWhatsapp size={30} />
+        </a>
+      )}
 
       {
         location.pathname !== '/checkout' && (

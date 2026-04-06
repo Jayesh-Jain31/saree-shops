@@ -75,6 +75,8 @@ const SummaryApi = {
     getAdminOrderDetail : { url : '/api/analytics/order-detail', method : 'get' },
     createShiprocketOrder : { url : '/api/shiprocket/create-order', method : 'post' },
     trackShiprocketOrder : { url : '/api/shiprocket/track', method : 'get' },
+    getSettings : { url : '/api/settings/get', method : 'get' },
+    updateSetting : { url : '/api/settings/update', method : 'put' },
 }
 
 export default SummaryApi
