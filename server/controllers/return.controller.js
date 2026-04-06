@@ -64,7 +64,9 @@ export const createReturnRequest = async (req, res) => {
 export const getMyReturns = async (req, res) => {
     try {
         const userId = req.userId
-        const returns = await ReturnModel.find({ userId }).sort({ createdAt: -1 })
+        const returns = await ReturnModel.find({ userId })
+            .populate('orderId', 'payment_status paymentId delivery_address subTotalAmt totalAmt orderId orderStatus')
+            .sort({ createdAt: -1 })
         return res.json({ data: returns, error: false, success: true })
     } catch (err) {
         return res.status(500).json({ message: err.message || err, error: true, success: false })

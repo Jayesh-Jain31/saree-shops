@@ -54,6 +54,14 @@ const returnSchema = new mongoose.Schema({
     totalAmt: {
         type: Number,
         default: 0
+    },
+    paymentMethod: {
+        type: String,
+        default: ''
+    },
+    paymentId: {
+        type: String,
+        default: ''
     }
 }, { timestamps: true })
 
