@@ -5,7 +5,7 @@ import { valideURLConvert } from '../utils/valideURLConvert'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
 import AddToCartButton from './AddToCartButton'
 
-const CardProduct = ({ data }) => {
+const CardProduct = ({ data, grid = false }) => {
   const url = `/product/${valideURLConvert(data.name)}-${data._id}`
   const images = data.image || []
   const [imgIdx, setImgIdx] = useState(0)
@@ -20,7 +20,7 @@ const CardProduct = ({ data }) => {
   }, [images.length])
 
   return (
-    <Link to={url} className='border rounded-xl bg-white flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow w-36 lg:w-52 flex-shrink-0'>
+    <Link to={url} className={`border rounded-xl bg-white flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${grid ? 'w-full' : 'w-36 lg:w-52 flex-shrink-0'}`}>
 
       {/* Image with auto-slide */}
       <div className='w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden p-2 relative'>
