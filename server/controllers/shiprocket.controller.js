@@ -96,8 +96,18 @@ export async function createShiprocketOrder(request, response) {
         })
     } catch (error) {
         const errData = error?.response?.data
-        const errMsg = errData?.message || (errData?.errors ? JSON.stringify(errData.errors) : null) || error.message || 'Shiprocket error'
+        const statusCode = error?.response?.status
         console.error('Shiprocket createOrder error:', JSON.stringify(errData || error.message, null, 2))
+
+        if (statusCode === 403 || errData?.status_code === 403) {
+            return response.status(403).json({
+                message: 'Shiprocket API access is not enabled for your account. Please log in to your Shiprocket panel → Settings → API → Enable API access, then try again.',
+                error: true,
+                success: false
+            })
+        }
+
+        const errMsg = errData?.message || (errData?.errors ? JSON.stringify(errData.errors) : null) || error.message || 'Shiprocket error'
         return response.status(500).json({ message: errMsg, error: true, success: false })
     }
 }
