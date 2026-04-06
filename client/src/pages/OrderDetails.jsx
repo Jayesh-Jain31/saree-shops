@@ -8,12 +8,29 @@ import toast from 'react-hot-toast'
 import {
   FaArrowLeft, FaCheckCircle, FaMoneyBillWave, FaCreditCard,
   FaReceipt, FaTruck, FaTimes, FaShoppingBag, FaBoxOpen,
-  FaPhoneAlt, FaRegCopy, FaDownload
+  FaPhoneAlt, FaRegCopy, FaDownload, FaUndoAlt
 } from 'react-icons/fa'
 import {
   MdAccessTime, MdLocationOn, MdDeliveryDining, MdDone,
   MdInventory, MdPending, MdLocalShipping
 } from 'react-icons/md'
+
+const RETURN_REASONS = [
+  'Damaged / Defective product',
+  'Wrong item delivered',
+  'Item not as described',
+  'Missing items in order',
+  'Changed my mind',
+  'Other'
+]
+
+const returnStatusConfig = {
+  'Pending':          'bg-yellow-50 text-yellow-700 border-yellow-200',
+  'Approved':         'bg-blue-50 text-blue-700 border-blue-200',
+  'Rejected':         'bg-red-50 text-red-700 border-red-200',
+  'Refund Initiated': 'bg-purple-50 text-purple-700 border-purple-200',
+  'Refunded':         'bg-green-50 text-green-700 border-green-200',
+}
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -109,6 +126,11 @@ const OrderDetails = () => {
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [existingReturn, setExistingReturn] = useState(null)
+  const [showReturnForm, setShowReturnForm] = useState(false)
+  const [returnReason, setReturnReason] = useState('')
+  const [returnDesc, setReturnDesc] = useState('')
+  const [submittingReturn, setSubmittingReturn] = useState(false)
 
   const fetchOrderDetails = async () => {
     try {
@@ -118,7 +140,11 @@ const OrderDetails = () => {
         url: `${SummaryApi.getOrderById.url}/${id}`
       })
       if (response.data.success) {
-        setOrder(response.data.data)
+        const orderData = response.data.data
+        setOrder(orderData)
+        if (orderData.orderStatus === 'Delivered') {
+          fetchReturnStatus(orderData._id)
+        }
       }
     } catch (error) {
       toast.error('Failed to load order details')
@@ -128,9 +154,41 @@ const OrderDetails = () => {
     }
   }
 
+  const fetchReturnStatus = async (oid) => {
+    try {
+      const res = await Axios({
+        ...SummaryApi.getReturnByOrderId,
+        url: `${SummaryApi.getReturnByOrderId.url}/${oid}`
+      })
+      if (res.data.success) setExistingReturn(res.data.data)
+    } catch {}
+  }
+
   useEffect(() => {
     if (id) fetchOrderDetails()
   }, [id])
+
+  const handleSubmitReturn = async () => {
+    if (!returnReason) { toast.error('Please select a reason'); return }
+    try {
+      setSubmittingReturn(true)
+      const res = await Axios({
+        ...SummaryApi.createReturnRequest,
+        data: { orderId: order._id, reason: returnReason, description: returnDesc }
+      })
+      if (res.data.success) {
+        toast.success('Return request submitted!')
+        setExistingReturn(res.data.data)
+        setShowReturnForm(false)
+        setReturnReason('')
+        setReturnDesc('')
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to submit return request')
+    } finally {
+      setSubmittingReturn(false)
+    }
+  }
 
   const handleCancelOrder = async () => {
     try {
@@ -550,6 +608,94 @@ const OrderDetails = () => {
                     {cancelling ? 'Cancelling...' : 'Yes, Cancel'}
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Return & Refund */}
+        {order?.orderStatus === 'Delivered' && (
+          <div className='bg-white rounded-xl border p-4'>
+            <h2 className='font-bold text-gray-800 text-sm mb-3 flex items-center gap-2'>
+              <FaUndoAlt className='text-orange-500' size={13} /> Return & Refund
+            </h2>
+
+            {existingReturn ? (
+              <div>
+                <div className='flex items-center gap-2 mb-2'>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${returnStatusConfig[existingReturn.status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                    {existingReturn.status}
+                  </span>
+                  <span className='text-[11px] text-gray-400'>
+                    Submitted {new Date(existingReturn.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+                <p className='text-xs text-gray-600'><span className='font-semibold'>Reason:</span> {existingReturn.reason}</p>
+                {existingReturn.description && (
+                  <p className='text-xs text-gray-500 italic mt-0.5'>"{existingReturn.description}"</p>
+                )}
+                {existingReturn.adminNote && (
+                  <p className='text-xs text-gray-600 bg-gray-50 rounded p-2 mt-2 border border-gray-100'>
+                    <span className='font-semibold'>Note from team:</span> {existingReturn.adminNote}
+                  </p>
+                )}
+                {existingReturn.status === 'Refunded' && existingReturn.refundAmount > 0 && (
+                  <p className='text-sm font-bold text-green-700 mt-2'>
+                    Refunded: {DisplayPriceInRupees(existingReturn.refundAmount)}
+                  </p>
+                )}
+              </div>
+            ) : showReturnForm ? (
+              <div className='space-y-3'>
+                <div>
+                  <label className='text-xs font-semibold text-gray-600 mb-1 block'>Reason for return *</label>
+                  <select
+                    value={returnReason}
+                    onChange={e => setReturnReason(e.target.value)}
+                    className='w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 bg-gray-50'
+                  >
+                    <option value=''>Select a reason...</option>
+                    {RETURN_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className='text-xs font-semibold text-gray-600 mb-1 block'>Additional details (optional)</label>
+                  <textarea
+                    value={returnDesc}
+                    onChange={e => setReturnDesc(e.target.value)}
+                    rows={3}
+                    placeholder='Describe the issue in more detail...'
+                    className='w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:border-orange-400 resize-none bg-gray-50'
+                  />
+                </div>
+                <div className='flex gap-2'>
+                  <button
+                    onClick={() => { setShowReturnForm(false); setReturnReason(''); setReturnDesc('') }}
+                    className='flex-1 py-2.5 border rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50'
+                    disabled={submittingReturn}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitReturn}
+                    disabled={submittingReturn || !returnReason}
+                    className='flex-1 py-2.5 bg-orange-600 text-white rounded-xl text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-1'
+                  >
+                    {submittingReturn ? 'Submitting...' : <><FaUndoAlt size={11} /> Submit Return</>}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className='text-xs text-gray-500 mb-3'>
+                  Not happy with your order? You can request a return within 7 days of delivery.
+                </p>
+                <button
+                  onClick={() => setShowReturnForm(true)}
+                  className='w-full py-3 text-orange-600 font-semibold text-sm border-2 border-orange-200 rounded-xl hover:bg-orange-50 transition-colors flex items-center justify-center gap-2'
+                >
+                  <FaUndoAlt size={12} /> Request Return / Refund
+                </button>
               </div>
             )}
           </div>

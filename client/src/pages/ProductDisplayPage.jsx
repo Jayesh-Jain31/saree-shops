@@ -165,7 +165,12 @@ const ProductDisplayPage = () => {
     <section className='container mx-auto p-4 grid lg:grid-cols-2'>
       <div className=''>
         <div className='bg-white lg:min-h-[65vh] lg:max-h-[65vh] rounded-2xl min-h-72 max-h-72 h-full w-full relative overflow-hidden flex items-center justify-center p-4'>
-          <img src={data.image[image]} className='w-full h-full object-contain' />
+          <img
+            key={image}
+            src={data.image[image]}
+            className='w-full h-full object-contain animate-fadeIn'
+            style={{ animation: 'fadeSlideIn 0.35s ease' }}
+          />
           {/* Wishlist & Share buttons */}
           <div className='absolute top-3 right-3 flex gap-2'>
             <button

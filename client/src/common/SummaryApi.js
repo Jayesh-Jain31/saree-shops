@@ -65,6 +65,11 @@ const SummaryApi = {
     createBanner : { url : '/api/banner/create', method : 'post' },
     updateBanner : { url : '/api/banner/update', method : 'put' },
     deleteBanner : { url : '/api/banner/delete', method : 'delete' },
+    createReturnRequest : { url : '/api/return/create', method : 'post' },
+    getMyReturns : { url : '/api/return/my-returns', method : 'get' },
+    getReturnByOrderId : { url : '/api/return/order', method : 'get' },
+    getAllReturnsAdmin : { url : '/api/return/admin/all', method : 'get' },
+    updateReturnStatus : { url : '/api/return/admin/update', method : 'put' },
 }
 
 export default SummaryApi

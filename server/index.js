@@ -22,6 +22,7 @@ import reviewRouter from './route/review.route.js'
 import analyticsRouter from './route/analytics.route.js'
 import deliveryZoneRouter from './route/deliveryZone.route.js'
 import bannerRouter from './route/banner.route.js'
+import returnRouter from './route/return.route.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -54,6 +55,7 @@ app.use('/api/review',reviewRouter)
 app.use('/api/analytics',analyticsRouter)
 app.use('/api/delivery-zone',deliveryZoneRouter)
 app.use('/api/banner',bannerRouter)
+app.use('/api/return',returnRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })

@@ -13,7 +13,7 @@ import {
   MdOutlineUploadFile, MdOutlineInventory2, MdOutlineLocalOffer,
   MdOutlineDeliveryDining, MdOutlineImage
 } from 'react-icons/md'
-import { FiPackage, FiHeart, FiMapPin, FiLogOut, FiUser } from 'react-icons/fi'
+import { FiPackage, FiHeart, FiMapPin, FiLogOut, FiUser, FiRefreshCw } from 'react-icons/fi'
 import isAdmin from '../utils/isAdmin'
 
 const UserMenu = ({ close }) => {
@@ -83,6 +83,7 @@ const UserMenu = ({ close }) => {
             <MenuItem to="/dashboard/coupons" icon={MdOutlineLocalOffer} label="Coupons" color="text-pink-500" />
             <MenuItem to="/dashboard/delivery-zones" icon={MdOutlineDeliveryDining} label="Delivery Zones" color="text-teal-500" />
             <MenuItem to="/dashboard/banners" icon={MdOutlineImage} label="Manage Banners" color="text-indigo-500" />
+            <MenuItem to="/dashboard/admin-returns" icon={FiRefreshCw} label="Return Requests" color="text-orange-500" />
           </div>
           <Divider />
         </>
@@ -92,6 +93,7 @@ const UserMenu = ({ close }) => {
       <p className='px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest'>My Account</p>
       <div className='text-sm grid gap-0.5 px-1'>
         <MenuItem to="/dashboard/myorders" icon={FiPackage} label="My Orders" />
+        <MenuItem to="/dashboard/my-returns" icon={FiRefreshCw} label="My Returns" color="text-orange-400" />
         <MenuItem to="/dashboard/wishlist" icon={FiHeart} label="My Wishlist" color="text-red-400" />
         <MenuItem to="/dashboard/address" icon={FiMapPin} label="Saved Addresses" color="text-blue-400" />
         <button

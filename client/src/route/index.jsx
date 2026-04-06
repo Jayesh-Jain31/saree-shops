@@ -30,6 +30,8 @@ import AdminDashboard from "../pages/AdminDashboard";
 import AdminOrders from "../pages/AdminOrders";
 import DeliveryZoneAdmin from "../pages/DeliveryZoneAdmin"
 import BannerAdmin from "../pages/BannerAdmin";
+import MyReturns from "../pages/MyReturns";
+import AdminReturns from "../pages/AdminReturns";
 
 const router = createBrowserRouter([
     {
@@ -127,6 +129,14 @@ const router = createBrowserRouter([
                     {
                         path : 'banners',
                         element : <AdminPermision><BannerAdmin/></AdminPermision>
+                    },
+                    {
+                        path : 'my-returns',
+                        element : <MyReturns/>
+                    },
+                    {
+                        path : 'admin-returns',
+                        element : <AdminPermision><AdminReturns/></AdminPermision>
                     }
                 ]
             },
