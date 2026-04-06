@@ -30,7 +30,7 @@ const productSchema = new mongoose.Schema({
     },
     price : {
         type : Number,
-        defualt : null
+        default : null
     },
     discount : {
         type : Number,
@@ -44,6 +44,10 @@ const productSchema = new mongoose.Schema({
         type : Object,
         default : {}
     },
+    variants : {
+        type : Array,
+        default : []
+    },
     publish : {
         type : Boolean,
         default : true
@@ -52,7 +56,6 @@ const productSchema = new mongoose.Schema({
     timestamps : true
 })
 
-//create a text index
 productSchema.index({
     name  : "text",
     description : 'text'

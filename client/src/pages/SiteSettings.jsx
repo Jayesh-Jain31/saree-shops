@@ -338,13 +338,13 @@ const SiteSettings = () => {
             </div>
           </div>
 
-          {/* Tab bar */}
+          {/* Tab bar - horizontally scrollable on mobile */}
           <div className='flex overflow-x-auto border-b scrollbar-none'>
             {POLICIES.map(p => (
               <button
                 key={p.key}
                 onClick={() => setActivePolicyTab(p.key)}
-                className={`flex-shrink-0 px-4 py-3 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                className={`flex-shrink-0 px-3 py-2.5 text-[11px] sm:text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
                   activePolicyTab === p.key
                     ? 'border-primary text-primary-text bg-primary-light'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
