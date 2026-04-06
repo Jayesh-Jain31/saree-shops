@@ -4,6 +4,7 @@ import { valideURLConvert } from '../utils/valideURLConvert'
 import { Link, useNavigate } from 'react-router-dom'
 import CategoryWiseProductDisplay from '../components/CategoryWiseProductDisplay'
 import RecentlyViewed from '../components/RecentlyViewed'
+import FlashSaleCountdown from '../components/FlashSaleCountdown'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import bannerFallback from '../assets/banner.jpg'
@@ -19,7 +20,6 @@ const BannerCarousel = () => {
       try {
         const res = await Axios({ ...SummaryApi.getBanners })
         if (res.data.success && res.data.data.length > 0) {
-          // Flatten all banner slides into one carousel
           const allSlides = []
           for (const banner of res.data.data) {
             if (banner.slides && banner.slides.length > 0) {
@@ -80,7 +80,6 @@ const BannerCarousel = () => {
         <ImageContent />
       )}
 
-      {/* Prev/Next — only when multiple slides */}
       {slides.length > 1 && (
         <>
           <button
@@ -94,7 +93,6 @@ const BannerCarousel = () => {
             aria-label='Next'
           >›</button>
 
-          {/* Dot indicators */}
           <div className='absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5'>
             {slides.map((_, i) => (
               <button
@@ -126,6 +124,9 @@ const Home = () => {
 
   return (
     <section className='bg-white'>
+      {/* Flash Sale Countdown Strip — appears above banner when active */}
+      <FlashSaleCountdown />
+
       <div className='container mx-auto'>
         <BannerCarousel />
       </div>

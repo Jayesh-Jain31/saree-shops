@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { FaWhatsapp, FaUndoAlt, FaTools, FaBan, FaBullhorn } from 'react-icons/fa'
+import { FaWhatsapp, FaUndoAlt, FaTools, FaBan, FaBullhorn, FaBolt } from 'react-icons/fa'
 import { MdSettings, MdSave, MdPalette } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { colorPresets, applyTheme } from '../utils/themeColors'
@@ -48,6 +48,11 @@ const SiteSettings = () => {
   const [savingAnnouncement, setSavingAnnouncement] = useState(false)
   const [outsideDeliveryTime, setOutsideDeliveryTime] = useState('3-4 days')
   const [savingOutsideDelivery, setSavingOutsideDelivery] = useState(false)
+  const [flashSaleEnabled, setFlashSaleEnabled] = useState(false)
+  const [flashSaleTitle, setFlashSaleTitle] = useState('Flash Sale - Limited Time Offer!')
+  const [flashSaleDiscount, setFlashSaleDiscount] = useState('')
+  const [flashSaleEndTime, setFlashSaleEndTime] = useState('')
+  const [savingFlashSale, setSavingFlashSale] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingTheme, setSavingTheme] = useState(false)
@@ -72,6 +77,10 @@ const SiteSettings = () => {
           setAnnouncementText(s.announcement_text || 'Free delivery above ₹999')
           setAnnouncementEnabled(s.announcement_enabled === 'true')
           setOutsideDeliveryTime(s.outside_delivery_time || '3-4 days')
+          setFlashSaleEnabled(s.flash_sale_enabled === 'true')
+          setFlashSaleTitle(s.flash_sale_title || 'Flash Sale - Limited Time Offer!')
+          setFlashSaleDiscount(s.flash_sale_discount || '')
+          setFlashSaleEndTime(s.flash_sale_end_time || '')
 
           const policies = {}
           POLICIES.forEach(p => { policies[p.key] = s[p.key] || '' })
@@ -246,6 +255,22 @@ const SiteSettings = () => {
       toast.error('Failed to save announcement settings')
     } finally {
       setSavingAnnouncement(false)
+    }
+  }
+
+  const handleSaveFlashSale = async () => {
+    if (flashSaleEnabled && !flashSaleEndTime) return toast.error('Please set an end date/time for the flash sale')
+    setSavingFlashSale(true)
+    try {
+      await saveSetting('flash_sale_enabled', String(flashSaleEnabled))
+      await saveSetting('flash_sale_title', flashSaleTitle || 'Flash Sale - Limited Time Offer!')
+      await saveSetting('flash_sale_discount', flashSaleDiscount || '')
+      await saveSetting('flash_sale_end_time', flashSaleEndTime || '')
+      toast.success(flashSaleEnabled ? '🔥 Flash Sale is now LIVE!' : 'Flash Sale settings saved (currently off)')
+    } catch {
+      toast.error('Failed to save flash sale settings')
+    } finally {
+      setSavingFlashSale(false)
     }
   }
 
@@ -715,6 +740,65 @@ const SiteSettings = () => {
           </div>
           <div className={`px-5 py-2 text-xs font-semibold ${codEnabled ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-500'}`}>
             {codEnabled ? '✓ COD is available — customers can pay cash on delivery' : '✕ COD is disabled — only Razorpay / Wallet payments accepted'}
+          </div>
+        </div>
+
+        {/* ── Flash Sale Countdown Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b bg-gradient-to-r from-red-50 to-orange-50'>
+            <div className='w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center'>
+              <FaBolt className='text-red-500' size={18} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Flash Sale Countdown</h2>
+              <p className='text-xs text-gray-500'>Show a live countdown banner on the home page</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div className='flex items-center justify-between'>
+              <div>
+                <p className='text-sm font-semibold text-gray-700'>Enable Flash Sale Banner</p>
+                <p className='text-xs text-gray-400'>Shows a red countdown strip above the home banner</p>
+              </div>
+              <button
+                onClick={() => setFlashSaleEnabled(p => !p)}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${flashSaleEnabled ? 'bg-red-500' : 'bg-gray-300'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${flashSaleEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            <div className='grid gap-3'>
+              <div>
+                <label className='text-xs font-semibold text-gray-600 mb-1 block'>Sale Title</label>
+                <input type='text' value={flashSaleTitle} onChange={e => setFlashSaleTitle(e.target.value)}
+                  placeholder='Flash Sale - Limited Time Offer!'
+                  className='w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-200 transition' />
+              </div>
+              <div className='grid grid-cols-2 gap-3'>
+                <div>
+                  <label className='text-xs font-semibold text-gray-600 mb-1 block'>Discount Label</label>
+                  <input type='text' value={flashSaleDiscount} onChange={e => setFlashSaleDiscount(e.target.value)}
+                    placeholder='e.g. 30% or Up to 50%'
+                    className='w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 transition' />
+                </div>
+                <div>
+                  <label className='text-xs font-semibold text-gray-600 mb-1 block'>Sale Ends At</label>
+                  <input type='datetime-local' value={flashSaleEndTime} onChange={e => setFlashSaleEndTime(e.target.value)}
+                    className='w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 transition' />
+                </div>
+              </div>
+            </div>
+            {flashSaleEnabled && (
+              <div className='bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2'>
+                <FaBolt className='text-red-400 flex-shrink-0' size={12} />
+                <p className='text-xs text-red-600 font-medium'>Flash sale is ON — a countdown banner will appear on your home page</p>
+              </div>
+            )}
+            <button onClick={handleSaveFlashSale} disabled={savingFlashSale}
+              className='w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50 transition'>
+              <MdSave size={16} />
+              {savingFlashSale ? 'Saving...' : 'Save Flash Sale Settings'}
+            </button>
           </div>
         </div>
 

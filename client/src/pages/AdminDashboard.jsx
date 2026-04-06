@@ -3,7 +3,7 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import {
-  FaShoppingBag, FaUsers, FaBoxOpen, FaChartLine, FaCrown
+  FaShoppingBag, FaUsers, FaBoxOpen, FaChartLine, FaCrown, FaExclamationTriangle
 } from 'react-icons/fa'
 import { MdInventory, MdTrendingUp } from 'react-icons/md'
 
@@ -12,6 +12,7 @@ const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const AdminDashboard = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [lowStockProducts, setLowStockProducts] = useState([])
 
   const fetchAnalytics = async () => {
     try {
@@ -26,8 +27,20 @@ const AdminDashboard = () => {
     }
   }
 
+  const fetchLowStock = async () => {
+    try {
+      const res = await Axios({ ...SummaryApi.getProduct, data: { page: 1, limit: 200, search: '' } })
+      if (res.data.success) {
+        const products = res.data.data.data || res.data.data || []
+        const lowStock = products.filter(p => p.stock !== null && p.stock !== undefined && p.stock <= 5)
+        setLowStockProducts(lowStock)
+      }
+    } catch {}
+  }
+
   useEffect(() => {
     fetchAnalytics()
+    fetchLowStock()
   }, [])
 
   if (loading) {
@@ -194,6 +207,43 @@ const AdminDashboard = () => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── Low Stock Alerts ── */}
+        {lowStockProducts.length > 0 && (
+          <div className='bg-white rounded-xl border p-4 mb-6 border-orange-200'>
+            <h2 className='font-bold text-sm text-gray-800 mb-3 flex items-center gap-2'>
+              <FaExclamationTriangle className='text-orange-500' size={14} />
+              Low Stock Alerts
+              <span className='ml-auto bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full'>
+                {lowStockProducts.length} product{lowStockProducts.length !== 1 ? 's' : ''}
+              </span>
+            </h2>
+            <div className='space-y-2'>
+              {lowStockProducts.map((product) => (
+                <div key={product._id} className='flex items-center gap-3 p-2.5 rounded-xl bg-orange-50 border border-orange-100'>
+                  {product.image?.[0] && (
+                    <img src={product.image[0]} alt='' className='w-10 h-10 object-cover rounded-lg border flex-shrink-0' />
+                  )}
+                  <div className='flex-1 min-w-0'>
+                    <p className='text-sm font-medium text-gray-800 truncate'>{product.name}</p>
+                    <p className='text-xs text-gray-400'>{product.unit}</p>
+                  </div>
+                  <div className='flex-shrink-0 text-right'>
+                    <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      product.stock === 0 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
+                    }`}>
+                      {product.stock === 0 ? 'Out of stock' : `${product.stock} left`}
+                    </div>
+                    <p className='text-xs text-gray-400 mt-0.5'>{DisplayPriceInRupees(product.price)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className='text-xs text-orange-500 text-center mt-3 font-medium'>
+              ⚠️ Please restock these products to avoid lost sales
+            </p>
           </div>
         )}
 
