@@ -7,6 +7,7 @@ import { MdSettings, MdSave } from 'react-icons/md'
 
 const SiteSettings = () => {
   const [whatsapp, setWhatsapp] = useState('')
+  const [enabled, setEnabled] = useState(true)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -16,6 +17,7 @@ const SiteSettings = () => {
         const res = await Axios({ ...SummaryApi.getSettings })
         if (res.data.success) {
           setWhatsapp(res.data.data.whatsapp_number || '')
+          setEnabled(res.data.data.whatsapp_enabled !== 'false')
         }
       } catch (error) {
         console.log(error)
@@ -26,6 +28,22 @@ const SiteSettings = () => {
     fetchSettings()
   }, [])
 
+  const saveSetting = async (key, value) => {
+    await Axios({ ...SummaryApi.updateSetting, data: { key, value: String(value) } })
+  }
+
+  const handleToggle = async () => {
+    const newVal = !enabled
+    setEnabled(newVal)
+    try {
+      await saveSetting('whatsapp_enabled', newVal)
+      toast.success(`WhatsApp button ${newVal ? 'enabled' : 'disabled'}`)
+    } catch {
+      toast.error('Failed to update')
+      setEnabled(!newVal)
+    }
+  }
+
   const handleSave = async () => {
     if (!whatsapp.trim()) return toast.error('Please enter a WhatsApp number')
     const cleaned = whatsapp.replace(/\D/g, '')
@@ -34,16 +52,11 @@ const SiteSettings = () => {
     }
     setSaving(true)
     try {
-      const res = await Axios({
-        ...SummaryApi.updateSetting,
-        data: { key: 'whatsapp_number', value: cleaned }
-      })
-      if (res.data.success) {
-        toast.success('WhatsApp number saved!')
-        setWhatsapp(cleaned)
-      }
-    } catch (error) {
-      toast.error('Failed to save setting')
+      await saveSetting('whatsapp_number', cleaned)
+      toast.success('WhatsApp number saved!')
+      setWhatsapp(cleaned)
+    } catch {
+      toast.error('Failed to save')
     } finally {
       setSaving(false)
     }
@@ -60,6 +73,8 @@ const SiteSettings = () => {
   return (
     <div className='min-h-screen bg-gray-50 p-4'>
       <div className='max-w-xl mx-auto'>
+
+        {/* Header */}
         <div className='flex items-center gap-3 mb-6'>
           <div className='w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center'>
             <MdSettings className='text-green-600' size={20} />
@@ -70,22 +85,43 @@ const SiteSettings = () => {
           </div>
         </div>
 
-        {/* WhatsApp Setting */}
-        <div className='bg-white rounded-2xl border p-5 shadow-sm'>
-          <div className='flex items-center gap-3 mb-4'>
-            <div className='w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center'>
-              <FaWhatsapp className='text-green-600' size={20} />
+        {/* WhatsApp Card */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+
+          {/* Card Header with Toggle */}
+          <div className='flex items-center justify-between p-5 border-b'>
+            <div className='flex items-center gap-3'>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${enabled ? 'bg-green-100' : 'bg-gray-100'}`}>
+                <FaWhatsapp className={enabled ? 'text-green-600' : 'text-gray-400'} size={20} />
+              </div>
+              <div>
+                <h2 className='font-bold text-gray-800'>WhatsApp Button</h2>
+                <p className='text-xs text-gray-500'>Floating button on the bottom-right of your site</p>
+              </div>
             </div>
-            <div>
-              <h2 className='font-bold text-gray-800'>WhatsApp Number</h2>
-              <p className='text-xs text-gray-500'>Customers tap this to chat with you directly</p>
-            </div>
+
+            {/* Toggle Switch */}
+            <button
+              onClick={handleToggle}
+              className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${enabled ? 'bg-green-500' : 'bg-gray-300'}`}
+              aria-label='Toggle WhatsApp button'
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${enabled ? 'translate-x-6' : 'translate-x-0'}`}
+              />
+            </button>
           </div>
 
-          <div className='space-y-3'>
+          {/* Status Banner */}
+          <div className={`px-5 py-2 text-xs font-semibold ${enabled ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-500'}`}>
+            {enabled ? '✓ Button is visible to customers' : '✕ Button is hidden from customers'}
+          </div>
+
+          {/* Number Input */}
+          <div className='p-5 space-y-4'>
             <div>
               <label className='block text-xs font-semibold text-gray-600 mb-1'>
-                Number with country code (no + or spaces)
+                WhatsApp Number (with country code, no + or spaces)
               </label>
               <input
                 type='tel'
@@ -100,10 +136,15 @@ const SiteSettings = () => {
             </div>
 
             {whatsapp && (
-              <div className='flex items-center gap-2 p-3 bg-green-50 rounded-xl text-sm text-green-700'>
+              <a
+                href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='flex items-center gap-2 p-3 bg-green-50 rounded-xl text-sm text-green-700 hover:bg-green-100 transition'
+              >
                 <FaWhatsapp size={16} />
-                <span>Preview link: wa.me/{whatsapp.replace(/\D/g, '')}</span>
-              </div>
+                <span>Test: wa.me/{whatsapp.replace(/\D/g, '')}</span>
+              </a>
             )}
 
             <button
@@ -116,7 +157,7 @@ const SiteSettings = () => {
               ) : (
                 <MdSave size={18} />
               )}
-              {saving ? 'Saving...' : 'Save Settings'}
+              {saving ? 'Saving...' : 'Save Number'}
             </button>
           </div>
         </div>
