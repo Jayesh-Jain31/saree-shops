@@ -89,7 +89,7 @@ const RateOrderSection = ({ order }) => {
     try {
       const items = order?.items || []
       await Promise.all(items.map(item =>
-        Axios({ ...SummaryApi.addReview, data: { productId: item.product_details?._id, rating: selectedRating, comment } })
+        Axios({ ...SummaryApi.addReview, data: { productId: item.productId?._id || item.productId, rating: selectedRating, comment } })
       ))
       localStorage.setItem(`rated_order_${order._id}`, JSON.stringify({ rating: selectedRating }))
       setSubmitted(true)
