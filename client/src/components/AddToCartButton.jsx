@@ -20,6 +20,9 @@ const AddToCartButton = ({ data }) => {
   const [bounce, setBounce] = useState(false)
   const navigate = useNavigate()
 
+  const maxStock = data?.stock ?? Infinity
+  const atMaxStock = qty >= maxStock
+
   const handleADDTocart = async (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -53,7 +56,7 @@ const AddToCartButton = ({ data }) => {
     const checkingitem = cartItem.some(item => item.productId._id === data._id)
     setIsAvailableCart(checkingitem)
     const product = cartItem.find(item => item.productId._id === data._id)
-    setQty(product?.quantity)
+    setQty(product?.quantity ?? 0)
     setCartItemsDetails(product)
   }, [data, cartItem])
 
@@ -65,6 +68,10 @@ const AddToCartButton = ({ data }) => {
   const increaseQty = async (e) => {
     e.preventDefault()
     e.stopPropagation()
+    if (atMaxStock) {
+      toast.error(`Only ${maxStock} in stock`, { icon: '⚠️' })
+      return
+    }
     triggerBounce()
     const response = await updateCartItem(cartItemDetails?._id, qty + 1)
     if (response.success) toast.success('Added')
@@ -85,28 +92,41 @@ const AddToCartButton = ({ data }) => {
   return (
     <div className="w-full" onClick={e => e.preventDefault()}>
       {isAvailableCart ? (
-        <div className="flex items-center justify-between w-full gap-1">
-          <button
-            onClick={decreaseQty}
-            className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-75 transition-transform duration-150"
-          >
-            <FaMinus size={11} />
-          </button>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between w-full gap-1">
+            <button
+              onClick={decreaseQty}
+              className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-75 transition-transform duration-150"
+            >
+              <FaMinus size={11} />
+            </button>
 
-          <span
-            key={qty}
-            className={`flex-1 text-center font-bold text-primary text-base select-none transition-all ${bounce ? 'scale-125' : 'scale-100'}`}
-            style={{ transition: 'transform 0.15s ease' }}
-          >
-            {qty}
-          </span>
+            <span
+              key={qty}
+              className={`flex-1 text-center font-bold text-primary text-base select-none transition-all ${bounce ? 'scale-125' : 'scale-100'}`}
+              style={{ transition: 'transform 0.15s ease' }}
+            >
+              {qty}
+            </span>
 
-          <button
-            onClick={increaseQty}
-            className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-75 transition-transform duration-150"
-          >
-            <FaPlus size={11} />
-          </button>
+            <button
+              onClick={increaseQty}
+              disabled={atMaxStock}
+              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow transition-all duration-150 ${
+                atMaxStock
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'btn-primary active:scale-75'
+              }`}
+            >
+              <FaPlus size={11} />
+            </button>
+          </div>
+
+          {atMaxStock && (
+            <p className="text-[9px] text-center text-red-500 font-bold uppercase tracking-wide leading-tight">
+              Max stock reached
+            </p>
+          )}
         </div>
       ) : (
         <button

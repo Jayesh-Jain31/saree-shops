@@ -1,5 +1,6 @@
 import CartProductModel from "../models/cartproduct.model.js";
 import UserModel from "../models/user.model.js";
+import ProductModel from "../models/product.model.js";
 
 export const addToCartItemController = async(request,response)=>{
     try {
@@ -22,6 +23,16 @@ export const addToCartItemController = async(request,response)=>{
         if(checkItemCart){
             return response.status(400).json({
                 message : "Item already in cart"
+            })
+        }
+
+        // Check stock before adding
+        const product = await ProductModel.findById(productId)
+        if (product && product.stock <= 0) {
+            return response.status(400).json({
+                message : "Product is out of stock",
+                error : true,
+                success : false
             })
         }
 
@@ -81,11 +92,21 @@ export const getCartItemController = async(request,response)=>{
 export const updateCartItemQtyController = async(request,response)=>{
     try {
         const userId = request.userId 
-        const { _id,qty } = request.body
+        const { _id, qty } = request.body
 
-        if(!_id ||  !qty){
+        if(!_id || !qty){
             return response.status(400).json({
                 message : "provide _id, qty"
+            })
+        }
+
+        // Validate qty against available stock
+        const cartItemDoc = await CartProductModel.findOne({ _id, userId }).populate('productId')
+        if (cartItemDoc && cartItemDoc.productId && qty > cartItemDoc.productId.stock) {
+            return response.status(400).json({
+                message : `Only ${cartItemDoc.productId.stock} item(s) available in stock`,
+                error : true,
+                success : false
             })
         }
 
@@ -114,7 +135,7 @@ export const updateCartItemQtyController = async(request,response)=>{
 
 export const deleteCartItemQtyController = async(request,response)=>{
     try {
-      const userId = request.userId // middleware
+      const userId = request.userId
       const { _id } = request.body 
       
       if(!_id){

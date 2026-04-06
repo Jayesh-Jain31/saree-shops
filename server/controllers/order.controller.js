@@ -2,10 +2,20 @@ import Razorpay from "../config/razorpay.js";
 import CartProductModel from "../models/cartproduct.model.js";
 import OrderModel from "../models/order.model.js";
 import UserModel from "../models/user.model.js";
+import ProductModel from "../models/product.model.js";
 import mongoose from "mongoose";
 import crypto from "crypto";
 import sendEmail from "../config/sendEmail.js";
 import orderConfirmationTemplate from "../utils/orderConfirmationTemplate.js";
+
+// Helper: decrement stock for each ordered item
+async function decrementStock(items) {
+    await Promise.all(items.map(item =>
+        ProductModel.findByIdAndUpdate(item.productId, {
+            $inc: { stock: -item.quantity }
+        })
+    ))
+}
 
 export async function CashOnDeliveryOrderController(request, response) {
     try {
@@ -37,6 +47,7 @@ export async function CashOnDeliveryOrderController(request, response) {
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
+        await decrementStock(order.items)
 
         try {
             const user = await UserModel.findById(userId)
@@ -170,6 +181,7 @@ export async function razorpayVerifyController(request, response) {
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
+        await decrementStock(order.items)
 
         try {
             const user = await UserModel.findById(userId)
