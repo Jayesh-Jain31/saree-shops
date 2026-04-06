@@ -12,15 +12,16 @@ import { MdPending, MdDone, MdClose, MdLocalAtm } from 'react-icons/md'
 import NoData from '../components/NoData'
 import toast from 'react-hot-toast'
 
-const STATUS_STEPS = ['Pending', 'Approved', 'Refund Initiated', 'Refunded']
+const STATUS_STEPS = ['Pending', 'Approved', 'Pick Up Scheduled', 'Refund Initiated', 'Refunded']
 const REJECTED_STATUS = 'Rejected'
 
 const statusConfig = {
-  'Pending':          { color: 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: <MdPending size={12} /> },
-  'Approved':         { color: 'bg-blue-50 text-blue-700 border-blue-200',       icon: <MdDone size={12} /> },
-  'Rejected':         { color: 'bg-red-50 text-red-700 border-red-200',          icon: <MdClose size={12} /> },
-  'Refund Initiated': { color: 'bg-purple-50 text-purple-700 border-purple-200', icon: <MdLocalAtm size={12} /> },
-  'Refunded':         { color: 'bg-green-50 text-green-700 border-green-200',    icon: <MdDone size={12} /> },
+  'Pending':           { color: 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: <MdPending size={12} /> },
+  'Approved':          { color: 'bg-blue-50 text-blue-700 border-blue-200',       icon: <MdDone size={12} /> },
+  'Pick Up Scheduled': { color: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: <MdDone size={12} /> },
+  'Rejected':          { color: 'bg-red-50 text-red-700 border-red-200',          icon: <MdClose size={12} /> },
+  'Refund Initiated':  { color: 'bg-purple-50 text-purple-700 border-purple-200', icon: <MdLocalAtm size={12} /> },
+  'Refunded':          { color: 'bg-green-50 text-green-700 border-green-200',    icon: <MdDone size={12} /> },
 }
 
 const StatusBadge = ({ status }) => {
