@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import { Link } from 'react-router-dom'
 import { valideURLConvert } from '../utils/valideURLConvert'
@@ -7,17 +7,45 @@ import AddToCartButton from './AddToCartButton'
 
 const CardProduct = ({ data }) => {
   const url = `/product/${valideURLConvert(data.name)}-${data._id}`
+  const images = data.image || []
+  const [imgIdx, setImgIdx] = useState(0)
+  const timerRef = useRef(null)
+
+  useEffect(() => {
+    if (images.length <= 1) return
+    timerRef.current = setInterval(() => {
+      setImgIdx(prev => (prev + 1) % images.length)
+    }, 3000)
+    return () => clearInterval(timerRef.current)
+  }, [images.length])
 
   return (
     <Link to={url} className='border rounded-xl bg-white flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow w-36 lg:w-52 flex-shrink-0'>
 
-      {/* Image — fixed square container so all products look uniform */}
-      <div className='w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden p-2'>
+      {/* Image with auto-slide */}
+      <div className='w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden p-2 relative'>
         <img
-          src={data.image[0]}
+          key={imgIdx}
+          src={images[imgIdx] || images[0]}
           alt={data.name}
           className='w-full h-full object-contain'
+          style={{ animation: 'fadeSlideIn 0.4s ease' }}
         />
+        {/* Dot indicators */}
+        {images.length > 1 && (
+          <div className='absolute bottom-1 left-0 right-0 flex justify-center gap-1'>
+            {images.map((_, i) => (
+              <span
+                key={i}
+                className={`rounded-full transition-all duration-300 ${
+                  i === imgIdx
+                    ? 'w-3 h-1.5 bg-green-500'
+                    : 'w-1.5 h-1.5 bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Badges */}

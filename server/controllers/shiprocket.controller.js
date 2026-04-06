@@ -1,7 +1,5 @@
 import { shiprocketPost, shiprocketGet } from '../config/shiprocket.js'
 import OrderModel from '../models/order.model.js'
-import AddressModel from '../models/address.model.js'
-import UserModel from '../models/user.model.js'
 
 export async function createShiprocketOrder(request, response) {
     try {
@@ -15,72 +13,92 @@ export async function createShiprocketOrder(request, response) {
             return response.status(400).json({ message: 'Shipment already created for this order', error: true, success: false })
         }
 
+        // Auto-detect first available pickup location
+        let pickupLocation = 'Primary'
+        try {
+            const warehouseData = await shiprocketGet('/warehouses')
+            const warehouses = warehouseData?.data || warehouseData?.warehouses || []
+            if (warehouses.length > 0) {
+                pickupLocation = warehouses[0].pickup_location || warehouses[0].name || 'Primary'
+            }
+        } catch (wErr) {
+            console.log('Could not fetch warehouses, using Primary:', wErr?.response?.data || wErr.message)
+        }
+
         const addr = order.delivery_address || {}
         const user = order.userId || {}
         const items = order.items || []
 
+        const orderDate = new Date(order.createdAt)
+        const formattedDate = `${orderDate.getFullYear()}-${String(orderDate.getMonth()+1).padStart(2,'0')}-${String(orderDate.getDate()).padStart(2,'0')} ${String(orderDate.getHours()).padStart(2,'0')}:${String(orderDate.getMinutes()).padStart(2,'0')}`
+
         const payload = {
             order_id: order.orderId,
-            order_date: new Date(order.createdAt).toISOString().split('T')[0],
-            pickup_location: 'Primary',
-            channel_id: '',
-            comment: 'Binkeyit Order',
-            billing_customer_name: user.name || 'Customer',
-            billing_last_name: '',
-            billing_address: addr.address_line || '',
+            order_date: formattedDate,
+            pickup_location: pickupLocation,
+            billing_customer_name: (user.name || 'Customer').split(' ')[0],
+            billing_last_name: (user.name || '').split(' ').slice(1).join(' ') || '',
+            billing_address: addr.address_line || 'N/A',
             billing_address_2: '',
-            billing_city: addr.city || '',
-            billing_pincode: addr.pincode || '',
-            billing_state: addr.state || '',
-            billing_country: addr.country || 'India',
+            billing_city: addr.city || 'N/A',
+            billing_pincode: String(addr.pincode || '000000'),
+            billing_state: addr.state || 'N/A',
+            billing_country: 'India',
             billing_email: user.email || '',
-            billing_phone: addr.mobile || user.mobile || '',
+            billing_phone: String(addr.mobile || user.mobile || '0000000000'),
             shipping_is_billing: true,
             order_items: items.map(item => ({
-                name: item.product_details?.name || 'Product',
-                sku: item.productId?.toString() || 'SKU',
+                name: (item.product_details?.name || 'Product').substring(0, 100),
+                sku: item.productId?.toString()?.substring(0, 50) || 'SKU001',
                 units: item.quantity || 1,
-                selling_price: item.price || 0,
-                discount: 0,
-                tax: 0,
-                hsn: 0,
+                selling_price: String(item.price || 0),
+                discount: '',
+                tax: '',
+                hsn: 0
             })),
-            payment_method: order.payment_status?.toUpperCase() === 'CASH ON DELIVERY' ? 'COD' : 'Prepaid',
+            payment_method: (order.payment_status || '').toUpperCase().includes('CASH') ? 'COD' : 'Prepaid',
             shipping_charges: 0,
             giftwrap_charges: 0,
             transaction_charges: 0,
             total_discount: order.discountAmt || 0,
             sub_total: order.subTotalAmt || 0,
-            length: 10,
-            breadth: 10,
+            length: 15,
+            breadth: 15,
             height: 10,
-            weight: 0.5,
+            weight: 0.5
         }
 
+        console.log('Creating Shiprocket order with payload:', JSON.stringify(payload, null, 2))
+
         const data = await shiprocketPost('/orders/create/adhoc', payload)
+        console.log('Shiprocket response:', JSON.stringify(data, null, 2))
 
         if (!data.order_id) {
-            return response.status(400).json({
-                message: data.message || 'Shiprocket order creation failed',
-                error: true,
-                success: false
-            })
+            const errMsg = data.message || (data.errors ? JSON.stringify(data.errors) : 'Shiprocket order creation failed')
+            return response.status(400).json({ message: errMsg, error: true, success: false })
         }
 
         order.shiprocketOrderId = String(data.order_id)
         order.shipmentId = String(data.shipment_id || '')
+        order.awbCode = String(data.awb_code || '')
         order.orderStatus = 'Shipped'
         await order.save()
 
         return response.json({
             message: 'Shipment created successfully on Shiprocket',
-            data: { shiprocketOrderId: order.shiprocketOrderId, shipmentId: order.shipmentId },
+            data: {
+                shiprocketOrderId: order.shiprocketOrderId,
+                shipmentId: order.shipmentId,
+                awbCode: order.awbCode
+            },
             error: false,
             success: true
         })
     } catch (error) {
-        const msg = error?.response?.data?.message || error.message || 'Shiprocket error'
-        return response.status(500).json({ message: msg, error: true, success: false })
+        const errData = error?.response?.data
+        const errMsg = errData?.message || (errData?.errors ? JSON.stringify(errData.errors) : null) || error.message || 'Shiprocket error'
+        console.error('Shiprocket createOrder error:', JSON.stringify(errData || error.message, null, 2))
+        return response.status(500).json({ message: errMsg, error: true, success: false })
     }
 }
 
@@ -89,6 +107,15 @@ export async function getShiprocketTracking(request, response) {
         const { shipmentId } = request.query
         if (!shipmentId) return response.status(400).json({ message: 'shipmentId required', error: true, success: false })
         const data = await shiprocketGet(`/courier/track/shipment/${shipmentId}`)
+        return response.json({ data, error: false, success: true })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+export async function getShiprocketWarehouses(request, response) {
+    try {
+        const data = await shiprocketGet('/warehouses')
         return response.json({ data, error: false, success: true })
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false })

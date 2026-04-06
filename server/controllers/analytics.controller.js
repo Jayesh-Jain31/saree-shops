@@ -1,6 +1,8 @@
 import OrderModel from "../models/order.model.js";
 import ProductModel from "../models/product.model.js";
 import UserModel from "../models/user.model.js";
+import sendEmail from "../config/sendEmail.js";
+import orderStatusTemplate from "../utils/orderStatusTemplate.js";
 
 export async function getAnalyticsController(request, response) {
     try {
@@ -135,6 +137,25 @@ export async function updateOrderStatusAdminController(request, response) {
         const order = await OrderModel.findByIdAndUpdate(orderId, { orderStatus: status }, { new: true })
         if (!order) {
             return response.status(404).json({ message: "Order not found", error: true, success: false })
+        }
+
+        // Send email notification to customer
+        try {
+            const user = await UserModel.findById(order.userId).select('name email')
+            if (user?.email) {
+                await sendEmail({
+                    sendTo: user.email,
+                    subject: `Order ${status} - ${order.orderId}`,
+                    html: orderStatusTemplate({
+                        orderId: order.orderId,
+                        status,
+                        customerName: user.name,
+                        totalAmt: order.totalAmt
+                    })
+                })
+            }
+        } catch (emailErr) {
+            console.log('Order status email failed:', emailErr.message)
         }
 
         return response.json({ message: "Order status updated", data: order, error: false, success: true })
