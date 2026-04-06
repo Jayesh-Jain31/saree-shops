@@ -74,6 +74,10 @@ const orderSchema = new mongoose.Schema({
     awbCode: {
         type: String,
         default: ""
+    },
+    deliveredAt: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true

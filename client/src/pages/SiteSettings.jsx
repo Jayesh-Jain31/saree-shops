@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { FaWhatsapp } from 'react-icons/fa'
+import { FaWhatsapp, FaUndoAlt } from 'react-icons/fa'
 import { MdSettings, MdSave, MdPalette } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { colorPresets, applyTheme } from '../utils/themeColors'
@@ -36,6 +36,8 @@ const SiteSettings = () => {
   const [storeName, setStoreName] = useState('')
   const [logoPreview, setLogoPreview] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [returnPeriodDays, setReturnPeriodDays] = useState(7)
+  const [savingReturn, setSavingReturn] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingTheme, setSavingTheme] = useState(false)
@@ -53,6 +55,7 @@ const SiteSettings = () => {
           if (s.theme_color) setThemeColor(s.theme_color)
           setStoreName(s.store_name || '')
           setLogoPreview(s.store_logo || '')
+          if (s.return_period_days) setReturnPeriodDays(parseInt(s.return_period_days) || 7)
 
           const policies = {}
           POLICIES.forEach(p => { policies[p.key] = s[p.key] || '' })
@@ -173,6 +176,20 @@ const SiteSettings = () => {
       toast.error('Failed to save')
     } finally {
       setSavingSocial(false)
+    }
+  }
+
+  const handleSaveReturnPeriod = async () => {
+    const days = parseInt(returnPeriodDays)
+    if (!days || days < 1 || days > 365) return toast.error('Please enter a valid number of days (1–365)')
+    setSavingReturn(true)
+    try {
+      await saveSetting('return_period_days', String(days))
+      toast.success(`Return period set to ${days} day${days !== 1 ? 's' : ''}`)
+    } catch {
+      toast.error('Failed to save return period')
+    } finally {
+      setSavingReturn(false)
     }
   }
 
@@ -433,6 +450,51 @@ const SiteSettings = () => {
             <button onClick={handleSave} disabled={saving} className='w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold rounded-xl py-3 transition-colors'>
               {saving ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
               {saving ? 'Saving...' : 'Save Number'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Return Period Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-orange-50'>
+              <FaUndoAlt className='text-orange-500' size={18} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Return Policy Period</h2>
+              <p className='text-xs text-gray-500'>Number of days customers can request a return after delivery</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div className='bg-orange-50 border border-orange-100 rounded-xl p-3 text-xs text-orange-700'>
+              After this many days from delivery, the <strong>"Request Return"</strong> button will be <strong>disabled</strong> for customers on their order details page.
+            </div>
+            <div className='flex items-center gap-4'>
+              <div className='flex-1'>
+                <label className='block text-xs font-semibold text-gray-600 mb-1'>Return Window (days)</label>
+                <input
+                  type='number'
+                  min='1'
+                  max='365'
+                  value={returnPeriodDays}
+                  onChange={e => setReturnPeriodDays(e.target.value)}
+                  className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition'
+                  placeholder='e.g. 7'
+                />
+                <p className='text-[11px] text-gray-400 mt-1'>Common values: 7 days (1 week), 14 days (2 weeks), 30 days (1 month)</p>
+              </div>
+              <div className='w-20 h-20 rounded-2xl bg-orange-50 flex flex-col items-center justify-center border-2 border-orange-100 flex-shrink-0'>
+                <p className='text-2xl font-black text-orange-600'>{returnPeriodDays || '—'}</p>
+                <p className='text-[10px] text-orange-400 font-semibold'>DAYS</p>
+              </div>
+            </div>
+            <button
+              onClick={handleSaveReturnPeriod}
+              disabled={savingReturn}
+              className='w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-colors'
+            >
+              {savingReturn ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
+              {savingReturn ? 'Saving...' : 'Save Return Period'}
             </button>
           </div>
         </div>

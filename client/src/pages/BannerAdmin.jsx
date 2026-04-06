@@ -341,9 +341,9 @@ const BannerAdmin = () => {
                 <div key={banner._id} className={`bg-white rounded-xl border overflow-hidden shadow-sm ${!banner.isActive ? 'opacity-60' : ''}`}>
                   <div className='flex items-stretch'>
                     {/* Slides preview strip */}
-                    <div className='flex-shrink-0 bg-gray-50 border-r border-gray-100 flex flex-col' style={{ width: '200px' }}>
+                    <div className='flex-shrink-0 bg-gray-50 border-r border-gray-100 flex flex-col w-24 sm:w-36 md:w-48'>
                       {slides.length > 0 && (
-                        <div className='relative' style={{ height: '110px' }}>
+                        <div className='relative h-20 sm:h-24 md:h-28'>
                           <img
                             src={slides[currentSlide]?.image || slides[0]?.image}
                             alt=''

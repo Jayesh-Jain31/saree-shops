@@ -131,6 +131,7 @@ const OrderDetails = () => {
   const [returnReason, setReturnReason] = useState('')
   const [returnDesc, setReturnDesc] = useState('')
   const [submittingReturn, setSubmittingReturn] = useState(false)
+  const [returnPeriodDays, setReturnPeriodDays] = useState(7)
 
   const fetchOrderDetails = async () => {
     try {
@@ -166,6 +167,12 @@ const OrderDetails = () => {
 
   useEffect(() => {
     if (id) fetchOrderDetails()
+    Axios({ ...SummaryApi.getSettings }).then(res => {
+      if (res.data.success) {
+        const days = parseInt(res.data.data?.return_period_days || 7)
+        setReturnPeriodDays(days || 7)
+      }
+    }).catch(() => {})
   }, [id])
 
   const handleSubmitReturn = async () => {
@@ -614,92 +621,132 @@ const OrderDetails = () => {
         )}
 
         {/* Return & Refund */}
-        {order?.orderStatus === 'Delivered' && (
-          <div className='bg-white rounded-xl border p-4'>
-            <h2 className='font-bold text-gray-800 text-sm mb-3 flex items-center gap-2'>
-              <FaUndoAlt className='text-orange-500' size={13} /> Return & Refund
-            </h2>
+        {order?.orderStatus === 'Delivered' && (() => {
+          const deliveredAt = order.deliveredAt || order.updatedAt
+          const returnDeadline = new Date(new Date(deliveredAt).getTime() + returnPeriodDays * 24 * 60 * 60 * 1000)
+          const returnWindowOpen = new Date() < returnDeadline
+          const daysLeft = Math.max(0, Math.ceil((returnDeadline - new Date()) / (1000 * 60 * 60 * 24)))
+          return (
+            <div className='bg-white rounded-xl border p-4'>
+              <h2 className='font-bold text-gray-800 text-sm mb-3 flex items-center gap-2'>
+                <FaUndoAlt className='text-orange-500' size={13} /> Return & Refund
+              </h2>
 
-            {existingReturn ? (
-              <div>
-                <div className='flex items-center gap-2 mb-2'>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${returnStatusConfig[existingReturn.status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
-                    {existingReturn.status}
-                  </span>
-                  <span className='text-[11px] text-gray-400'>
-                    Submitted {new Date(existingReturn.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
-                </div>
-                <p className='text-xs text-gray-600'><span className='font-semibold'>Reason:</span> {existingReturn.reason}</p>
-                {existingReturn.description && (
-                  <p className='text-xs text-gray-500 italic mt-0.5'>"{existingReturn.description}"</p>
-                )}
-                {existingReturn.adminNote && (
-                  <p className='text-xs text-gray-600 bg-gray-50 rounded p-2 mt-2 border border-gray-100'>
-                    <span className='font-semibold'>Note from team:</span> {existingReturn.adminNote}
-                  </p>
-                )}
-                {existingReturn.status === 'Refunded' && existingReturn.refundAmount > 0 && (
-                  <p className='text-sm font-bold text-green-700 mt-2'>
-                    Refunded: {DisplayPriceInRupees(existingReturn.refundAmount)}
-                  </p>
-                )}
-              </div>
-            ) : showReturnForm ? (
-              <div className='space-y-3'>
+              {existingReturn ? (
                 <div>
-                  <label className='text-xs font-semibold text-gray-600 mb-1 block'>Reason for return *</label>
-                  <select
-                    value={returnReason}
-                    onChange={e => setReturnReason(e.target.value)}
-                    className='w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 bg-gray-50'
-                  >
-                    <option value=''>Select a reason...</option>
-                    {RETURN_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
+                  <div className='flex items-center gap-2 mb-2'>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${returnStatusConfig[existingReturn.status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                      {existingReturn.status}
+                    </span>
+                    <span className='text-[11px] text-gray-400'>
+                      Submitted {new Date(existingReturn.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <p className='text-xs text-gray-600'><span className='font-semibold'>Reason:</span> {existingReturn.reason}</p>
+                  {existingReturn.description && (
+                    <p className='text-xs text-gray-500 italic mt-0.5'>"{existingReturn.description}"</p>
+                  )}
+                  {existingReturn.adminNote && (
+                    <p className='text-xs text-gray-600 bg-gray-50 rounded p-2 mt-2 border border-gray-100'>
+                      <span className='font-semibold'>Note from team:</span> {existingReturn.adminNote}
+                    </p>
+                  )}
+                  {existingReturn.status === 'Refunded' && existingReturn.refundAmount > 0 && (
+                    <p className='text-sm font-bold text-green-700 mt-2'>
+                      Refunded: {DisplayPriceInRupees(existingReturn.refundAmount)}
+                    </p>
+                  )}
                 </div>
+              ) : showReturnForm ? (
+                <div className='space-y-3'>
+                  <div>
+                    <label className='text-xs font-semibold text-gray-600 mb-1 block'>Reason for return *</label>
+                    <select
+                      value={returnReason}
+                      onChange={e => setReturnReason(e.target.value)}
+                      className='w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 bg-gray-50'
+                    >
+                      <option value=''>Select a reason...</option>
+                      {RETURN_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className='text-xs font-semibold text-gray-600 mb-1 block'>Additional details (optional)</label>
+                    <textarea
+                      value={returnDesc}
+                      onChange={e => setReturnDesc(e.target.value)}
+                      rows={3}
+                      placeholder='Describe the issue in more detail...'
+                      className='w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:border-orange-400 resize-none bg-gray-50'
+                    />
+                  </div>
+                  <div className='flex gap-2'>
+                    <button
+                      onClick={() => { setShowReturnForm(false); setReturnReason(''); setReturnDesc('') }}
+                      className='flex-1 py-2.5 border rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50'
+                      disabled={submittingReturn}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitReturn}
+                      disabled={submittingReturn || !returnReason}
+                      className='flex-1 py-2.5 bg-orange-600 text-white rounded-xl text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-1'
+                    >
+                      {submittingReturn ? 'Submitting...' : <><FaUndoAlt size={11} /> Submit Return</>}
+                    </button>
+                  </div>
+                </div>
+              ) : returnWindowOpen ? (
                 <div>
-                  <label className='text-xs font-semibold text-gray-600 mb-1 block'>Additional details (optional)</label>
-                  <textarea
-                    value={returnDesc}
-                    onChange={e => setReturnDesc(e.target.value)}
-                    rows={3}
-                    placeholder='Describe the issue in more detail...'
-                    className='w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:border-orange-400 resize-none bg-gray-50'
-                  />
-                </div>
-                <div className='flex gap-2'>
+                  <div className='flex items-center gap-2 mb-3 bg-orange-50 border border-orange-100 rounded-xl p-3'>
+                    <FaUndoAlt className='text-orange-400 flex-shrink-0' size={14} />
+                    <div className='flex-1 min-w-0'>
+                      <p className='text-xs text-orange-700 font-semibold'>
+                        Return window: {returnPeriodDays} day{returnPeriodDays !== 1 ? 's' : ''} from delivery
+                      </p>
+                      <p className='text-[11px] text-orange-600 mt-0.5'>
+                        Expires {returnDeadline.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {daysLeft === 1 ? ' — Last day!' : daysLeft <= 3 ? ` — ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left` : ''}
+                      </p>
+                    </div>
+                    <div className={`flex-shrink-0 text-center px-2 py-1 rounded-lg ${daysLeft <= 1 ? 'bg-red-100 text-red-600' : daysLeft <= 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                      <p className='text-lg font-black leading-none'>{daysLeft}</p>
+                      <p className='text-[9px] font-bold uppercase tracking-wide'>days left</p>
+                    </div>
+                  </div>
                   <button
-                    onClick={() => { setShowReturnForm(false); setReturnReason(''); setReturnDesc('') }}
-                    className='flex-1 py-2.5 border rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50'
-                    disabled={submittingReturn}
+                    onClick={() => setShowReturnForm(true)}
+                    className='w-full py-3 text-orange-600 font-semibold text-sm border-2 border-orange-200 rounded-xl hover:bg-orange-50 transition-colors flex items-center justify-center gap-2'
                   >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSubmitReturn}
-                    disabled={submittingReturn || !returnReason}
-                    className='flex-1 py-2.5 bg-orange-600 text-white rounded-xl text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-1'
-                  >
-                    {submittingReturn ? 'Submitting...' : <><FaUndoAlt size={11} /> Submit Return</>}
+                    <FaUndoAlt size={12} /> Request Return / Refund
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div>
-                <p className='text-xs text-gray-500 mb-3'>
-                  Not happy with your order? You can request a return within 7 days of delivery.
-                </p>
-                <button
-                  onClick={() => setShowReturnForm(true)}
-                  className='w-full py-3 text-orange-600 font-semibold text-sm border-2 border-orange-200 rounded-xl hover:bg-orange-50 transition-colors flex items-center justify-center gap-2'
-                >
-                  <FaUndoAlt size={12} /> Request Return / Refund
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+              ) : (
+                <div>
+                  <div className='bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-start gap-3'>
+                    <div className='w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5'>
+                      <FaUndoAlt className='text-gray-400' size={14} />
+                    </div>
+                    <div>
+                      <p className='text-sm font-semibold text-gray-600'>Return period has ended</p>
+                      <p className='text-xs text-gray-400 mt-0.5'>
+                        The {returnPeriodDays}-day return window expired on {returnDeadline.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                        Returns are no longer accepted for this order.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    disabled
+                    className='w-full mt-3 py-3 text-gray-400 font-semibold text-sm border-2 border-gray-200 rounded-xl bg-gray-50 cursor-not-allowed flex items-center justify-center gap-2'
+                  >
+                    <FaUndoAlt size={12} /> Return Window Closed
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         <div className='h-4'></div>
       </div>

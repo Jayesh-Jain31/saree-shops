@@ -134,7 +134,9 @@ export async function updateOrderStatusAdminController(request, response) {
             return response.status(400).json({ message: "Invalid status", error: true, success: false })
         }
 
-        const order = await OrderModel.findByIdAndUpdate(orderId, { orderStatus: status }, { new: true })
+        const updateData = { orderStatus: status }
+        if (status === 'Delivered') updateData.deliveredAt = new Date()
+        const order = await OrderModel.findByIdAndUpdate(orderId, updateData, { new: true })
         if (!order) {
             return response.status(404).json({ message: "Order not found", error: true, success: false })
         }
