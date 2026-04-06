@@ -34,6 +34,7 @@ import MyReturns from "../pages/MyReturns";
 import AdminReturns from "../pages/AdminReturns";
 import Wallet from "../pages/Wallet"
 import SiteSettings from "../pages/SiteSettings";
+import PolicyPage from "../pages/PolicyPage";
 
 const router = createBrowserRouter([
     {
@@ -178,6 +179,10 @@ const router = createBrowserRouter([
             {
                 path : 'cancel',
                 element : <Cancel/>
+            },
+            {
+                path : 'page/:slug',
+                element : <PolicyPage/>
             }
         ]
     }
