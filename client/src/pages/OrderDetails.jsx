@@ -318,7 +318,9 @@ const OrderDetails = () => {
   const addr = order?.delivery_address
   const items = order?.items || []
   const totalItemCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
-  const canCancel = order?.orderStatus && !['Delivered', 'Cancelled'].includes(order.orderStatus)
+  const nonCancellableStatuses = ['Shipped', 'Out for Delivery', 'Delivered', 'Cancelled']
+  const canCancel = order?.orderStatus && !nonCancellableStatuses.includes(order.orderStatus)
+  const isShippedOrBeyond = ['Shipped', 'Out for Delivery'].includes(order?.orderStatus)
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -507,6 +509,18 @@ const OrderDetails = () => {
         )}
 
         {/* Cancel Order */}
+        {isShippedOrBeyond && (
+          <div className='bg-indigo-50 rounded-xl border border-indigo-200 p-4 flex items-center gap-3'>
+            <div className='w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0'>
+              <MdLocalShipping className='text-indigo-500' size={18} />
+            </div>
+            <div>
+              <p className='font-semibold text-indigo-800 text-sm'>Order has been shipped</p>
+              <p className='text-xs text-indigo-600 mt-0.5'>You cannot cancel this order as it is already on its way to you.</p>
+            </div>
+          </div>
+        )}
+
         {canCancel && (
           <div className='bg-white rounded-xl border p-4'>
             {!showCancelConfirm ? (

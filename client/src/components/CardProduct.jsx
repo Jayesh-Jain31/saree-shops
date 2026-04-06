@@ -9,7 +9,7 @@ const CardProduct = ({ data }) => {
   const url = `/product/${valideURLConvert(data.name)}-${data._id}`
 
   return (
-    <Link to={url} className='border rounded-xl bg-white flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow min-w-36 lg:min-w-52'>
+    <Link to={url} className='border rounded-xl bg-white flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow w-36 lg:w-52 flex-shrink-0'>
 
       {/* Image — fixed square container so all products look uniform */}
       <div className='w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden p-2'>
