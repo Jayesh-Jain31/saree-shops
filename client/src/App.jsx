@@ -6,7 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useEffect, useState } from 'react';
 import fetchUserDetails from './utils/fetchUserDetails';
 import { setUserDetails } from './store/userSlice';
-import { setAllCategory,setAllSubCategory,setLoadingCategory } from './store/productSlice';
+import { setAllCategory, setAllSubCategory, setLoadingCategory } from './store/productSlice';
 import { useDispatch } from 'react-redux';
 import Axios from './utils/Axios';
 import SummaryApi from './common/SummaryApi';
@@ -14,6 +14,7 @@ import { handleAddItemCart } from './store/cartProduct'
 import GlobalProvider from './provider/GlobalProvider';
 import { FaWhatsapp } from "react-icons/fa";
 import CartMobileLink from './components/CartMobile';
+import { applyTheme } from './utils/themeColors';
 
 function App() {
   const dispatch = useDispatch()
@@ -57,6 +58,11 @@ function App() {
         const s = response.data.data
         setWhatsappNumber(s.whatsapp_number || '')
         setWhatsappEnabled(s.whatsapp_enabled !== 'false' && !!s.whatsapp_number)
+
+        // Apply saved theme color
+        if (s.theme_color) {
+          applyTheme(s.theme_color)
+        }
       }
     } catch (error) {}
   }
@@ -85,7 +91,8 @@ function App() {
           href={`https://wa.me/${whatsappNumber}`}
           target='_blank'
           rel='noopener noreferrer'
-          className='fixed bottom-20 right-4 z-50 flex items-center justify-center w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110'
+          className='fixed bottom-20 right-4 z-50 flex items-center justify-center w-14 h-14 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110'
+          style={{ backgroundColor: '#25D366' }}
           aria-label='Chat on WhatsApp'
         >
           <FaWhatsapp size={30} />

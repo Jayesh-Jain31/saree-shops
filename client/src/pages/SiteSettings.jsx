@@ -3,13 +3,16 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
 import { FaWhatsapp } from 'react-icons/fa'
-import { MdSettings, MdSave } from 'react-icons/md'
+import { MdSettings, MdSave, MdPalette } from 'react-icons/md'
+import { colorPresets, applyTheme } from '../utils/themeColors'
 
 const SiteSettings = () => {
   const [whatsapp, setWhatsapp] = useState('')
   const [enabled, setEnabled] = useState(true)
+  const [themeColor, setThemeColor] = useState('green')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingTheme, setSavingTheme] = useState(false)
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -18,6 +21,9 @@ const SiteSettings = () => {
         if (res.data.success) {
           setWhatsapp(res.data.data.whatsapp_number || '')
           setEnabled(res.data.data.whatsapp_enabled !== 'false')
+          if (res.data.data.theme_color) {
+            setThemeColor(res.data.data.theme_color)
+          }
         }
       } catch (error) {
         console.log(error)
@@ -62,22 +68,39 @@ const SiteSettings = () => {
     }
   }
 
+  const handleThemeSelect = (key) => {
+    setThemeColor(key)
+    applyTheme(key) // Live preview instantly
+  }
+
+  const handleSaveTheme = async () => {
+    setSavingTheme(true)
+    try {
+      await saveSetting('theme_color', themeColor)
+      toast.success(`Theme color saved! (${colorPresets[themeColor]?.label})`)
+    } catch {
+      toast.error('Failed to save theme')
+    } finally {
+      setSavingTheme(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className='min-h-[60vh] flex items-center justify-center'>
-        <div className='w-8 h-8 border-3 border-green-500 border-t-transparent rounded-full animate-spin'></div>
+        <div className='w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin'></div>
       </div>
     )
   }
 
   return (
     <div className='min-h-screen bg-gray-50 p-4'>
-      <div className='max-w-xl mx-auto'>
+      <div className='max-w-xl mx-auto space-y-5'>
 
-        {/* Header */}
-        <div className='flex items-center gap-3 mb-6'>
-          <div className='w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center'>
-            <MdSettings className='text-green-600' size={20} />
+        {/* Page Header */}
+        <div className='flex items-center gap-3 mb-2'>
+          <div className='w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center'>
+            <MdSettings className='text-primary-text' size={20} />
           </div>
           <div>
             <h1 className='font-bold text-xl text-gray-800'>Site Settings</h1>
@@ -85,10 +108,68 @@ const SiteSettings = () => {
           </div>
         </div>
 
-        {/* WhatsApp Card */}
+        {/* ── Theme Color Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-primary-light'>
+              <MdPalette className='text-primary-text' size={20} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Website Color Theme</h2>
+              <p className='text-xs text-gray-500'>Change the accent color across the entire site</p>
+            </div>
+          </div>
+
+          <div className='p-5 space-y-4'>
+            <p className='text-xs font-semibold text-gray-600'>Pick a color:</p>
+
+            <div className='grid grid-cols-4 gap-3'>
+              {Object.entries(colorPresets).map(([key, preset]) => (
+                <button
+                  key={key}
+                  onClick={() => handleThemeSelect(key)}
+                  className='flex flex-col items-center gap-1.5 group'
+                >
+                  <span
+                    className={`w-10 h-10 rounded-full transition-all duration-150 ${themeColor === key ? 'ring-4 ring-offset-2 scale-110' : 'group-hover:scale-105'}`}
+                    style={{
+                      backgroundColor: preset.primary,
+                      ringColor: preset.primary,
+                      boxShadow: themeColor === key ? `0 0 0 3px white, 0 0 0 5px ${preset.primary}` : 'none',
+                    }}
+                  />
+                  <span className='text-[10px] text-gray-500 font-medium'>{preset.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Live preview strip */}
+            <div
+              className='rounded-xl p-4 text-white text-sm font-semibold flex items-center justify-between transition-colors duration-300'
+              style={{ backgroundColor: colorPresets[themeColor]?.primary }}
+            >
+              <span>Preview: {colorPresets[themeColor]?.label} theme</span>
+              <span className='opacity-75 text-xs'>Buttons · Links · Badges</span>
+            </div>
+
+            <button
+              onClick={handleSaveTheme}
+              disabled={savingTheme}
+              className='w-full flex items-center justify-center gap-2 btn-primary disabled:opacity-50 font-semibold rounded-xl py-3 transition-colors'
+            >
+              {savingTheme ? (
+                <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />
+              ) : (
+                <MdSave size={18} />
+              )}
+              {savingTheme ? 'Saving...' : 'Save Color Theme'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── WhatsApp Card ── */}
         <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
 
-          {/* Card Header with Toggle */}
           <div className='flex items-center justify-between p-5 border-b'>
             <div className='flex items-center gap-3'>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${enabled ? 'bg-green-100' : 'bg-gray-100'}`}>
@@ -112,12 +193,10 @@ const SiteSettings = () => {
             </button>
           </div>
 
-          {/* Status Banner */}
           <div className={`px-5 py-2 text-xs font-semibold ${enabled ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-500'}`}>
             {enabled ? '✓ Button is visible to customers' : '✕ Button is hidden from customers'}
           </div>
 
-          {/* Number Input */}
           <div className='p-5 space-y-4'>
             <div>
               <label className='block text-xs font-semibold text-gray-600 mb-1'>
