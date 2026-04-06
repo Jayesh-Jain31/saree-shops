@@ -5,6 +5,7 @@ import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import toast from 'react-hot-toast'
 import { FiArrowDownLeft, FiArrowUpRight } from 'react-icons/fi'
 import { MdAccountBalanceWallet } from 'react-icons/md'
+import { useSelector } from 'react-redux'
 import { FaGift, FaUndoAlt, FaShoppingBag } from 'react-icons/fa'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', {
@@ -18,6 +19,7 @@ const txIcon = (desc = '') => {
 }
 
 const Wallet = () => {
+  const siteName = useSelector(state => state.site.name)
     const [wallet, setWallet] = useState(null)
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState('all')
@@ -53,7 +55,7 @@ const Wallet = () => {
                         </div>
                         <div>
                             <p className='text-green-100 text-xs font-medium'>My Wallet</p>
-                            <h1 className='font-bold text-xl'>Binkeyit Wallet</h1>
+                            <h1 className='font-bold text-xl'>{siteName} Wallet</h1>
                         </div>
                     </div>
 

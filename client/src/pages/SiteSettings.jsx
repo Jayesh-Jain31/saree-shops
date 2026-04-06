@@ -273,7 +273,12 @@ const SiteSettings = () => {
           </div>
           <div className='p-5 space-y-3'>
             <div>
-              <label className='block text-xs font-semibold text-gray-600 mb-1'>Store Name</label>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>
+                Website Name
+                <span className='ml-2 font-normal text-primary-text bg-primary-light px-2 py-0.5 rounded text-[10px]'>
+                  Changes everywhere — footer, wallet, checkout, register page
+                </span>
+              </label>
               <input
                 type='text'
                 value={storeName}

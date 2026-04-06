@@ -15,6 +15,7 @@ import GlobalProvider from './provider/GlobalProvider';
 import { FaWhatsapp } from "react-icons/fa";
 import CartMobileLink from './components/CartMobile';
 import { applyTheme } from './utils/themeColors';
+import { setSiteName } from './store/siteSlice';
 
 function App() {
   const dispatch = useDispatch()
@@ -62,6 +63,12 @@ function App() {
         // Apply saved theme color
         if (s.theme_color) {
           applyTheme(s.theme_color)
+        }
+
+        // Apply site name everywhere
+        if (s.store_name) {
+          dispatch(setSiteName(s.store_name))
+          document.title = s.store_name
         }
       }
     } catch (error) {}

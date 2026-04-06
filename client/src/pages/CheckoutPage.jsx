@@ -28,6 +28,7 @@ const loadRazorpayScript = () => {
 }
 
 const CheckoutPage = () => {
+  const siteName = useSelector(state => state.site.name)
   const { notDiscountTotalPrice, totalPrice, totalQty, fetchCartItem, fetchOrder } = useGlobalContext()
   const [openAddress, setOpenAddress] = useState(false)
   const [showAddressPopup, setShowAddressPopup] = useState(false)
@@ -250,7 +251,7 @@ const CheckoutPage = () => {
         key: razorpayKeyId,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
-        name: 'Binkeyit',
+        name: siteName,
         description: 'Order Payment',
         order_id: razorpayOrder.id,
         handler: async (paymentResponse) => {
@@ -387,7 +388,7 @@ const CheckoutPage = () => {
                     <MdAccountBalanceWallet className='text-green-600' size={20} />
                   </div>
                   <div>
-                    <p className='text-sm font-semibold text-gray-800'>Binkeyit Wallet</p>
+                    <p className='text-sm font-semibold text-gray-800'>{siteName} Wallet</p>
                     <p className='text-xs text-green-600 font-medium'>
                       Balance: {DisplayPriceInRupees(walletBalance)}
                     </p>
