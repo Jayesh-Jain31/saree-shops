@@ -78,34 +78,34 @@ const AddToCartButton = ({ data }) => {
     <div className="w-full">
       {isAvailableCart ? (
         /* ── Quantity Counter ── */
-        <div className="flex items-center w-full h-9 rounded-xl overflow-hidden border-2 border-primary">
+        <div className="flex items-center w-full h-10 rounded-full overflow-hidden border-2 border-primary shadow">
           <button
             onClick={decreaseQty}
-            className="btn-primary flex-1 h-full flex items-center justify-center transition-colors"
+            className="btn-primary flex-1 h-full flex items-center justify-center transition-colors active:scale-90"
           >
-            <FaMinus size={11} />
+            <FaMinus size={13} />
           </button>
-          <span className="flex-1 h-full font-bold text-primary-text flex items-center justify-center text-sm bg-white select-none">
+          <span className="flex-[0_0_36px] h-full font-bold text-primary-text flex items-center justify-center text-base bg-white select-none">
             {qty}
           </span>
           <button
             onClick={increaseQty}
-            className="btn-primary flex-1 h-full flex items-center justify-center transition-colors"
+            className="btn-primary flex-1 h-full flex items-center justify-center transition-colors active:scale-90"
           >
-            <FaPlus size={11} />
+            <FaPlus size={13} />
           </button>
         </div>
       ) : (
         /* ── Add Button ── */
         <button
           onClick={handleADDTocart}
-          className="btn-primary w-full h-9 font-semibold rounded-xl text-sm flex items-center justify-center gap-1.5 shadow-sm"
+          className="btn-primary w-full h-10 font-bold rounded-full text-sm flex items-center justify-center gap-1.5 shadow active:scale-95 transition-transform"
         >
           {loading ? (
             <Loading />
           ) : (
             <>
-              <FaPlus size={11} />
+              <FaPlus size={13} />
               <span>Add</span>
             </>
           )}

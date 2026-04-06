@@ -5,6 +5,8 @@ const siteSlice = createSlice({
   initialState: {
     name: 'Binkeyit',
     logoUrl: '',
+    announcement: '',
+    announcementEnabled: false,
   },
   reducers: {
     setSiteName: (state, action) => {
@@ -13,8 +15,14 @@ const siteSlice = createSlice({
     setLogoUrl: (state, action) => {
       state.logoUrl = action.payload
     },
+    setAnnouncement: (state, action) => {
+      state.announcement = action.payload
+    },
+    setAnnouncementEnabled: (state, action) => {
+      state.announcementEnabled = action.payload
+    },
   }
 })
 
-export const { setSiteName, setLogoUrl } = siteSlice.actions
+export const { setSiteName, setLogoUrl, setAnnouncement, setAnnouncementEnabled } = siteSlice.actions
 export default siteSlice.reducer

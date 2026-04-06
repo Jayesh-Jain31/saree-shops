@@ -57,3 +57,16 @@ body {
   from { opacity: 0; transform: scale(0.97) translateY(6px); }
   to   { opacity: 1; transform: scale(1)    translateY(0);   }
 }
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.announcement-ticker {
+  display: inline-flex;
+  animation: marquee-scroll 22s linear infinite;
+  white-space: nowrap;
+}
+.announcement-ticker:hover {
+  animation-play-state: paused;
+}

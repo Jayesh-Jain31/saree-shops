@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { FaWhatsapp, FaUndoAlt, FaTools, FaBan } from 'react-icons/fa'
+import { FaWhatsapp, FaUndoAlt, FaTools, FaBan, FaBullhorn } from 'react-icons/fa'
 import { MdSettings, MdSave, MdPalette } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { colorPresets, applyTheme } from '../utils/themeColors'
@@ -43,6 +43,9 @@ const SiteSettings = () => {
   const [savingMaintenance, setSavingMaintenance] = useState(false)
   const [codEnabled, setCodEnabled] = useState(true)
   const [savingCod, setSavingCod] = useState(false)
+  const [announcementText, setAnnouncementText] = useState('Free delivery above ₹999')
+  const [announcementEnabled, setAnnouncementEnabled] = useState(false)
+  const [savingAnnouncement, setSavingAnnouncement] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingTheme, setSavingTheme] = useState(false)
@@ -64,6 +67,8 @@ const SiteSettings = () => {
           setMaintenanceMode(s.maintenance_mode === 'true')
           setMaintenanceMessage(s.maintenance_message || '')
           setCodEnabled(s.cod_enabled !== 'false')
+          setAnnouncementText(s.announcement_text || 'Free delivery above ₹999')
+          setAnnouncementEnabled(s.announcement_enabled === 'true')
 
           const policies = {}
           POLICIES.forEach(p => { policies[p.key] = s[p.key] || '' })
@@ -215,6 +220,19 @@ const SiteSettings = () => {
   }
 
   const handleToggleMaintenance = () => setMaintenanceMode(prev => !prev)
+
+  const handleSaveAnnouncement = async () => {
+    setSavingAnnouncement(true)
+    try {
+      await saveSetting('announcement_text', announcementText || 'Free delivery above ₹999')
+      await saveSetting('announcement_enabled', String(announcementEnabled))
+      toast.success(announcementEnabled ? 'Announcement bar is now live!' : 'Announcement bar saved (currently hidden)')
+    } catch {
+      toast.error('Failed to save announcement settings')
+    } finally {
+      setSavingAnnouncement(false)
+    }
+  }
 
   const handleToggleCod = async () => {
     const newVal = !codEnabled
@@ -533,6 +551,51 @@ const SiteSettings = () => {
             >
               {savingReturn ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
               {savingReturn ? 'Saving...' : 'Save Return Period'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Announcement / Marquee Bar Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center justify-between p-5 border-b'>
+            <div className='flex items-center gap-3'>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${announcementEnabled ? 'bg-primary/10' : 'bg-gray-100'}`}>
+                <FaBullhorn className={announcementEnabled ? 'text-primary' : 'text-gray-400'} size={17} />
+              </div>
+              <div>
+                <h2 className='font-bold text-gray-800'>Announcement Bar</h2>
+                <p className='text-xs text-gray-500'>Scrolling text strip at the top of the site</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setAnnouncementEnabled(prev => !prev)}
+              className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${announcementEnabled ? 'bg-primary' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${announcementEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <div className={`px-5 py-2 text-xs font-semibold ${announcementEnabled ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
+            {announcementEnabled ? '✓ Announcement bar is visible to all visitors' : '○ Announcement bar is hidden'}
+          </div>
+          <div className='p-5 space-y-3'>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Announcement Text</label>
+              <input
+                type='text'
+                value={announcementText}
+                onChange={e => setAnnouncementText(e.target.value)}
+                placeholder='Free delivery above ₹999'
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition'
+              />
+              <p className='text-xs text-gray-400 mt-1'>This text scrolls across the top of every page</p>
+            </div>
+            <button
+              onClick={handleSaveAnnouncement}
+              disabled={savingAnnouncement}
+              className='w-full flex items-center justify-center gap-2 btn-primary font-semibold rounded-xl py-3 transition-colors disabled:opacity-50'
+            >
+              {savingAnnouncement ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
+              {savingAnnouncement ? 'Saving...' : 'Save Announcement'}
             </button>
           </div>
         </div>

@@ -26,6 +26,9 @@ const Header = () => {
     const logoUrl = useSelector(state => state.site.logoUrl)
     const siteName = useSelector(state => state.site.name)
 
+    const announcement = useSelector(state => state.site.announcement)
+    const announcementEnabled = useSelector(state => state.site.announcementEnabled)
+
     const logoSrc = logoUrl || staticLogo
 
     const redirectToLoginPage = () => {
@@ -44,8 +47,26 @@ const Header = () => {
         navigate("/user")
     }
 
+    const annText = announcement || 'Free delivery above ₹999'
+
     return (
-        <header className='h-24 lg:h-20 lg:shadow-md sticky top-0 z-40 flex flex-col justify-center gap-1 bg-white'>
+        <header className='sticky top-0 z-40 flex flex-col bg-white lg:shadow-md'>
+
+            {/* ── Announcement / Marquee Bar ── */}
+            {announcementEnabled && annText && (
+                <div className='bg-primary overflow-hidden py-1.5 cursor-default'>
+                    <div className='announcement-ticker'>
+                        {[...Array(6)].map((_, i) => (
+                            <span key={i} className='text-white text-xs font-semibold px-10'>
+                                ★&nbsp; {annText}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Main Header Row ── */}
+            <div className='h-16 lg:h-16 flex flex-col justify-center gap-1'>
             {!(isSearchPage && isMobile) && (
                 <div className='container mx-auto flex items-center px-2 justify-between'>
                     <div className='h-full'>
@@ -120,6 +141,8 @@ const Header = () => {
             <div className='container mx-auto px-2 lg:hidden'>
                 <Search />
             </div>
+            </div>
+            {/* ── End Main Header Row ── */}
 
             {openCartSection && (
                 <DisplayCartItem close={() => setOpenCartSection(false)} />

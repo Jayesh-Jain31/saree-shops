@@ -15,7 +15,7 @@ import GlobalProvider from './provider/GlobalProvider';
 import { FaWhatsapp, FaTools } from "react-icons/fa";
 import CartMobileLink from './components/CartMobile';
 import { applyTheme } from './utils/themeColors';
-import { setSiteName, setLogoUrl } from './store/siteSlice';
+import { setSiteName, setLogoUrl, setAnnouncement, setAnnouncementEnabled } from './store/siteSlice';
 
 function App() {
   const dispatch = useDispatch()
@@ -76,6 +76,9 @@ function App() {
         if (s.store_logo) {
           dispatch(setLogoUrl(s.store_logo))
         }
+
+        dispatch(setAnnouncement(s.announcement_text || ''))
+        dispatch(setAnnouncementEnabled(s.announcement_enabled === 'true'))
 
         setMaintenanceMode(s.maintenance_mode === 'true')
         setMaintenanceMessage(s.maintenance_message || 'We are currently under maintenance. Please check back soon.')
