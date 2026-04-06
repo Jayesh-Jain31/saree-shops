@@ -13,7 +13,10 @@ import SummaryApi from './common/SummaryApi';
 import { handleAddItemCart } from './store/cartProduct'
 import GlobalProvider from './provider/GlobalProvider';
 import { FaCartShopping } from "react-icons/fa6";
+import { FaWhatsapp } from "react-icons/fa";
 import CartMobileLink from './components/CartMobile';
+
+const WHATSAPP_NUMBER = '919XXXXXXXXX'
 
 function App() {
   const dispatch = useDispatch()
@@ -65,7 +68,6 @@ function App() {
     fetchUser()
     fetchCategory()
     fetchSubCategory()
-    // fetchCartItem()
   },[])
 
   return (
@@ -76,6 +78,18 @@ function App() {
       </main>
       <Footer/>
       <Toaster/>
+
+      {/* WhatsApp floating button - bottom left */}
+      <a
+        href={`https://wa.me/${WHATSAPP_NUMBER}`}
+        target='_blank'
+        rel='noopener noreferrer'
+        className='fixed bottom-20 left-4 z-50 flex items-center justify-center w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110'
+        aria-label='Chat on WhatsApp'
+      >
+        <FaWhatsapp size={30} />
+      </a>
+
       {
         location.pathname !== '/checkout' && (
           <CartMobileLink/>

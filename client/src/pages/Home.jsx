@@ -130,29 +130,29 @@ const Home = () => {
         <BannerCarousel />
       </div>
 
-      <div className='container mx-auto px-4 my-2 grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2'>
+      <div className='container mx-auto px-4 my-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3'>
         {loadingCategory ? (
-          new Array(12).fill(null).map((_, index) => (
-            <div key={index + 'loadingcategory'} className='bg-white rounded-xl p-2 grid gap-2 shadow animate-pulse'>
-              <div className='bg-blue-100 aspect-square rounded-lg'></div>
-              <div className='bg-blue-100 h-3 rounded w-3/4 mx-auto'></div>
+          new Array(6).fill(null).map((_, index) => (
+            <div key={index + 'loadingcategory'} className='bg-white rounded-2xl p-3 grid gap-2 shadow animate-pulse'>
+              <div className='bg-blue-100 aspect-square rounded-xl'></div>
+              <div className='bg-blue-100 h-4 rounded w-3/4 mx-auto'></div>
             </div>
           ))
         ) : (
           categoryData.map((cat) => (
             <div
               key={cat._id + 'displayCategory'}
-              className='cursor-pointer flex flex-col items-center gap-1 group'
+              className='cursor-pointer flex flex-col items-center gap-2 group'
               onClick={() => handleRedirectProductListpage(cat._id, cat.name)}
             >
-              <div className='w-full aspect-square bg-blue-50 rounded-xl overflow-hidden flex items-center justify-center p-1 group-hover:shadow-md transition-shadow'>
+              <div className='w-full aspect-square bg-blue-50 rounded-2xl overflow-hidden flex items-center justify-center p-2 group-hover:shadow-lg group-hover:scale-105 transition-all duration-200'>
                 <img
                   src={cat.image}
                   className='w-full h-full object-contain'
                   alt={cat.name}
                 />
               </div>
-              <p className='text-center text-[10px] sm:text-xs font-medium text-gray-700 leading-tight line-clamp-2 w-full'>
+              <p className='text-center text-xs sm:text-sm font-semibold text-gray-700 leading-tight line-clamp-2 w-full'>
                 {cat.name}
               </p>
             </div>
