@@ -103,6 +103,10 @@ const CheckoutPage = () => {
   }
 
   const handleCashOnDelivery = async () => {
+    if (!addressList[selectAddress]?._id) {
+      toast.error('Please select a delivery address before placing your order')
+      return
+    }
     try {
       const response = await Axios({
         ...SummaryApi.CashOnDeliveryOrder,
@@ -128,6 +132,10 @@ const CheckoutPage = () => {
   }
 
   const handleRazorpayPayment = async () => {
+    if (!addressList[selectAddress]?._id) {
+      toast.error('Please select a delivery address before proceeding to payment')
+      return
+    }
     try {
       const scriptLoaded = await loadRazorpayScript()
       if (!scriptLoaded) {
