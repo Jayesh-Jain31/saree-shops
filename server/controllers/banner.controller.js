@@ -20,14 +20,19 @@ export async function getAllBannersAdminController(request, response) {
 
 export async function createBannerController(request, response) {
     try {
-        const { title, image, imageMobile, link, isActive, displayOrder } = request.body
-        if (!image) {
-            return response.status(400).json({ message: 'Image is required', error: true, success: false })
+        const { title, slides, image, imageMobile, link, isActive, displayOrder } = request.body
+
+        // Support both slides array (new) and single image (legacy)
+        const hasSlides = Array.isArray(slides) && slides.length > 0
+        if (!hasSlides && !image) {
+            return response.status(400).json({ message: 'At least one image is required', error: true, success: false })
         }
+
         const count = await BannerModel.countDocuments()
         const banner = new BannerModel({
             title: title || '',
-            image,
+            slides: hasSlides ? slides : [],
+            image: image || '',
             imageMobile: imageMobile || '',
             link: link || '',
             isActive: isActive !== undefined ? isActive : true,
@@ -43,10 +48,10 @@ export async function createBannerController(request, response) {
 export async function updateBannerController(request, response) {
     try {
         const { id } = request.params
-        const { title, image, imageMobile, link, isActive, displayOrder } = request.body
+        const { title, slides, image, imageMobile, link, isActive, displayOrder } = request.body
         const banner = await BannerModel.findByIdAndUpdate(
             id,
-            { title, image, imageMobile, link, isActive, displayOrder },
+            { title, slides, image, imageMobile, link, isActive, displayOrder },
             { new: true }
         )
         if (!banner) {

@@ -10,7 +10,7 @@ import bannerFallback from '../assets/banner.jpg'
 import bannerMobileFallback from '../assets/banner-mobile.jpg'
 
 const BannerCarousel = () => {
-  const [banners, setBanners] = useState([])
+  const [slides, setSlides] = useState([])
   const [current, setCurrent] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -19,12 +19,30 @@ const BannerCarousel = () => {
       try {
         const res = await Axios({ ...SummaryApi.getBanners })
         if (res.data.success && res.data.data.length > 0) {
-          setBanners(res.data.data)
+          // Flatten all banner slides into one carousel
+          const allSlides = []
+          for (const banner of res.data.data) {
+            if (banner.slides && banner.slides.length > 0) {
+              allSlides.push(...banner.slides)
+            } else if (banner.image) {
+              allSlides.push({
+                image: banner.image,
+                imageMobile: banner.imageMobile || '',
+                title: banner.title || '',
+                link: banner.link || '',
+              })
+            }
+          }
+          if (allSlides.length > 0) {
+            setSlides(allSlides)
+          } else {
+            setSlides([{ image: bannerFallback, imageMobile: bannerMobileFallback, title: '', link: '' }])
+          }
         } else {
-          setBanners([{ image: bannerFallback, imageMobile: bannerMobileFallback, title: '', link: '', _id: 'fallback' }])
+          setSlides([{ image: bannerFallback, imageMobile: bannerMobileFallback, title: '', link: '' }])
         }
       } catch {
-        setBanners([{ image: bannerFallback, imageMobile: bannerMobileFallback, title: '', link: '', _id: 'fallback' }])
+        setSlides([{ image: bannerFallback, imageMobile: bannerMobileFallback, title: '', link: '' }])
       } finally {
         setLoading(false)
       }
@@ -32,61 +50,58 @@ const BannerCarousel = () => {
     fetchBanners()
   }, [])
 
-  const next = useCallback(() => setCurrent(c => (c + 1) % banners.length), [banners.length])
-  const prev = useCallback(() => setCurrent(c => (c - 1 + banners.length) % banners.length), [banners.length])
+  const next = useCallback(() => setCurrent(c => (c + 1) % slides.length), [slides.length])
+  const prev = useCallback(() => setCurrent(c => (c - 1 + slides.length) % slides.length), [slides.length])
 
   useEffect(() => {
-    if (banners.length <= 1) return
+    if (slides.length <= 1) return
     const timer = setInterval(next, 4000)
     return () => clearInterval(timer)
-  }, [banners.length, next])
+  }, [slides.length, next])
 
   if (loading) {
     return <div className='w-full min-h-48 bg-blue-100 rounded animate-pulse my-2'></div>
   }
 
-  const banner = banners[current]
+  const slide = slides[current]
 
-  const BannerImage = () => (
+  const ImageContent = () => (
+    <>
+      <img src={slide.image} className='w-full h-full object-cover hidden lg:block' alt={slide.title || 'banner'} />
+      <img src={slide.imageMobile || slide.image} className='w-full h-full object-cover lg:hidden' alt={slide.title || 'banner'} />
+    </>
+  )
+
+  return (
     <div className='relative w-full overflow-hidden rounded' style={{ minHeight: '150px' }}>
-      {banner.link ? (
-        <Link to={banner.link}>
-          <img src={banner.image} className='w-full h-full object-cover hidden lg:block' alt={banner.title || 'banner'} />
-          <img src={banner.imageMobile || banner.image} className='w-full h-full object-cover lg:hidden' alt={banner.title || 'banner'} />
-        </Link>
+      {slide.link ? (
+        <Link to={slide.link}><ImageContent /></Link>
       ) : (
-        <>
-          <img src={banner.image} className='w-full h-full object-cover hidden lg:block' alt={banner.title || 'banner'} />
-          <img src={banner.imageMobile || banner.image} className='w-full h-full object-cover lg:hidden' alt={banner.title || 'banner'} />
-        </>
+        <ImageContent />
       )}
 
-      {/* Prev/Next arrows — only show when multiple banners */}
-      {banners.length > 1 && (
+      {/* Prev/Next — only when multiple slides */}
+      {slides.length > 1 && (
         <>
           <button
             onClick={prev}
-            className='absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors'
-            aria-label='Previous banner'
-          >
-            ‹
-          </button>
+            className='absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors text-lg font-bold'
+            aria-label='Previous'
+          >‹</button>
           <button
             onClick={next}
-            className='absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors'
-            aria-label='Next banner'
-          >
-            ›
-          </button>
+            className='absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors text-lg font-bold'
+            aria-label='Next'
+          >›</button>
 
-          {/* Dots */}
+          {/* Dot indicators */}
           <div className='absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5'>
-            {banners.map((_, i) => (
+            {slides.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrent(i)}
                 className={`rounded-full transition-all ${i === current ? 'w-5 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60 hover:bg-white/80'}`}
-                aria-label={`Go to banner ${i + 1}`}
+                aria-label={`Slide ${i + 1}`}
               />
             ))}
           </div>
@@ -94,8 +109,6 @@ const BannerCarousel = () => {
       )}
     </div>
   )
-
-  return <BannerImage />
 }
 
 const Home = () => {
@@ -106,6 +119,7 @@ const Home = () => {
 
   const handleRedirectProductListpage = (id, cat) => {
     const subcategory = subCategoryData.find(sub => sub.category.some(c => c._id == id))
+    if (!subcategory) return
     const url = `/${valideURLConvert(cat)}-${id}/${valideURLConvert(subcategory.name)}-${subcategory._id}`
     navigate(url)
   }
@@ -118,29 +132,23 @@ const Home = () => {
 
       <div className='container mx-auto px-4 my-2 grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2'>
         {loadingCategory ? (
-          new Array(12).fill(null).map((c, index) => (
+          new Array(12).fill(null).map((_, index) => (
             <div key={index + 'loadingcategory'} className='bg-white rounded p-4 min-h-36 grid gap-2 shadow animate-pulse'>
               <div className='bg-blue-100 min-h-24 rounded'></div>
               <div className='bg-blue-100 h-8 rounded'></div>
             </div>
           ))
         ) : (
-          categoryData.map((cat, index) => (
+          categoryData.map((cat) => (
             <div key={cat._id + 'displayCategory'} className='w-full h-full cursor-pointer' onClick={() => handleRedirectProductListpage(cat._id, cat.name)}>
-              <div>
-                <img src={cat.image} className='w-full h-full object-scale-down' alt={cat.name} />
-              </div>
+              <img src={cat.image} className='w-full h-full object-scale-down' alt={cat.name} />
             </div>
           ))
         )}
       </div>
 
-      {categoryData?.map((c, index) => (
-        <CategoryWiseProductDisplay
-          key={c?._id + 'CategorywiseProduct'}
-          id={c?._id}
-          name={c?.name}
-        />
+      {categoryData?.map((c) => (
+        <CategoryWiseProductDisplay key={c?._id + 'CategorywiseProduct'} id={c?._id} name={c?.name} />
       ))}
 
       <RecentlyViewed />
