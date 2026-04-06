@@ -50,7 +50,13 @@ const CheckoutPage = () => {
   const [useWallet, setUseWallet] = useState(false)
   const [walletLoading, setWalletLoading] = useState(false)
 
-  const deliveryCharge = (deliveryInfo && deliveryInfo.available && deliveryInfo.deliveryCharge > 0) ? deliveryInfo.deliveryCharge : 0
+  const [codEnabled, setCodEnabled] = useState(true)
+
+  const deliveryCharge = (() => {
+    if (!deliveryInfo || !deliveryInfo.available || !deliveryInfo.deliveryCharge) return 0
+    if (deliveryInfo.freeDeliveryAbove > 0 && totalPrice >= deliveryInfo.freeDeliveryAbove) return 0
+    return deliveryInfo.deliveryCharge
+  })()
   const baseAmount = appliedCoupon ? appliedCoupon.finalAmount : totalPrice
   const finalAmount = baseAmount + deliveryCharge
   const couponDiscount = appliedCoupon ? appliedCoupon.discountAmount : 0
@@ -72,6 +78,18 @@ const CheckoutPage = () => {
     }
     fetchWallet()
   }, [user?._id])
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await Axios({ ...SummaryApi.getSettings })
+        if (res.data.success) {
+          setCodEnabled(res.data.data.cod_enabled !== 'false')
+        }
+      } catch {}
+    }
+    fetchSettings()
+  }, [])
 
   const checkDeliveryPincode = async (pincode) => {
     if (!pincode) return
@@ -170,11 +188,24 @@ const CheckoutPage = () => {
       })
       const { data: responseData } = response
       if (responseData.success) {
+        const itemsSnapshot = [...cartItemsList]
+        const selectedAddrSnapshot = addressList[selectAddress]
         toast.success(responseData.message)
         addNotification('Your Cash on Delivery order has been placed successfully!', 'success')
         if (fetchCartItem) fetchCartItem()
         if (fetchOrder) fetchOrder()
-        navigate('/success', { state: { text: "Order" } })
+        navigate('/success', {
+          state: {
+            text: "Order",
+            address: selectedAddrSnapshot,
+            items: itemsSnapshot,
+            totalAmount: payableAmount,
+            deliveryCharge,
+            paymentMethod: 'COD',
+            estimatedDelivery: deliveryInfo?.estimatedTime,
+            orderDate: new Date().toISOString(),
+          }
+        })
       }
     } catch (error) {
       AxiosToastError(error)
@@ -203,11 +234,24 @@ const CheckoutPage = () => {
           }
         })
         if (response.data.success) {
+          const itemsSnapshot = [...cartItemsList]
+          const selectedAddrSnapshot = addressList[selectAddress]
           toast.success('Order placed using wallet balance!')
           addNotification('Your order has been placed using your wallet balance.', 'success')
           if (fetchCartItem) fetchCartItem()
           if (fetchOrder) fetchOrder()
-          navigate('/success', { state: { text: "Order" } })
+          navigate('/success', {
+            state: {
+              text: "Order",
+              address: selectedAddrSnapshot,
+              items: itemsSnapshot,
+              totalAmount: 0,
+              deliveryCharge,
+              paymentMethod: 'Wallet',
+              estimatedDelivery: deliveryInfo?.estimatedTime,
+              orderDate: new Date().toISOString(),
+            }
+          })
         }
       } catch (error) {
         AxiosToastError(error)
@@ -275,11 +319,24 @@ const CheckoutPage = () => {
             toast.dismiss(verifyToastId)
             const { data: verifyData } = verifyRes
             if (verifyData.success) {
+              const itemsSnapshot = [...cartItemsList]
+              const selectedAddrSnapshot = addressList[selectAddress]
               toast.success('Payment successful! Order placed.')
               addNotification('Your order has been placed successfully! Payment received via Razorpay.', 'success')
               if (fetchCartItem) fetchCartItem()
               if (fetchOrder) fetchOrder()
-              navigate('/success', { state: { text: "Order" } })
+              navigate('/success', {
+                state: {
+                  text: "Order",
+                  address: selectedAddrSnapshot,
+                  items: itemsSnapshot,
+                  totalAmount: payableAmount,
+                  deliveryCharge,
+                  paymentMethod: 'Razorpay',
+                  estimatedDelivery: deliveryInfo?.estimatedTime,
+                  orderDate: new Date().toISOString(),
+                }
+              })
             } else {
               toast.error('Payment verification failed.')
             }
@@ -359,8 +416,17 @@ const CheckoutPage = () => {
                   Delivery in {deliveryInfo.estimatedTime}
                 </p>
                 <p className='text-xs text-green-600'>
-                  {deliveryInfo.zoneName} — {deliveryInfo.deliveryCharge === 0 ? 'Free delivery' : `₹${deliveryInfo.deliveryCharge} delivery charge`}
+                  {deliveryInfo.zoneName} — {deliveryCharge === 0
+                    ? (deliveryInfo.freeDeliveryAbove > 0 && totalPrice >= deliveryInfo.freeDeliveryAbove
+                      ? `Free delivery (above ₹${deliveryInfo.freeDeliveryAbove})`
+                      : 'Free delivery')
+                    : `₹${deliveryInfo.deliveryCharge} delivery charge`}
                 </p>
+                {deliveryInfo.freeDeliveryAbove > 0 && totalPrice < deliveryInfo.freeDeliveryAbove && (
+                  <p className='text-[11px] text-green-500 mt-0.5'>
+                    Add ₹{(deliveryInfo.freeDeliveryAbove - totalPrice).toFixed(0)} more for free delivery
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -520,14 +586,20 @@ const CheckoutPage = () => {
                   : `Pay ${DisplayPriceInRupees(payableAmount)} with Razorpay`}
               </button>
 
-              <button
-                className='py-3 px-4 border-2 border-green-600 font-semibold text-green-600 hover:bg-green-600 hover:text-white active:scale-95 rounded-lg transition-all text-sm'
-                onClick={handleCashOnDelivery}
-              >
-                {useWallet && walletDeduction > 0 && payableAmount > 0
-                  ? `Pay ${DisplayPriceInRupees(payableAmount)} via COD + Wallet`
-                  : 'Cash on Delivery'}
-              </button>
+              {codEnabled ? (
+                <button
+                  className='py-3 px-4 border-2 border-green-600 font-semibold text-green-600 hover:bg-green-600 hover:text-white active:scale-95 rounded-lg transition-all text-sm'
+                  onClick={handleCashOnDelivery}
+                >
+                  {useWallet && walletDeduction > 0 && payableAmount > 0
+                    ? `Pay ${DisplayPriceInRupees(payableAmount)} via COD + Wallet`
+                    : 'Cash on Delivery'}
+                </button>
+              ) : (
+                <div className='py-3 px-4 border-2 border-gray-200 rounded-lg text-center text-xs text-gray-400 bg-gray-50'>
+                  Cash on Delivery is not available for this store
+                </div>
+              )}
             </div>
           </div>
         </div>

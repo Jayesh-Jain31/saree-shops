@@ -15,6 +15,7 @@ const DeliveryZoneAdmin = () => {
     pincodes: '',
     estimatedTime: '10-20 min',
     deliveryCharge: 0,
+    freeDeliveryAbove: 0,
   })
 
   const fetchZones = async () => {
@@ -47,6 +48,7 @@ const DeliveryZoneAdmin = () => {
       pincodes: zone.pincodes.join(', '),
       estimatedTime: zone.estimatedTime,
       deliveryCharge: zone.deliveryCharge,
+      freeDeliveryAbove: zone.freeDeliveryAbove || 0,
     })
     setShowForm(true)
   }
@@ -77,6 +79,7 @@ const DeliveryZoneAdmin = () => {
             pincodes: pincodeArray,
             estimatedTime: formData.estimatedTime,
             deliveryCharge: Number(formData.deliveryCharge),
+            freeDeliveryAbove: Number(formData.freeDeliveryAbove) || 0,
           }
         })
         if (response.data.success) {
@@ -90,6 +93,7 @@ const DeliveryZoneAdmin = () => {
             pincodes: pincodeArray,
             estimatedTime: formData.estimatedTime,
             deliveryCharge: Number(formData.deliveryCharge),
+            freeDeliveryAbove: Number(formData.freeDeliveryAbove) || 0,
           }
         })
         if (response.data.success) {
@@ -215,12 +219,32 @@ const DeliveryZoneAdmin = () => {
                   <label className='text-xs font-semibold text-gray-600 mb-1 block'>Delivery Charge (₹)</label>
                   <input
                     type='number'
+                    min='0'
                     value={formData.deliveryCharge}
                     onChange={(e) => setFormData({ ...formData, deliveryCharge: e.target.value })}
                     placeholder='0'
                     className='w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500'
                   />
                 </div>
+              </div>
+              <div>
+                <label className='text-xs font-semibold text-gray-600 mb-1 block'>
+                  Free Delivery Above (₹)
+                  <span className='ml-1 font-normal text-gray-400'>— set 0 to always charge</span>
+                </label>
+                <input
+                  type='number'
+                  min='0'
+                  value={formData.freeDeliveryAbove}
+                  onChange={(e) => setFormData({ ...formData, freeDeliveryAbove: e.target.value })}
+                  placeholder='e.g. 500 (free delivery above ₹500)'
+                  className='w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500'
+                />
+                {Number(formData.freeDeliveryAbove) > 0 && (
+                  <p className='text-[11px] text-green-600 mt-1 font-medium'>
+                    Free delivery when cart ≥ ₹{formData.freeDeliveryAbove}; otherwise ₹{formData.deliveryCharge || 0} charge
+                  </p>
+                )}
               </div>
 
               <button
@@ -274,14 +298,19 @@ const DeliveryZoneAdmin = () => {
                   </div>
                 </div>
 
-                <div className='flex items-center gap-4 mb-2'>
+                <div className='flex flex-wrap items-center gap-3 mb-2'>
                   <div className='flex items-center gap-1.5'>
                     <FaTruck className='text-green-500' size={12} />
                     <span className='text-xs font-semibold text-green-700'>{zone.estimatedTime}</span>
                   </div>
                   <span className='text-xs text-gray-500'>
-                    Delivery: {zone.deliveryCharge === 0 ? <span className='text-green-600 font-semibold'>FREE</span> : `₹${zone.deliveryCharge}`}
+                    Charge: {zone.deliveryCharge === 0 ? <span className='text-green-600 font-semibold'>FREE</span> : `₹${zone.deliveryCharge}`}
                   </span>
+                  {zone.freeDeliveryAbove > 0 && (
+                    <span className='text-[11px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-semibold'>
+                      Free above ₹{zone.freeDeliveryAbove}
+                    </span>
+                  )}
                 </div>
 
                 <div className='flex flex-wrap gap-1.5'>

@@ -2,7 +2,7 @@ import DeliveryZoneModel from "../models/deliveryZone.model.js";
 
 export async function createDeliveryZone(request, response) {
     try {
-        const { zoneName, pincodes, estimatedTime, deliveryCharge } = request.body;
+        const { zoneName, pincodes, estimatedTime, deliveryCharge, freeDeliveryAbove } = request.body;
 
         if (!zoneName) {
             return response.status(400).json({
@@ -17,6 +17,7 @@ export async function createDeliveryZone(request, response) {
             pincodes: pincodes || [],
             estimatedTime: estimatedTime || "10-20 min",
             deliveryCharge: deliveryCharge || 0,
+            freeDeliveryAbove: freeDeliveryAbove || 0,
         });
 
         const saved = await zone.save();
@@ -57,7 +58,7 @@ export async function getDeliveryZones(request, response) {
 
 export async function updateDeliveryZone(request, response) {
     try {
-        const { _id, zoneName, pincodes, estimatedTime, deliveryCharge, isActive } = request.body;
+        const { _id, zoneName, pincodes, estimatedTime, deliveryCharge, freeDeliveryAbove, isActive } = request.body;
 
         if (!_id) {
             return response.status(400).json({
@@ -72,6 +73,7 @@ export async function updateDeliveryZone(request, response) {
         if (pincodes !== undefined) updateData.pincodes = pincodes;
         if (estimatedTime !== undefined) updateData.estimatedTime = estimatedTime;
         if (deliveryCharge !== undefined) updateData.deliveryCharge = deliveryCharge;
+        if (freeDeliveryAbove !== undefined) updateData.freeDeliveryAbove = freeDeliveryAbove;
         if (isActive !== undefined) updateData.isActive = isActive;
 
         const updated = await DeliveryZoneModel.findByIdAndUpdate(_id, updateData, { new: true });
@@ -161,6 +163,7 @@ export async function checkPincode(request, response) {
                     zoneName: zone.zoneName,
                     estimatedTime: zone.estimatedTime,
                     deliveryCharge: zone.deliveryCharge,
+                    freeDeliveryAbove: zone.freeDeliveryAbove || 0,
                 },
                 error: false,
                 success: true,

@@ -181,27 +181,6 @@ const MyOrders = () => {
             </div>
           </div>
 
-          {/* Stats */}
-          {orders.length > 0 && (
-            <div className='grid grid-cols-4 gap-2 mb-4'>
-              <div className='bg-blue-50 rounded-xl p-2.5 text-center'>
-                <p className='text-[9px] text-blue-400 uppercase tracking-wider font-bold'>Total</p>
-                <p className='text-lg font-bold text-blue-700'>{orderStats.total}</p>
-              </div>
-              <div className='bg-orange-50 rounded-xl p-2.5 text-center'>
-                <p className='text-[9px] text-orange-400 uppercase tracking-wider font-bold'>Active</p>
-                <p className='text-lg font-bold text-orange-700'>{orderStats.active}</p>
-              </div>
-              <div className='bg-emerald-50 rounded-xl p-2.5 text-center'>
-                <p className='text-[9px] text-emerald-400 uppercase tracking-wider font-bold'>Delivered</p>
-                <p className='text-lg font-bold text-emerald-700'>{orderStats.delivered}</p>
-              </div>
-              <div className='bg-purple-50 rounded-xl p-2.5 text-center'>
-                <p className='text-[9px] text-purple-400 uppercase tracking-wider font-bold'>Spent</p>
-                <p className='text-sm font-bold text-purple-700 truncate'>{DisplayPriceInRupees(orderStats.totalSpent)}</p>
-              </div>
-            </div>
-          )}
 
           {/* Search & Filters */}
           {orders.length > 0 && (

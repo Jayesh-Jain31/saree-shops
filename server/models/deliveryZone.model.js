@@ -17,6 +17,10 @@ const deliveryZoneSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    freeDeliveryAbove: {
+        type: Number,
+        default: 0,
+    },
     isActive: {
         type: Boolean,
         default: true,

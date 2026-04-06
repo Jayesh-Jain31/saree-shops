@@ -20,10 +20,10 @@ const CardProduct = ({ data, grid = false }) => {
   }, [images.length])
 
   return (
-    <Link to={url} className={`border rounded-xl bg-white flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${grid ? 'w-full' : 'w-36 lg:w-52 flex-shrink-0'}`}>
+    <Link to={url} className={`border rounded-xl bg-white flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${grid ? 'w-full' : 'w-44 sm:w-48 lg:w-56 flex-shrink-0'}`}>
 
       {/* Image with auto-slide */}
-      <div className='w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden p-2 relative'>
+      <div className='w-full aspect-[4/3] bg-gray-50 flex items-center justify-center overflow-hidden p-2 relative'>
         <img
           key={imgIdx}
           src={images[imgIdx] || images[0]}

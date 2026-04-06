@@ -41,25 +41,29 @@ A full-stack quick-commerce (Blinkit Clone) application built with the MERN stac
 - **Auth**: Register, login, forgot/reset password, JWT with refresh tokens
 - **Products**: Category/subcategory/product CRUD, search, image upload to Cloudinary
 - **Cart**: Add/update/remove items, quantity management
-- **Checkout**: Razorpay online payment + Cash on Delivery
+- **Checkout**: Razorpay online payment + Cash on Delivery (COD can be disabled by admin)
 - **Coupons**: Percentage/flat discounts, admin CRUD, user validation at checkout
 - **Orders**:
   - Grouped orders: All items from one checkout stored as single order with `items[]` array
-  - Order List page (`/dashboard/myorders`) with stats, search, filters by status & payment
+  - Order List page (`/dashboard/myorders`): search, filters by status & payment
   - Order Details page (`/dashboard/order/:id`) with items, tracking timeline, price breakdown, address, payment info
   - Cancel order functionality (for non-delivered orders)
   - Order status tracking: Pending → Confirmed → Shipped → Out for Delivery → Delivered
+  - Return/Refund: Configurable return period (days), countdown timer, expired state
+- **Order Success Page**: Rich confirmation page showing delivery address, estimated time, itemized order, payment summary, date/time
 - **Wishlist** (`/dashboard/wishlist`): Toggle products to wishlist, view saved items with add-to-cart
 - **Reviews & Ratings**: Star ratings and comments on product detail pages
 - **Stock Warning**: "Only X left!" badge on products with low stock (≤5), "Out of stock" for zero
 - **Recently Viewed**: LocalStorage-based recently viewed products section on Home page
 - **Share Product**: WhatsApp share and copy-link on product detail page
 - **Admin Order Management** (`/dashboard/admin-orders`): View all customer orders, search/filter, update status
-- **Admin Analytics Dashboard** (`/dashboard/admin-dashboard`): Revenue, orders, products, users stats; order status breakdown; payment methods; monthly revenue chart; top products; recent orders
+- **Admin Analytics Dashboard** (`/dashboard/admin-dashboard`): Revenue, orders, products, users stats; order status breakdown; payment methods; monthly revenue chart; top products; recent orders (card view on mobile)
 - **Invoice Download**: Print-ready invoice generation from Order Details page
 - **Email Order Confirmation**: Automated email via Resend after both COD and Razorpay orders
 - **Notifications**: In-app notification bell with persistent notifications for orders and actions
-- **Delivery Zones** (`/dashboard/delivery-zones`): Admin configurable pincode-based delivery time estimates. Add Jodhpur pincodes to show "10-20 min" delivery to customers. Checkout page auto-checks selected address pincode and shows delivery estimate banner + charge in bill details.
+- **Delivery Zones** (`/dashboard/delivery-zones`): Admin configurable pincode-based delivery time estimates + delivery charge. Advanced: set `freeDeliveryAbove` to auto-apply free delivery when cart total meets threshold. Checkout shows "Add ₹X more for free delivery" tip.
+- **Site Settings** (`/dashboard/site-settings`): Theme color, policy pages, store name/logo, social links, WhatsApp button, return period, **Maintenance Mode** (on/off + custom message), **COD Restriction** (enable/disable cash on delivery)
+- **Maintenance Mode**: Admin toggle in Site Settings. Customers see full-screen maintenance overlay; admins bypass it and shop normally
 - **Admin**: Category/subcategory/product management, coupon management
 
 ## API Endpoints (New)

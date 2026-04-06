@@ -200,7 +200,8 @@ const AdminDashboard = () => {
         {/* Recent Orders */}
         <div className='bg-white rounded-xl border p-4'>
           <h2 className='font-bold text-sm text-gray-800 mb-3'>Recent Orders</h2>
-          <div className='overflow-x-auto'>
+          {/* Desktop table */}
+          <div className='hidden sm:block overflow-x-auto'>
             <table className='w-full text-sm'>
               <thead>
                 <tr className='border-b text-left'>
@@ -228,6 +229,26 @@ const AdminDashboard = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+          {/* Mobile cards */}
+          <div className='sm:hidden space-y-2'>
+            {data.recentOrders?.map((order) => (
+              <div key={order._id} className='border rounded-lg p-3'>
+                <div className='flex items-center justify-between mb-1'>
+                  <span className='font-mono text-[11px] text-gray-500'>{order.orderId}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold
+                    ${order.orderStatus === 'Delivered' ? 'bg-green-50 text-green-700' :
+                      order.orderStatus === 'Cancelled' ? 'bg-red-50 text-red-700' :
+                      'bg-blue-50 text-blue-700'}`}>
+                    {order.orderStatus}
+                  </span>
+                </div>
+                <div className='flex items-center justify-between'>
+                  <span className='text-xs text-gray-700'>{order.userId?.name || 'N/A'}</span>
+                  <span className='text-xs font-bold text-gray-800'>{DisplayPriceInRupees(order.totalAmt)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

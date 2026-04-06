@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { FaWhatsapp, FaUndoAlt } from 'react-icons/fa'
+import { FaWhatsapp, FaUndoAlt, FaTools, FaBan } from 'react-icons/fa'
 import { MdSettings, MdSave, MdPalette } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { colorPresets, applyTheme } from '../utils/themeColors'
@@ -38,6 +38,11 @@ const SiteSettings = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [returnPeriodDays, setReturnPeriodDays] = useState(7)
   const [savingReturn, setSavingReturn] = useState(false)
+  const [maintenanceMode, setMaintenanceMode] = useState(false)
+  const [maintenanceMessage, setMaintenanceMessage] = useState('')
+  const [savingMaintenance, setSavingMaintenance] = useState(false)
+  const [codEnabled, setCodEnabled] = useState(true)
+  const [savingCod, setSavingCod] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingTheme, setSavingTheme] = useState(false)
@@ -56,6 +61,9 @@ const SiteSettings = () => {
           setStoreName(s.store_name || '')
           setLogoPreview(s.store_logo || '')
           if (s.return_period_days) setReturnPeriodDays(parseInt(s.return_period_days) || 7)
+          setMaintenanceMode(s.maintenance_mode === 'true')
+          setMaintenanceMessage(s.maintenance_message || '')
+          setCodEnabled(s.cod_enabled !== 'false')
 
           const policies = {}
           POLICIES.forEach(p => { policies[p.key] = s[p.key] || '' })
@@ -190,6 +198,36 @@ const SiteSettings = () => {
       toast.error('Failed to save return period')
     } finally {
       setSavingReturn(false)
+    }
+  }
+
+  const handleSaveMaintenance = async () => {
+    setSavingMaintenance(true)
+    try {
+      await saveSetting('maintenance_mode', String(maintenanceMode))
+      await saveSetting('maintenance_message', maintenanceMessage || 'We are currently under maintenance. Please check back soon.')
+      toast.success(maintenanceMode ? 'Maintenance mode enabled — site is hidden from customers' : 'Maintenance mode disabled — site is live')
+    } catch {
+      toast.error('Failed to update maintenance settings')
+    } finally {
+      setSavingMaintenance(false)
+    }
+  }
+
+  const handleToggleMaintenance = () => setMaintenanceMode(prev => !prev)
+
+  const handleToggleCod = async () => {
+    const newVal = !codEnabled
+    setCodEnabled(newVal)
+    setSavingCod(true)
+    try {
+      await saveSetting('cod_enabled', String(newVal))
+      toast.success(`Cash on Delivery ${newVal ? 'enabled' : 'disabled'}`)
+    } catch {
+      toast.error('Failed to update')
+      setCodEnabled(!newVal)
+    } finally {
+      setSavingCod(false)
     }
   }
 
@@ -496,6 +534,75 @@ const SiteSettings = () => {
               {savingReturn ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
               {savingReturn ? 'Saving...' : 'Save Return Period'}
             </button>
+          </div>
+        </div>
+
+        {/* ── Maintenance Mode Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center justify-between p-5 border-b'>
+            <div className='flex items-center gap-3'>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${maintenanceMode ? 'bg-orange-100' : 'bg-gray-100'}`}>
+                <FaTools className={maintenanceMode ? 'text-orange-500' : 'text-gray-400'} size={18} />
+              </div>
+              <div>
+                <h2 className='font-bold text-gray-800'>Maintenance Mode</h2>
+                <p className='text-xs text-gray-500'>Show a maintenance page to all customers</p>
+              </div>
+            </div>
+            <button
+              onClick={handleToggleMaintenance}
+              className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${maintenanceMode ? 'bg-orange-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${maintenanceMode ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <div className={`px-5 py-2 text-xs font-semibold ${maintenanceMode ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'}`}>
+            {maintenanceMode ? '⚠ Maintenance mode ON — customers will see maintenance page (admins bypass this)' : '✓ Site is live — customers can shop normally'}
+          </div>
+          <div className='p-5 space-y-3'>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Maintenance Message</label>
+              <textarea
+                value={maintenanceMessage}
+                onChange={e => setMaintenanceMessage(e.target.value)}
+                rows={3}
+                placeholder='We are currently under maintenance. Please check back soon.'
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition resize-none'
+              />
+            </div>
+            <button
+              onClick={handleSaveMaintenance}
+              disabled={savingMaintenance}
+              className={`w-full flex items-center justify-center gap-2 font-semibold rounded-xl py-3 transition-colors text-white disabled:opacity-50 ${maintenanceMode ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'}`}
+            >
+              {savingMaintenance ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
+              {savingMaintenance ? 'Saving...' : maintenanceMode ? 'Enable Maintenance Mode' : 'Disable Maintenance Mode'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── COD Restriction Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center justify-between p-5 border-b'>
+            <div className='flex items-center gap-3'>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${codEnabled ? 'bg-green-100' : 'bg-red-100'}`}>
+                <FaBan className={codEnabled ? 'text-green-500' : 'text-red-500'} size={18} />
+              </div>
+              <div>
+                <h2 className='font-bold text-gray-800'>Cash on Delivery (COD)</h2>
+                <p className='text-xs text-gray-500'>Allow customers to pay via COD at checkout</p>
+              </div>
+            </div>
+            <button
+              onClick={handleToggleCod}
+              disabled={savingCod}
+              className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${codEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${codEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <div className={`px-5 py-2 text-xs font-semibold ${codEnabled ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-500'}`}>
+            {codEnabled ? '✓ COD is available — customers can pay cash on delivery' : '✕ COD is disabled — only Razorpay / Wallet payments accepted'}
           </div>
         </div>
 
