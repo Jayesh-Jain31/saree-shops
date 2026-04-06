@@ -65,7 +65,24 @@ const Footer = () => {
             </p>
           </div>
 
-          {/* Column 2 — Shop Categories */}
+          {/* Column 2 — Quick Links */}
+          <div>
+            <h3 className='font-bold text-sm text-gray-700 mb-3 uppercase tracking-wide'>Quick Links</h3>
+            <ul className='space-y-2'>
+              {policyLinks.map(link => (
+                <li key={link.to}>
+                  <Link
+                    to={link.to}
+                    className='text-sm text-gray-500 hover:text-primary transition-colors'
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Column 3 — Shop Categories */}
           <div>
             <h3 className='font-bold text-sm text-gray-700 mb-3 uppercase tracking-wide'>Shop Categories</h3>
             <ul className='space-y-2'>
@@ -83,23 +100,6 @@ const Footer = () => {
               ) : (
                 <li className='text-xs text-gray-400'>Loading...</li>
               )}
-            </ul>
-          </div>
-
-          {/* Column 3 — Quick Links */}
-          <div>
-            <h3 className='font-bold text-sm text-gray-700 mb-3 uppercase tracking-wide'>Quick Links</h3>
-            <ul className='space-y-2'>
-              {policyLinks.map(link => (
-                <li key={link.to}>
-                  <Link
-                    to={link.to}
-                    className='text-sm text-gray-500 hover:text-primary transition-colors'
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
             </ul>
           </div>
 
