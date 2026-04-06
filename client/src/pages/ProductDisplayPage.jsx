@@ -5,7 +5,7 @@ import Axios from '../utils/Axios'
 import AxiosToastError from '../utils/AxiosToastError'
 import { FaAngleRight, FaAngleLeft } from "react-icons/fa6"
 import {
-  FaHeart, FaRegHeart, FaStar, FaRegStar,
+  FaHeart, FaRegHeart,
   FaWhatsapp, FaLink, FaShareAlt,
   FaTruck, FaShieldAlt, FaMedal, FaBolt,
   FaMapMarkerAlt, FaCheckCircle, FaTimesCircle,
@@ -30,19 +30,6 @@ const addToRecentlyViewed = (product) => {
   } catch (e) {}
 }
 
-const StarRating = ({ rating, onRate, interactive = false, size = 16 }) => (
-  <div className='flex gap-0.5'>
-    {[1, 2, 3, 4, 5].map(star => (
-      <button key={star} onClick={() => interactive && onRate?.(star)}
-        className={interactive ? 'cursor-pointer hover:scale-110 transition-transform' : 'cursor-default'}
-        type='button'>
-        {star <= rating
-          ? <FaStar size={size} className='text-yellow-400' />
-          : <FaRegStar size={size} className='text-gray-300' />}
-      </button>
-    ))}
-  </div>
-)
 
 const TRUST_BADGES = [
   { icon: FaTruck,     label: 'Cash on Delivery', sub: 'Available',  bg: 'bg-green-50',  icon_color: 'text-green-600'  },
@@ -61,12 +48,6 @@ const ProductDisplayPage = () => {
   const user = useSelector(state => state?.user)
 
   const [wishlisted, setWishlisted] = useState(false)
-  const [reviews, setReviews] = useState([])
-  const [avgRating, setAvgRating] = useState(0)
-  const [totalReviews, setTotalReviews] = useState(0)
-  const [myRating, setMyRating] = useState(0)
-  const [myComment, setMyComment] = useState('')
-  const [showReviewForm, setShowReviewForm] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
 
   const [selectedVariant, setSelectedVariant] = useState(null)
@@ -87,17 +68,6 @@ const ProductDisplayPage = () => {
       }
     } catch (error) { AxiosToastError(error) }
     finally { setLoading(false) }
-  }
-
-  const fetchReviews = async () => {
-    try {
-      const res = await Axios({ ...SummaryApi.getProductReviews, data: { productId } })
-      if (res.data.success) {
-        setReviews(res.data.data.reviews)
-        setAvgRating(res.data.data.avgRating)
-        setTotalReviews(res.data.data.totalReviews)
-      }
-    } catch (e) {}
   }
 
   const checkWishlist = async () => {
@@ -124,7 +94,6 @@ const ProductDisplayPage = () => {
   useEffect(() => {
     setSelectedVariant(null)
     fetchProductDetails()
-    fetchReviews()
     if (user?._id) checkWishlist()
     Axios({ ...SummaryApi.getSettings }).then(res => {
       if (res.data.success) setOutsideDeliveryTime(res.data.data?.outside_delivery_time || '3-4 days')
@@ -154,19 +123,6 @@ const ProductDisplayPage = () => {
     try {
       const res = await Axios({ ...SummaryApi.toggleWishlist, data: { productId: data._id } })
       if (res.data.success) { setWishlisted(res.data.data.added); toast.success(res.data.message) }
-    } catch (error) { AxiosToastError(error) }
-  }
-
-  const handleSubmitReview = async () => {
-    if (!user?._id) { toast.error('Please login first'); return }
-    if (!myRating) { toast.error('Please select a rating'); return }
-    try {
-      const res = await Axios({ ...SummaryApi.addReview, data: { productId, rating: myRating, comment: myComment } })
-      if (res.data.success) {
-        toast.success(res.data.message)
-        setShowReviewForm(false); setMyRating(0); setMyComment('')
-        fetchReviews()
-      }
     } catch (error) { AxiosToastError(error) }
   }
 
@@ -267,16 +223,6 @@ const ProductDisplayPage = () => {
         {/* Name */}
         <h1 className='text-xl font-bold text-gray-900 lg:text-2xl leading-tight'>{data.name}</h1>
         {data.unit && <p className='text-sm text-gray-500 mt-0.5'>{data.unit}</p>}
-
-        {totalReviews > 0 && (
-          <div className='flex items-center gap-2 mt-1'>
-            <div className='flex items-center gap-1 bg-green-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full'>
-              <span>{avgRating}</span>
-              <FaStar size={10} />
-            </div>
-            <span className='text-xs text-gray-500'>{totalReviews} review{totalReviews !== 1 ? 's' : ''}</span>
-          </div>
-        )}
 
         {/* Social proof — live viewing count */}
         {viewingCount > 0 && (
@@ -434,52 +380,6 @@ const ProductDisplayPage = () => {
           ))}
         </div>
 
-        {/* ── Reviews ── */}
-        <Divider />
-        <div className='my-4'>
-          <div className='flex items-center justify-between mb-3'>
-            <h2 className='font-bold text-gray-800 text-base'>Reviews & Ratings</h2>
-            {user?._id && (
-              <button onClick={() => setShowReviewForm(!showReviewForm)}
-                className='text-sm text-primary font-semibold hover:underline'>
-                {showReviewForm ? 'Cancel' : 'Write a Review'}
-              </button>
-            )}
-          </div>
-
-          {showReviewForm && (
-            <div className='bg-gray-50 border rounded-2xl p-4 mb-4'>
-              <p className='text-sm font-medium mb-2'>Your Rating</p>
-              <StarRating rating={myRating} onRate={setMyRating} interactive size={24} />
-              <textarea value={myComment} onChange={e => setMyComment(e.target.value)}
-                placeholder='Write your review (optional)...'
-                className='w-full mt-3 border rounded-xl p-3 text-sm focus:outline-none focus:border-primary resize-none' rows={3} />
-              <button onClick={handleSubmitReview}
-                className='mt-2 btn-primary px-4 py-2 rounded-xl text-sm font-semibold'>
-                Submit Review
-              </button>
-            </div>
-          )}
-
-          {reviews.length === 0 ? (
-            <p className='text-sm text-gray-400'>No reviews yet. Be the first to review!</p>
-          ) : (
-            <div className='space-y-3'>
-              {reviews.slice(0, 5).map(review => (
-                <div key={review._id} className='bg-gray-50 rounded-xl p-3'>
-                  <div className='flex items-center gap-2 mb-1'>
-                    <div className='w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary'>
-                      {review.userId?.name?.charAt(0)?.toUpperCase() || '?'}
-                    </div>
-                    <span className='text-sm font-medium text-gray-700'>{review.userId?.name || 'User'}</span>
-                    <StarRating rating={review.rating} size={12} />
-                  </div>
-                  {review.comment && <p className='text-sm text-gray-600 ml-9'>{review.comment}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </section>
   )

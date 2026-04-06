@@ -1,13 +1,16 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import NoData from '../components/NoData'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import {
   FaBoxOpen, FaCheckCircle, FaMoneyBillWave, FaCreditCard,
-  FaSearch, FaFilter, FaChevronRight, FaTimes, FaTruck
+  FaSearch, FaFilter, FaChevronRight, FaTimes, FaTruck, FaStar
 } from 'react-icons/fa'
 import { MdAccessTime, MdDeliveryDining, MdDone, MdInventory, MdPending } from 'react-icons/md'
+import Axios from '../utils/Axios'
+import SummaryApi from '../common/SummaryApi'
+import toast from 'react-hot-toast'
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -61,6 +64,91 @@ const PaymentBadge = ({ status }) => {
     <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200'>
       <FaCreditCard size={10} /> Paid
     </span>
+  )
+}
+
+const RateOrderSection = ({ order }) => {
+  const [selectedRating, setSelectedRating] = useState(0)
+  const [hoverRating, setHoverRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+  const [savedRating, setSavedRating] = useState(0)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    try {
+      const rated = JSON.parse(localStorage.getItem(`rated_order_${order._id}`) || 'null')
+      if (rated) { setSubmitted(true); setSavedRating(rated.rating) }
+    } catch {}
+  }, [order._id])
+
+  const handleSubmit = async (e) => {
+    e.stopPropagation()
+    if (!selectedRating) return
+    setLoading(true)
+    try {
+      const items = order?.items || []
+      await Promise.all(items.map(item =>
+        Axios({ ...SummaryApi.addReview, data: { productId: item.product_details?._id, rating: selectedRating, comment } })
+      ))
+      localStorage.setItem(`rated_order_${order._id}`, JSON.stringify({ rating: selectedRating }))
+      setSubmitted(true)
+      setSavedRating(selectedRating)
+      toast.success('Thank you for your rating!')
+    } catch {
+      toast.error('Failed to submit rating')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className='border-t border-gray-100 px-4 py-2.5 flex items-center gap-2 bg-yellow-50/50'>
+        <div className='flex gap-0.5'>
+          {[1,2,3,4,5].map(s => (
+            <FaStar key={s} size={14} className={s <= savedRating ? 'text-yellow-400' : 'text-gray-200'} />
+          ))}
+        </div>
+        <p className='text-xs text-gray-500 font-medium'>Rated! Thank you for your feedback.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className='border-t border-dashed border-yellow-200 bg-yellow-50/60 px-4 py-3' onClick={e => e.stopPropagation()}>
+      <p className='text-xs font-bold text-gray-600 mb-2'>Rate your order</p>
+      <div className='flex gap-1 mb-2'>
+        {[1,2,3,4,5].map(s => (
+          <button key={s}
+            onMouseEnter={() => setHoverRating(s)}
+            onMouseLeave={() => setHoverRating(0)}
+            onClick={() => setSelectedRating(s)}
+            className='transition-transform hover:scale-125 active:scale-95'
+            type='button'>
+            <FaStar size={26} className={(hoverRating || selectedRating) >= s ? 'text-yellow-400' : 'text-gray-200'} />
+          </button>
+        ))}
+      </div>
+      {selectedRating > 0 && (
+        <div className='mt-1'>
+          <textarea
+            value={comment}
+            onChange={e => setComment(e.target.value)}
+            placeholder='Write a comment (optional)...'
+            className='w-full border border-gray-200 rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:border-yellow-400 mb-2 bg-white'
+            rows={2}
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className='bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold text-xs px-5 py-1.5 rounded-lg transition disabled:opacity-50'
+          >
+            {loading ? 'Submitting...' : 'Submit Rating'}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -128,6 +216,9 @@ const OrderCard = ({ order, onClick }) => {
           </div>
         </div>
       </div>
+      {order?.orderStatus === 'Delivered' && (
+        <RateOrderSection order={order} />
+      )}
     </div>
   )
 }
