@@ -17,6 +17,7 @@ const AddToCartButton = ({ data }) => {
   const [isAvailableCart, setIsAvailableCart] = useState(false)
   const [qty, setQty] = useState(0)
   const [cartItemDetails, setCartItemsDetails] = useState()
+  const [bounce, setBounce] = useState(false)
   const navigate = useNavigate()
 
   const handleADDTocart = async (e) => {
@@ -56,50 +57,61 @@ const AddToCartButton = ({ data }) => {
     setCartItemsDetails(product)
   }, [data, cartItem])
 
+  const triggerBounce = () => {
+    setBounce(true)
+    setTimeout(() => setBounce(false), 300)
+  }
+
   const increaseQty = async (e) => {
     e.preventDefault()
     e.stopPropagation()
+    triggerBounce()
     const response = await updateCartItem(cartItemDetails?._id, qty + 1)
-    if (response.success) toast.success('Item added')
+    if (response.success) toast.success('Added')
   }
 
   const decreaseQty = async (e) => {
     e.preventDefault()
     e.stopPropagation()
+    triggerBounce()
     if (qty === 1) {
       deleteCartItem(cartItemDetails?._id)
     } else {
       const response = await updateCartItem(cartItemDetails?._id, qty - 1)
-      if (response.success) toast.success('Item removed')
+      if (response.success) toast.success('Removed')
     }
   }
 
   return (
     <div className="w-full" onClick={e => e.preventDefault()}>
       {isAvailableCart ? (
-        /* ── Quantity Counter — Blinkit style ── */
         <div className="flex items-center justify-between w-full gap-1">
           <button
             onClick={decreaseQty}
-            className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-90 transition-transform"
+            className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-75 transition-transform duration-150"
           >
             <FaMinus size={11} />
           </button>
-          <span className="flex-1 text-center font-bold text-primary text-base select-none">
+
+          <span
+            key={qty}
+            className={`flex-1 text-center font-bold text-primary text-base select-none transition-all ${bounce ? 'scale-125' : 'scale-100'}`}
+            style={{ transition: 'transform 0.15s ease' }}
+          >
             {qty}
           </span>
+
           <button
             onClick={increaseQty}
-            className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-90 transition-transform"
+            className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-75 transition-transform duration-150"
           >
             <FaPlus size={11} />
           </button>
         </div>
       ) : (
-        /* ── ADD Button — Blinkit style ── */
         <button
           onClick={handleADDTocart}
-          className="border-2 border-primary text-primary bg-white w-full h-9 font-bold rounded-xl text-sm tracking-wide hover:bg-primary/5 active:scale-95 transition-all"
+          className="border-2 border-primary text-primary bg-white w-full h-9 font-bold rounded-xl text-sm tracking-wide hover:bg-primary hover:text-white active:scale-95 transition-all duration-150"
         >
           {loading ? <Loading /> : 'ADD'}
         </button>

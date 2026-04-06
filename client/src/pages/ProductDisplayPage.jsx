@@ -9,7 +9,7 @@ import {
   FaWhatsapp, FaLink, FaShareAlt,
   FaTruck, FaShieldAlt, FaMedal, FaBolt,
   FaMapMarkerAlt, FaCheckCircle, FaTimesCircle,
-  FaPalette, FaStar, FaRegStar
+  FaPalette, FaStar, FaRegStar, FaBell, FaCheckDouble
 } from 'react-icons/fa'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import Divider from '../components/Divider'
@@ -49,6 +49,7 @@ const ProductDisplayPage = () => {
 
   const [wishlisted, setWishlisted] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
+  const [notifyRequested, setNotifyRequested] = useState(false)
 
   const [selectedVariant, setSelectedVariant] = useState(null)
 
@@ -125,6 +126,19 @@ const ProductDisplayPage = () => {
       if (res.data.success) { setWishlisted(res.data.data.added); toast.success(res.data.message) }
     } catch (error) { AxiosToastError(error) }
   }
+
+  const handleNotifyMe = () => {
+    if (!user?._id) { toast.error('Please login to get notified'); return }
+    localStorage.setItem(`notify_stock_${data._id}`, '1')
+    setNotifyRequested(true)
+    toast.success("You'll be notified when it's back in stock!", { icon: '🔔' })
+  }
+
+  useEffect(() => {
+    if (data._id) {
+      setNotifyRequested(!!localStorage.getItem(`notify_stock_${data._id}`))
+    }
+  }, [data._id])
 
   const handleShare = (type) => {
     const url = window.location.href
@@ -299,13 +313,36 @@ const ProductDisplayPage = () => {
 
           {/* AddToCart on the right of price */}
           <div className='w-28 flex-shrink-0'>
-            {displayStock === 0 ? (
-              <div className='text-center text-xs text-red-500 font-semibold border border-red-200 rounded-xl py-2 px-2'>Out of Stock</div>
-            ) : (
-              <AddToCartButton data={data} />
-            )}
+            {displayStock !== 0 && <AddToCartButton data={data} />}
           </div>
         </div>
+
+        {/* Out of Stock + Notify Me */}
+        {displayStock === 0 && (
+          <div className='mb-4 rounded-2xl border-2 border-red-200 bg-red-50 px-4 py-4'>
+            <div className='flex items-center gap-2 mb-3'>
+              <span className='text-2xl'>🚫</span>
+              <div>
+                <p className='text-red-700 font-extrabold text-base uppercase tracking-wide'>Out of Stock</p>
+                <p className='text-red-500 text-xs'>This item is currently unavailable</p>
+              </div>
+            </div>
+            {notifyRequested ? (
+              <div className='flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2'>
+                <FaCheckDouble className='text-green-500' size={14} />
+                <p className='text-green-700 text-sm font-semibold'>You're on the notify list! We'll let you know.</p>
+              </div>
+            ) : (
+              <button
+                onClick={handleNotifyMe}
+                className='flex items-center gap-2 bg-white border-2 border-red-300 hover:border-red-500 hover:bg-red-50 text-red-600 font-bold text-sm px-4 py-2 rounded-xl transition-all active:scale-95 w-full justify-center'
+              >
+                <FaBell size={14} className='animate-bounce' />
+                Notify Me When Back in Stock
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Stock Warning */}
         {displayStock > 0 && displayStock <= 5 && (

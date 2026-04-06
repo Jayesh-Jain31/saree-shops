@@ -66,6 +66,15 @@ const CardProduct = ({ data, grid = false }) => {
             Only {data.stock} left!
           </div>
         )}
+
+        {/* Out of Stock overlay */}
+        {data.stock === 0 && (
+          <div className='absolute inset-0 bg-black/40 flex flex-col items-center justify-center'>
+            <div className='bg-red-600 text-white font-extrabold text-xs px-3 py-1.5 rounded-lg shadow-lg tracking-widest uppercase'>
+              Out of Stock
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Content ── */}
@@ -108,7 +117,9 @@ const CardProduct = ({ data, grid = false }) => {
           </div>
           <div className='w-20 flex-shrink-0'>
             {data.stock === 0 ? (
-              <p className='text-red-400 text-[10px] text-center font-medium'>Out of stock</p>
+              <div className='bg-red-50 border border-red-200 text-red-600 text-[10px] font-extrabold text-center py-1.5 rounded-lg tracking-wide uppercase'>
+                Sold Out
+              </div>
             ) : (
               <AddToCartButton data={data} />
             )}
