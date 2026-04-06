@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useGlobalContext } from '../provider/GlobalProvider'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import AddAddress from '../components/AddAddress'
@@ -8,7 +8,7 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
-import { FaTag, FaTimes, FaCheckCircle, FaTruck } from 'react-icons/fa'
+import { FaTag, FaTimes, FaCheckCircle, FaTruck, FaMapMarkerAlt } from 'react-icons/fa'
 import { MdDeliveryDining } from 'react-icons/md'
 import { addNotification } from '../components/NotificationBell'
 
@@ -30,10 +30,12 @@ const loadRazorpayScript = () => {
 const CheckoutPage = () => {
   const { notDiscountTotalPrice, totalPrice, totalQty, fetchCartItem, fetchOrder } = useGlobalContext()
   const [openAddress, setOpenAddress] = useState(false)
+  const [showAddressPopup, setShowAddressPopup] = useState(false)
   const addressList = useSelector(state => state.addresses.addressList)
   const [selectAddress, setSelectAddress] = useState(0)
   const cartItemsList = useSelector(state => state.cartItem.cart)
   const navigate = useNavigate()
+  const addressSectionRef = useRef(null)
 
   const [deliveryInfo, setDeliveryInfo] = useState(null)
   const [deliveryLoading, setDeliveryLoading] = useState(false)
@@ -103,8 +105,9 @@ const CheckoutPage = () => {
   }
 
   const handleCashOnDelivery = async () => {
-    if (!addressList[selectAddress]?._id) {
-      toast.error('Please select a delivery address before placing your order')
+    const selectedAddr = addressList[selectAddress]
+    if (!selectedAddr?._id || !selectedAddr?.status) {
+      setShowAddressPopup(true)
       return
     }
     try {
@@ -132,8 +135,9 @@ const CheckoutPage = () => {
   }
 
   const handleRazorpayPayment = async () => {
-    if (!addressList[selectAddress]?._id) {
-      toast.error('Please select a delivery address before proceeding to payment')
+    const selectedAddr = addressList[selectAddress]
+    if (!selectedAddr?._id || !selectedAddr?.status) {
+      setShowAddressPopup(true)
       return
     }
     try {
@@ -228,17 +232,18 @@ const CheckoutPage = () => {
       <div className='container mx-auto p-4 flex flex-col lg:flex-row w-full gap-5 justify-between'>
 
         {/* Address section */}
-        <div className='w-full'>
+        <div className='w-full' ref={addressSectionRef}>
           <h3 className='text-lg font-semibold'>Choose your address</h3>
           <div className='bg-white p-2 grid gap-4'>
             {addressList.map((address, index) => (
               <label key={index} htmlFor={"address" + index} className={!address.status ? "hidden" : ""}>
-                <div className='border rounded p-3 flex gap-3 hover:bg-blue-50 cursor-pointer'>
+                <div className={`border rounded p-3 flex gap-3 cursor-pointer transition-colors ${String(selectAddress) === String(index) ? 'bg-blue-50 border-blue-400' : 'hover:bg-blue-50'}`}>
                   <div>
                     <input
                       id={"address" + index}
                       type='radio'
                       value={index}
+                      checked={String(selectAddress) === String(index)}
                       onChange={(e) => setSelectAddress(e.target.value)}
                       name='address'
                     />
@@ -406,6 +411,49 @@ const CheckoutPage = () => {
 
       {openAddress && (
         <AddAddress close={() => setOpenAddress(false)} />
+      )}
+
+      {/* Address Required Popup */}
+      {showAddressPopup && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'>
+          <div className='bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col items-center gap-4'>
+            <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center'>
+              <FaMapMarkerAlt className='text-red-500 text-2xl' />
+            </div>
+            <h2 className='text-lg font-bold text-gray-800 text-center'>Delivery Address Required</h2>
+            <p className='text-sm text-gray-500 text-center'>
+              Please select or add a delivery address before placing your order.
+            </p>
+            <div className='w-full flex flex-col gap-3 mt-2'>
+              {addressList.filter(a => a.status).length > 0 ? (
+                <button
+                  onClick={() => {
+                    setShowAddressPopup(false)
+                    addressSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }}
+                  className='w-full py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors'
+                >
+                  Select an Address
+                </button>
+              ) : null}
+              <button
+                onClick={() => {
+                  setShowAddressPopup(false)
+                  setOpenAddress(true)
+                }}
+                className='w-full py-3 border-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white font-semibold rounded-xl transition-colors'
+              >
+                + Add New Address
+              </button>
+              <button
+                onClick={() => setShowAddressPopup(false)}
+                className='w-full py-2 text-gray-400 hover:text-gray-600 text-sm transition-colors'
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   )
