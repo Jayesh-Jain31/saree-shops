@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { valideURLConvert } from '../utils/valideURLConvert'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
 import AddToCartButton from './AddToCartButton'
+import { FaStar, FaRegStar } from 'react-icons/fa'
 
 const CardProduct = ({ data, grid = false }) => {
   const url = `/product/${valideURLConvert(data.name)}-${data._id}`
@@ -77,6 +78,20 @@ const CardProduct = ({ data, grid = false }) => {
         {/* Unit */}
         {data.unit && (
           <p className='text-[11px] text-gray-400'>{data.unit}</p>
+        )}
+
+        {/* Star Rating */}
+        {data.avgRating > 0 && (
+          <div className='flex items-center gap-1'>
+            <div className='flex gap-0.5'>
+              {[1,2,3,4,5].map(s => (
+                s <= Math.round(data.avgRating)
+                  ? <FaStar key={s} size={10} className='text-yellow-400' />
+                  : <FaRegStar key={s} size={10} className='text-gray-300' />
+              ))}
+            </div>
+            <span className='text-[10px] text-gray-500 font-medium'>{data.avgRating} ({data.reviewCount})</span>
+          </div>
         )}
 
         {/* Price + Add */}

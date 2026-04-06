@@ -1,4 +1,5 @@
 import ReviewModel from "../models/review.model.js";
+import ProductModel from "../models/product.model.js";
 
 export async function addReviewController(request, response) {
     try {
@@ -19,11 +20,19 @@ export async function addReviewController(request, response) {
             existing.rating = rating
             existing.comment = comment || ""
             await existing.save()
-            return response.json({ message: "Review updated", data: existing, error: false, success: true })
+        } else {
+            await ReviewModel.create({ userId, productId, rating, comment: comment || "" })
         }
 
-        const review = await ReviewModel.create({ userId, productId, rating, comment: comment || "" })
-        return response.json({ message: "Review added", data: review, error: false, success: true })
+        // Recalculate and sync avgRating + reviewCount to product
+        const allReviews = await ReviewModel.find({ productId })
+        const reviewCount = allReviews.length
+        const avgRating = reviewCount > 0
+            ? Math.round((allReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount) * 10) / 10
+            : 0
+        await ProductModel.findByIdAndUpdate(productId, { avgRating, reviewCount })
+
+        return response.json({ message: existing ? "Review updated" : "Review added", error: false, success: true })
 
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false })

@@ -9,7 +9,7 @@ import {
   FaWhatsapp, FaLink, FaShareAlt,
   FaTruck, FaShieldAlt, FaMedal, FaBolt,
   FaMapMarkerAlt, FaCheckCircle, FaTimesCircle,
-  FaPalette
+  FaPalette, FaStar, FaRegStar
 } from 'react-icons/fa'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import Divider from '../components/Divider'
@@ -223,6 +223,24 @@ const ProductDisplayPage = () => {
         {/* Name */}
         <h1 className='text-xl font-bold text-gray-900 lg:text-2xl leading-tight'>{data.name}</h1>
         {data.unit && <p className='text-sm text-gray-500 mt-0.5'>{data.unit}</p>}
+
+        {/* Star Rating Display */}
+        {data.avgRating > 0 && (
+          <div className='flex items-center gap-2 mt-1.5'>
+            <div className='flex items-center gap-1 bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded-full'>
+              <span>{data.avgRating}</span>
+              <FaStar size={10} />
+            </div>
+            <div className='flex gap-0.5'>
+              {[1,2,3,4,5].map(s => (
+                s <= Math.round(data.avgRating)
+                  ? <FaStar key={s} size={13} className='text-yellow-400' />
+                  : <FaRegStar key={s} size={13} className='text-gray-300' />
+              ))}
+            </div>
+            <span className='text-xs text-gray-500'>{data.reviewCount} rating{data.reviewCount !== 1 ? 's' : ''}</span>
+          </div>
+        )}
 
         {/* Social proof — live viewing count */}
         {viewingCount > 0 && (
