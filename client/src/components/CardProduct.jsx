@@ -5,58 +5,61 @@ import { valideURLConvert } from '../utils/valideURLConvert'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
 import AddToCartButton from './AddToCartButton'
 
-const CardProduct = ({data}) => {
-    const url = `/product/${valideURLConvert(data.name)}-${data._id}`
+const CardProduct = ({ data }) => {
+  const url = `/product/${valideURLConvert(data.name)}-${data._id}`
 
   return (
-    <Link to={url} className='border py-2 lg:p-4 grid gap-1 lg:gap-3 min-w-36 lg:min-w-52 rounded cursor-pointer bg-white' >
-      <div className='min-h-20 w-full max-h-24 lg:max-h-32 rounded overflow-hidden'>
-            <img
-                src={data.image[0]}
-                className='w-full h-full object-scale-down lg:scale-125'
-            />
+    <Link to={url} className='border rounded-xl bg-white flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow min-w-36 lg:min-w-52'>
+
+      {/* Image — fixed square container so all products look uniform */}
+      <div className='w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden p-2'>
+        <img
+          src={data.image[0]}
+          alt={data.name}
+          className='w-full h-full object-contain'
+        />
       </div>
-      <div className='flex items-center gap-1'>
-        <div className='rounded text-xs w-fit p-[1px] px-2 text-green-600 bg-green-50'>
-              10 min
-        </div>
-        <div>
-            {
-              Boolean(data.discount) && (
-                <p className='text-green-600 bg-green-100 px-2 w-fit text-xs rounded-full'>{data.discount}% discount</p>
-              )
-            }
-        </div>
+
+      {/* Badges */}
+      <div className='flex items-center gap-1 px-2 pt-2 flex-wrap'>
+        <span className='text-xs text-green-600 bg-green-50 rounded px-2 py-0.5'>10 min</span>
+        {Boolean(data.discount) && (
+          <span className='text-xs text-green-600 bg-green-100 rounded-full px-2 py-0.5'>
+            {data.discount}% discount
+          </span>
+        )}
       </div>
-      <div className='px-2 lg:px-0 font-medium text-ellipsis text-sm lg:text-base line-clamp-2'>
+
+      {/* Name */}
+      <div className='px-2 pt-1 font-medium text-sm lg:text-base line-clamp-2 flex-1'>
         {data.name}
       </div>
-      <div className='w-fit gap-1 px-2 lg:px-0 text-sm lg:text-base'>
+
+      {/* Unit */}
+      <div className='px-2 text-xs text-gray-500'>
         {data.unit}
       </div>
 
+      {/* Low stock warning */}
       {data.stock > 0 && data.stock <= 5 && (
-        <div className='px-2 lg:px-0'>
+        <div className='px-2 mt-1'>
           <p className='text-orange-600 bg-orange-50 px-2 py-0.5 text-[10px] rounded-full w-fit font-semibold'>
             Only {data.stock} left!
           </p>
         </div>
       )}
 
-      <div className='px-2 lg:px-0 flex items-center justify-between gap-1 lg:gap-3 text-sm lg:text-base'>
-        <div className='flex items-center gap-1'>
-          <div className='font-semibold'>
-              {DisplayPriceInRupees(pricewithDiscount(data.price,data.discount))}
-          </div>
-        </div>
-        <div className=''>
-          {
-            data.stock == 0 ? (
-              <p className='text-red-500 text-sm text-center'>Out of stock</p>
-            ) : (
-              <AddToCartButton data={data} />
-            )
-          }
+      {/* Price + Add button */}
+      <div className='px-2 pb-2 pt-1 flex items-center justify-between gap-1'>
+        <span className='font-semibold text-sm lg:text-base'>
+          {DisplayPriceInRupees(pricewithDiscount(data.price, data.discount))}
+        </span>
+        <div>
+          {data.stock === 0 ? (
+            <p className='text-red-500 text-xs text-center'>Out of stock</p>
+          ) : (
+            <AddToCartButton data={data} />
+          )}
         </div>
       </div>
 
