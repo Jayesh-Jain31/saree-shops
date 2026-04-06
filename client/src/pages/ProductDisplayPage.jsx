@@ -4,12 +4,14 @@ import SummaryApi from '../common/SummaryApi'
 import Axios from '../utils/Axios'
 import AxiosToastError from '../utils/AxiosToastError'
 import { FaAngleRight, FaAngleLeft } from "react-icons/fa6"
-import { FaHeart, FaRegHeart, FaStar, FaRegStar, FaWhatsapp, FaLink, FaShareAlt } from 'react-icons/fa'
+import {
+  FaHeart, FaRegHeart, FaStar, FaRegStar,
+  FaWhatsapp, FaLink, FaShareAlt,
+  FaTruck, FaShieldAlt, FaMedal, FaBolt,
+  FaMapMarkerAlt, FaCheckCircle, FaTimesCircle
+} from 'react-icons/fa'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import Divider from '../components/Divider'
-import image1 from '../assets/minute_delivery.png'
-import image2 from '../assets/Best_Prices_Offers.png'
-import image3 from '../assets/Wide_Assortment.png'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
 import AddToCartButton from '../components/AddToCartButton'
 import toast from 'react-hot-toast'
@@ -20,36 +22,33 @@ const addToRecentlyViewed = (product) => {
     const stored = JSON.parse(localStorage.getItem('recentlyViewed') || '[]')
     const filtered = stored.filter(p => p._id !== product._id)
     filtered.unshift({
-      _id: product._id,
-      name: product.name,
-      image: product.image?.[0],
-      price: product.price,
-      discount: product.discount,
-      unit: product.unit,
+      _id: product._id, name: product.name,
+      image: product.image?.[0], price: product.price, discount: product.discount, unit: product.unit,
     })
     localStorage.setItem('recentlyViewed', JSON.stringify(filtered.slice(0, 10)))
   } catch (e) {}
 }
 
-const StarRating = ({ rating, onRate, interactive = false, size = 16 }) => {
-  return (
-    <div className='flex gap-0.5'>
-      {[1, 2, 3, 4, 5].map(star => (
-        <button
-          key={star}
-          onClick={() => interactive && onRate?.(star)}
-          className={interactive ? 'cursor-pointer hover:scale-110 transition-transform' : 'cursor-default'}
-          type='button'
-        >
-          {star <= rating
-            ? <FaStar size={size} className='text-yellow-400' />
-            : <FaRegStar size={size} className='text-gray-300' />
-          }
-        </button>
-      ))}
-    </div>
-  )
-}
+const StarRating = ({ rating, onRate, interactive = false, size = 16 }) => (
+  <div className='flex gap-0.5'>
+    {[1, 2, 3, 4, 5].map(star => (
+      <button key={star} onClick={() => interactive && onRate?.(star)}
+        className={interactive ? 'cursor-pointer hover:scale-110 transition-transform' : 'cursor-default'}
+        type='button'>
+        {star <= rating
+          ? <FaStar size={size} className='text-yellow-400' />
+          : <FaRegStar size={size} className='text-gray-300' />}
+      </button>
+    ))}
+  </div>
+)
+
+const TRUST_BADGES = [
+  { icon: FaTruck,      label: 'Cash on Delivery', sub: 'Available',  bg: 'bg-green-50',  icon_color: 'text-green-600'  },
+  { icon: FaShieldAlt,  label: 'Secure Payment',   sub: '100% Safe',  bg: 'bg-blue-50',   icon_color: 'text-blue-600'   },
+  { icon: FaMedal,      label: 'High Quality',      sub: 'Assured',    bg: 'bg-yellow-50', icon_color: 'text-yellow-600' },
+  { icon: FaBolt,       label: 'Fast Delivery',     sub: 'On Time',    bg: 'bg-purple-50', icon_color: 'text-purple-600' },
+]
 
 const ProductDisplayPage = () => {
   const params = useParams()
@@ -69,42 +68,37 @@ const ProductDisplayPage = () => {
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
 
+  const [pincode, setPincode] = useState('')
+  const [pincodeResult, setPincodeResult] = useState(null)
+  const [checkingPincode, setCheckingPincode] = useState(false)
+  const [outsideDeliveryTime, setOutsideDeliveryTime] = useState('3-4 days')
+
   const fetchProductDetails = async () => {
     try {
-      const response = await Axios({
-        ...SummaryApi.getProductDetails,
-        data: { productId: productId }
-      })
-      const { data: responseData } = response
-      if (responseData.success) {
-        setData(responseData.data)
-        addToRecentlyViewed(responseData.data)
+      const response = await Axios({ ...SummaryApi.getProductDetails, data: { productId } })
+      if (response.data.success) {
+        setData(response.data.data)
+        addToRecentlyViewed(response.data.data)
       }
-    } catch (error) {
-      AxiosToastError(error)
-    } finally {
-      setLoading(false)
-    }
+    } catch (error) { AxiosToastError(error) }
+    finally { setLoading(false) }
   }
 
   const fetchReviews = async () => {
     try {
-      const response = await Axios({ ...SummaryApi.getProductReviews, data: { productId } })
-      if (response.data.success) {
-        setReviews(response.data.data.reviews)
-        setAvgRating(response.data.data.avgRating)
-        setTotalReviews(response.data.data.totalReviews)
+      const res = await Axios({ ...SummaryApi.getProductReviews, data: { productId } })
+      if (res.data.success) {
+        setReviews(res.data.data.reviews)
+        setAvgRating(res.data.data.avgRating)
+        setTotalReviews(res.data.data.totalReviews)
       }
     } catch (e) {}
   }
 
   const checkWishlist = async () => {
     try {
-      const response = await Axios({ ...SummaryApi.getWishlist })
-      if (response.data.success) {
-        const found = response.data.data.some(w => w.productId?._id === productId)
-        setWishlisted(found)
-      }
+      const res = await Axios({ ...SummaryApi.getWishlist })
+      if (res.data.success) setWishlisted(res.data.data.some(w => w.productId?._id === productId))
     } catch (e) {}
   }
 
@@ -112,89 +106,78 @@ const ProductDisplayPage = () => {
     fetchProductDetails()
     fetchReviews()
     if (user?._id) checkWishlist()
+    Axios({ ...SummaryApi.getSettings }).then(res => {
+      if (res.data.success) setOutsideDeliveryTime(res.data.data?.outside_delivery_time || '3-4 days')
+    }).catch(() => {})
   }, [params])
 
   useEffect(() => {
     if (!data.image || data.image.length <= 1) return
-    const interval = setInterval(() => {
-      setImage(prev => (prev + 1) % data.image.length)
-    }, 3500)
-    return () => clearInterval(interval)
+    const iv = setInterval(() => setImage(prev => (prev + 1) % data.image.length), 3500)
+    return () => clearInterval(iv)
   }, [data.image])
 
-  const handleScrollRight = () => { imageContainer.current.scrollLeft += 100 }
-  const handleScrollLeft = () => { imageContainer.current.scrollLeft -= 100 }
+  const handleCheckPincode = async () => {
+    const cleaned = pincode.trim()
+    if (!cleaned || cleaned.length < 6) { toast.error('Enter a valid 6-digit pincode'); return }
+    setCheckingPincode(true)
+    setPincodeResult(null)
+    try {
+      const res = await Axios({ ...SummaryApi.checkPincode, data: { pincode: cleaned } })
+      if (res.data.success) setPincodeResult(res.data.data)
+    } catch (e) {}
+    setCheckingPincode(false)
+  }
 
   const toggleWishlist = async () => {
     if (!user?._id) { toast.error('Please login first'); return }
     try {
-      const response = await Axios({ ...SummaryApi.toggleWishlist, data: { productId: data._id } })
-      if (response.data.success) {
-        setWishlisted(response.data.data.added)
-        toast.success(response.data.message)
-      }
-    } catch (error) {
-      AxiosToastError(error)
-    }
+      const res = await Axios({ ...SummaryApi.toggleWishlist, data: { productId: data._id } })
+      if (res.data.success) { setWishlisted(res.data.data.added); toast.success(res.data.message) }
+    } catch (error) { AxiosToastError(error) }
   }
 
   const handleSubmitReview = async () => {
     if (!user?._id) { toast.error('Please login first'); return }
     if (!myRating) { toast.error('Please select a rating'); return }
     try {
-      const response = await Axios({
-        ...SummaryApi.addReview,
-        data: { productId, rating: myRating, comment: myComment }
-      })
-      if (response.data.success) {
-        toast.success(response.data.message)
-        setShowReviewForm(false)
-        setMyRating(0)
-        setMyComment('')
+      const res = await Axios({ ...SummaryApi.addReview, data: { productId, rating: myRating, comment: myComment } })
+      if (res.data.success) {
+        toast.success(res.data.message)
+        setShowReviewForm(false); setMyRating(0); setMyComment('')
         fetchReviews()
       }
-    } catch (error) {
-      AxiosToastError(error)
-    }
+    } catch (error) { AxiosToastError(error) }
   }
 
   const handleShare = (type) => {
     const url = window.location.href
-    if (type === 'copy') {
-      navigator.clipboard.writeText(url)
-      toast.success('Link copied!')
-    } else if (type === 'whatsapp') {
-      window.open(`https://wa.me/?text=${encodeURIComponent(`Check out ${data.name}: ${url}`)}`, '_blank')
-    }
+    if (type === 'copy') { navigator.clipboard.writeText(url); toast.success('Link copied!') }
+    else if (type === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(`Check out ${data.name}: ${url}`)}`, '_blank')
     setShowShareMenu(false)
   }
 
   return (
-    <section className='container mx-auto p-4 grid lg:grid-cols-2'>
-      <div className=''>
-        <div className='bg-white lg:min-h-[65vh] lg:max-h-[65vh] rounded-2xl min-h-72 max-h-72 h-full w-full relative overflow-hidden flex items-center justify-center p-4'>
+    <section className='container mx-auto p-4 grid lg:grid-cols-2 lg:gap-8'>
+
+      {/* ── Left: Images ── */}
+      <div>
+        <div className='bg-white rounded-2xl min-h-72 max-h-80 lg:min-h-[60vh] lg:max-h-[60vh] relative overflow-hidden flex items-center justify-center p-4 border'>
           <img
             key={image}
             src={data.image[image]}
-            className='w-full h-full object-contain animate-fadeIn'
+            className='w-full h-full object-contain'
             style={{ animation: 'fadeSlideIn 0.35s ease' }}
           />
-          {/* Wishlist & Share buttons */}
+          {/* Wishlist & Share */}
           <div className='absolute top-3 right-3 flex gap-2'>
-            <button
-              onClick={toggleWishlist}
-              className='w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 transition-transform'
-            >
-              {wishlisted
-                ? <FaHeart className='text-red-500' size={16} />
-                : <FaRegHeart className='text-gray-400' size={16} />
-              }
+            <button onClick={toggleWishlist}
+              className='w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 transition-transform border'>
+              {wishlisted ? <FaHeart className='text-red-500' size={16} /> : <FaRegHeart className='text-gray-400' size={16} />}
             </button>
             <div className='relative'>
-              <button
-                onClick={() => setShowShareMenu(!showShareMenu)}
-                className='w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 transition-transform'
-              >
+              <button onClick={() => setShowShareMenu(!showShareMenu)}
+                className='w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 transition-transform border'>
                 <FaShareAlt className='text-gray-500' size={14} />
               </button>
               {showShareMenu && (
@@ -209,156 +192,232 @@ const ProductDisplayPage = () => {
               )}
             </div>
           </div>
+          {/* Dot indicators */}
+          {data.image.length > 1 && (
+            <div className='absolute bottom-2 left-0 right-0 flex justify-center gap-1.5'>
+              {data.image.map((_, i) => (
+                <button key={i} onClick={() => setImage(i)}
+                  className={`rounded-full transition-all duration-300 ${i === image ? 'w-4 h-2 bg-primary' : 'w-2 h-2 bg-gray-300'}`} />
+              ))}
+            </div>
+          )}
         </div>
-        <div className='flex items-center justify-center gap-3 my-2'>
-          {data.image.map((img, index) => (
-            <div key={img + index + "point"} className={`bg-slate-200 w-3 h-3 lg:w-5 lg:h-5 rounded-full ${index === image && "bg-slate-300"}`}></div>
-          ))}
-        </div>
-        <div className='grid relative'>
-          <div ref={imageContainer} className='flex gap-4 z-10 relative w-full overflow-x-auto scrollbar-none'>
+
+        {/* Thumbnails */}
+        <div className='grid relative mt-2'>
+          <div ref={imageContainer} className='flex gap-2 z-10 relative w-full overflow-x-auto scrollbar-none'>
             {data.image.map((img, index) => (
-              <div className='w-20 h-20 min-h-20 min-w-20 cursor-pointer shadow-md' key={img + index}>
-                <img src={img} alt='min-product' onClick={() => setImage(index)} className='w-full h-full object-scale-down' />
-              </div>
+              <button key={img + index}
+                onClick={() => setImage(index)}
+                className={`w-16 h-16 min-w-16 rounded-xl overflow-hidden border-2 transition-all ${index === image ? 'border-primary' : 'border-transparent'}`}>
+                <img src={img} alt='' className='w-full h-full object-cover' />
+              </button>
             ))}
           </div>
           <div className='w-full -ml-3 h-full hidden lg:flex justify-between absolute items-center'>
-            <button onClick={handleScrollLeft} className='z-10 bg-white relative p-1 rounded-full shadow-lg'><FaAngleLeft /></button>
-            <button onClick={handleScrollRight} className='z-10 bg-white relative p-1 rounded-full shadow-lg'><FaAngleRight /></button>
+            <button onClick={() => imageContainer.current.scrollLeft -= 80} className='z-10 bg-white p-1 rounded-full shadow-lg'><FaAngleLeft /></button>
+            <button onClick={() => imageContainer.current.scrollLeft += 80} className='z-10 bg-white p-1 rounded-full shadow-lg'><FaAngleRight /></button>
           </div>
         </div>
 
+        {/* Desktop description */}
         <div className='my-4 hidden lg:grid gap-3'>
-          <div><p className='font-semibold'>Description</p><p className='text-base'>{data.description}</p></div>
-          <div><p className='font-semibold'>Unit</p><p className='text-base'>{data.unit}</p></div>
-          {data?.more_details && Object.keys(data?.more_details).map((element, index) => (
-            <div key={index}><p className='font-semibold'>{element}</p><p className='text-base'>{data?.more_details[element]}</p></div>
+          {data.description && (
+            <div>
+              <p className='font-semibold text-gray-700 mb-1'>Description</p>
+              <p className='text-sm text-gray-600 leading-relaxed'>{data.description}</p>
+            </div>
+          )}
+          {data.unit && (
+            <div><p className='font-semibold text-gray-700'>Unit</p><p className='text-sm text-gray-600'>{data.unit}</p></div>
+          )}
+          {data?.more_details && Object.keys(data.more_details).map((el, i) => (
+            <div key={i}><p className='font-semibold text-gray-700'>{el}</p><p className='text-sm text-gray-600'>{data.more_details[el]}</p></div>
           ))}
         </div>
       </div>
 
-      <div className='p-4 lg:pl-7 text-base lg:text-lg'>
-        <p className='bg-green-300 w-fit px-2 rounded-full'>10 Min</p>
-        <h2 className='text-lg font-semibold lg:text-3xl'>{data.name}</h2>
-        <p>{data.unit}</p>
+      {/* ── Right: Product Info ── */}
+      <div className='pt-2 lg:pt-0'>
 
-        {/* Rating summary */}
+        {/* Name + unit + rating */}
+        <h1 className='text-xl font-bold text-gray-900 lg:text-3xl leading-tight'>{data.name}</h1>
+        {data.unit && <p className='text-sm text-gray-500 mt-0.5'>{data.unit}</p>}
+
         {totalReviews > 0 && (
-          <div className='flex items-center gap-2 my-1'>
-            <StarRating rating={Math.round(avgRating)} size={14} />
-            <span className='text-sm text-gray-600'>{avgRating}</span>
-            <span className='text-xs text-gray-400'>({totalReviews} review{totalReviews !== 1 ? 's' : ''})</span>
+          <div className='flex items-center gap-2 mt-1'>
+            <div className='flex items-center gap-1 bg-green-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full'>
+              <span>{avgRating}</span>
+              <FaStar size={10} />
+            </div>
+            <span className='text-xs text-gray-500'>{totalReviews} review{totalReviews !== 1 ? 's' : ''}</span>
           </div>
         )}
 
         <Divider />
 
+        {/* Price */}
         <div>
-          <p>Price</p>
-          <div className='flex items-center gap-2 lg:gap-4'>
-            <div className='border border-green-600 px-4 py-2 rounded bg-green-50 w-fit'>
-              <p className='font-semibold text-lg lg:text-xl'>{DisplayPriceInRupees(pricewithDiscount(data.price, data.discount))}</p>
-            </div>
-            {data.discount && <p className='line-through'>{DisplayPriceInRupees(data.price)}</p>}
-            {data.discount && <p className="font-bold text-green-600 lg:text-2xl">{data.discount}% <span className='text-base text-neutral-500'>Discount</span></p>}
+          <p className='text-xs text-gray-500 uppercase tracking-wider mb-1'>Price</p>
+          <div className='flex items-center gap-3 flex-wrap'>
+            <span className='text-2xl font-bold text-gray-900'>
+              {DisplayPriceInRupees(pricewithDiscount(data.price, data.discount))}
+            </span>
+            {data.discount > 0 && (
+              <>
+                <span className='text-base text-gray-400 line-through'>{DisplayPriceInRupees(data.price)}</span>
+                <span className='bg-green-100 text-green-700 text-sm font-bold px-2 py-0.5 rounded-full'>{data.discount}% OFF</span>
+              </>
+            )}
           </div>
         </div>
 
         {/* Stock Warning */}
         {data.stock > 0 && data.stock <= 5 && (
-          <div className='my-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-sm text-orange-700 font-medium'>
-            Hurry! Only {data.stock} left in stock
+          <div className='mt-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-sm text-orange-700 font-medium flex items-center gap-2'>
+            <span className='text-orange-500'>⚡</span> Hurry! Only {data.stock} left in stock
           </div>
         )}
 
-        {data.stock === 0 ? (
-          <p className='text-lg text-red-500 my-2'>Out of Stock</p>
-        ) : (
-          <div className='my-4'>
+        {/* Add to Cart */}
+        <div className='my-4'>
+          {data.stock === 0 ? (
+            <div className='bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 font-semibold text-center'>
+              Out of Stock
+            </div>
+          ) : (
             <AddToCartButton data={data} />
-          </div>
-        )}
-
-        <h2 className='font-semibold'>Why shop from binkeyit?</h2>
-        <div>
-          <div className='flex items-center gap-4 my-4'>
-            <img src={image1} alt='superfast delivery' className='w-20 h-20' />
-            <div className='text-sm'>
-              <div className='font-semibold'>Superfast Delivery</div>
-              <p>Get your order delivered to your doorstep at the earliest from dark stores near you.</p>
-            </div>
-          </div>
-          <div className='flex items-center gap-4 my-4'>
-            <img src={image2} alt='Best prices offers' className='w-20 h-20' />
-            <div className='text-sm'>
-              <div className='font-semibold'>Best Prices & Offers</div>
-              <p>Best price destination with offers directly from the manufacturers.</p>
-            </div>
-          </div>
-          <div className='flex items-center gap-4 my-4'>
-            <img src={image3} alt='Wide Assortment' className='w-20 h-20' />
-            <div className='text-sm'>
-              <div className='font-semibold'>Wide Assortment</div>
-              <p>Choose from 5000+ products across food personal care, household & other categories.</p>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* Mobile description */}
-        <div className='my-4 grid gap-3 lg:hidden'>
-          <div><p className='font-semibold'>Description</p><p className='text-base'>{data.description}</p></div>
-          <div><p className='font-semibold'>Unit</p><p className='text-base'>{data.unit}</p></div>
-          {data?.more_details && Object.keys(data?.more_details).map((element, index) => (
-            <div key={index}><p className='font-semibold'>{element}</p><p className='text-base'>{data?.more_details[element]}</p></div>
+        {/* ── Pincode Checker ── */}
+        <div className='bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-4'>
+          <div className='flex items-center gap-2 mb-3'>
+            <FaMapMarkerAlt className='text-primary' size={15} />
+            <p className='font-semibold text-gray-800 text-sm'>Check Delivery for Your Area</p>
+          </div>
+          <div className='flex gap-2'>
+            <input
+              type='number'
+              value={pincode}
+              onChange={e => { setPincode(e.target.value); setPincodeResult(null) }}
+              onKeyDown={e => e.key === 'Enter' && handleCheckPincode()}
+              maxLength={6}
+              placeholder='Enter 6-digit pincode'
+              className='flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition'
+            />
+            <button
+              onClick={handleCheckPincode}
+              disabled={checkingPincode}
+              className='btn-primary px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60 transition-all'
+            >
+              {checkingPincode ? (
+                <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />
+              ) : 'CHECK'}
+            </button>
+          </div>
+
+          {/* Result */}
+          {pincodeResult && (
+            <div className={`mt-3 rounded-xl px-4 py-3 flex items-start gap-2.5 ${pincodeResult.available ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'}`}>
+              {pincodeResult.available ? (
+                <>
+                  <FaCheckCircle className='text-green-500 mt-0.5 flex-shrink-0' size={16} />
+                  <div>
+                    <p className='text-sm font-semibold text-green-700'>Delivery Available!</p>
+                    <p className='text-xs text-green-600 mt-0.5'>
+                      Estimated delivery: <strong>{pincodeResult.estimatedTime}</strong>
+                      {pincodeResult.zoneName ? ` · ${pincodeResult.zoneName}` : ''}
+                    </p>
+                    {pincodeResult.deliveryCharge === 0 ? (
+                      <p className='text-xs text-green-600'>🎉 Free Delivery</p>
+                    ) : (
+                      <p className='text-xs text-green-600'>Delivery charge: ₹{pincodeResult.deliveryCharge}</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <FaTimesCircle className='text-blue-500 mt-0.5 flex-shrink-0' size={16} />
+                  <div>
+                    <p className='text-sm font-semibold text-blue-700'>Standard Delivery</p>
+                    <p className='text-xs text-blue-600 mt-0.5'>
+                      Estimated delivery: <strong>{outsideDeliveryTime}</strong>
+                    </p>
+                    <p className='text-xs text-blue-500'>Delivery charges may apply</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Trust Badges ── */}
+        <div className='grid grid-cols-2 gap-2.5 mb-4'>
+          {TRUST_BADGES.map(({ icon: Icon, label, sub, bg, icon_color }) => (
+            <div key={label} className={`${bg} rounded-2xl px-3 py-3 flex items-center gap-2.5`}>
+              <div className='w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm flex-shrink-0'>
+                <Icon className={icon_color} size={18} />
+              </div>
+              <div>
+                <p className='text-xs font-bold text-gray-800 leading-tight'>{label}</p>
+                <p className='text-[11px] text-gray-500'>{sub}</p>
+              </div>
+            </div>
           ))}
         </div>
 
-        {/* Reviews Section */}
+        {/* Mobile description */}
+        <div className='grid gap-3 lg:hidden mb-4'>
+          {data.description && (
+            <div>
+              <p className='font-semibold text-gray-700 mb-1'>Description</p>
+              <p className='text-sm text-gray-600 leading-relaxed'>{data.description}</p>
+            </div>
+          )}
+          {data.unit && (
+            <div><p className='font-semibold text-gray-700'>Unit</p><p className='text-sm text-gray-600'>{data.unit}</p></div>
+          )}
+          {data?.more_details && Object.keys(data.more_details).map((el, i) => (
+            <div key={i}><p className='font-semibold text-gray-700'>{el}</p><p className='text-sm text-gray-600'>{data.more_details[el]}</p></div>
+          ))}
+        </div>
+
+        {/* ── Reviews ── */}
         <Divider />
         <div className='my-4'>
           <div className='flex items-center justify-between mb-3'>
-            <h2 className='font-semibold text-lg'>Reviews & Ratings</h2>
+            <h2 className='font-bold text-gray-800 text-base'>Reviews & Ratings</h2>
             {user?._id && (
-              <button
-                onClick={() => setShowReviewForm(!showReviewForm)}
-                className='text-sm text-green-600 font-semibold hover:underline'
-              >
+              <button onClick={() => setShowReviewForm(!showReviewForm)}
+                className='text-sm text-primary font-semibold hover:underline'>
                 {showReviewForm ? 'Cancel' : 'Write a Review'}
               </button>
             )}
           </div>
 
-          {/* Review Form */}
           {showReviewForm && (
-            <div className='bg-gray-50 border rounded-xl p-4 mb-4'>
+            <div className='bg-gray-50 border rounded-2xl p-4 mb-4'>
               <p className='text-sm font-medium mb-2'>Your Rating</p>
-              <StarRating rating={myRating} onRate={setMyRating} interactive={true} size={24} />
-              <textarea
-                value={myComment}
-                onChange={(e) => setMyComment(e.target.value)}
+              <StarRating rating={myRating} onRate={setMyRating} interactive size={24} />
+              <textarea value={myComment} onChange={e => setMyComment(e.target.value)}
                 placeholder='Write your review (optional)...'
-                className='w-full mt-3 border rounded-lg p-3 text-sm focus:outline-none focus:border-green-500 resize-none'
-                rows={3}
-              />
-              <button
-                onClick={handleSubmitReview}
-                className='mt-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700'
-              >
+                className='w-full mt-3 border rounded-xl p-3 text-sm focus:outline-none focus:border-primary resize-none' rows={3} />
+              <button onClick={handleSubmitReview}
+                className='mt-2 btn-primary px-4 py-2 rounded-xl text-sm font-semibold'>
                 Submit Review
               </button>
             </div>
           )}
 
-          {/* Reviews List */}
           {reviews.length === 0 ? (
             <p className='text-sm text-gray-400'>No reviews yet. Be the first to review!</p>
           ) : (
             <div className='space-y-3'>
-              {reviews.slice(0, 5).map((review) => (
+              {reviews.slice(0, 5).map(review => (
                 <div key={review._id} className='bg-gray-50 rounded-xl p-3'>
                   <div className='flex items-center gap-2 mb-1'>
-                    <div className='w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700'>
+                    <div className='w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary'>
                       {review.userId?.name?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                     <span className='text-sm font-medium text-gray-700'>{review.userId?.name || 'User'}</span>

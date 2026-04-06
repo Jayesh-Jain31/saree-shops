@@ -46,6 +46,8 @@ const SiteSettings = () => {
   const [announcementText, setAnnouncementText] = useState('Free delivery above ₹999')
   const [announcementEnabled, setAnnouncementEnabled] = useState(false)
   const [savingAnnouncement, setSavingAnnouncement] = useState(false)
+  const [outsideDeliveryTime, setOutsideDeliveryTime] = useState('3-4 days')
+  const [savingOutsideDelivery, setSavingOutsideDelivery] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingTheme, setSavingTheme] = useState(false)
@@ -69,6 +71,7 @@ const SiteSettings = () => {
           setCodEnabled(s.cod_enabled !== 'false')
           setAnnouncementText(s.announcement_text || 'Free delivery above ₹999')
           setAnnouncementEnabled(s.announcement_enabled === 'true')
+          setOutsideDeliveryTime(s.outside_delivery_time || '3-4 days')
 
           const policies = {}
           POLICIES.forEach(p => { policies[p.key] = s[p.key] || '' })
@@ -220,6 +223,18 @@ const SiteSettings = () => {
   }
 
   const handleToggleMaintenance = () => setMaintenanceMode(prev => !prev)
+
+  const handleSaveOutsideDelivery = async () => {
+    setSavingOutsideDelivery(true)
+    try {
+      await saveSetting('outside_delivery_time', outsideDeliveryTime || '3-4 days')
+      toast.success('Outside delivery time saved!')
+    } catch {
+      toast.error('Failed to save')
+    } finally {
+      setSavingOutsideDelivery(false)
+    }
+  }
 
   const handleSaveAnnouncement = async () => {
     setSavingAnnouncement(true)
@@ -551,6 +566,40 @@ const SiteSettings = () => {
             >
               {savingReturn ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
               {savingReturn ? 'Saving...' : 'Save Return Period'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Outside Delivery Time Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-blue-100'>
+              <FaBan className='text-blue-500 rotate-45' size={18} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Outside Delivery Time</h2>
+              <p className='text-xs text-gray-500'>Shown on product page when pincode is not in any delivery zone</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-3'>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Delivery Time Label</label>
+              <input
+                type='text'
+                value={outsideDeliveryTime}
+                onChange={e => setOutsideDeliveryTime(e.target.value)}
+                placeholder='3-4 days'
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition'
+              />
+              <p className='text-xs text-gray-400 mt-1'>Example: "3-4 days", "5-7 business days", "2-5 days"</p>
+            </div>
+            <button
+              onClick={handleSaveOutsideDelivery}
+              disabled={savingOutsideDelivery}
+              className='w-full flex items-center justify-center gap-2 btn-primary font-semibold rounded-xl py-3 transition-colors disabled:opacity-50'
+            >
+              {savingOutsideDelivery ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
+              {savingOutsideDelivery ? 'Saving...' : 'Save Delivery Time'}
             </button>
           </div>
         </div>
