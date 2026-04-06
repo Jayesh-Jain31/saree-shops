@@ -32,6 +32,7 @@ import DeliveryZoneAdmin from "../pages/DeliveryZoneAdmin"
 import BannerAdmin from "../pages/BannerAdmin";
 import MyReturns from "../pages/MyReturns";
 import AdminReturns from "../pages/AdminReturns";
+import Wallet from "../pages/Wallet";
 
 const router = createBrowserRouter([
     {
@@ -137,6 +138,10 @@ const router = createBrowserRouter([
                     {
                         path : 'admin-returns',
                         element : <AdminPermision><AdminReturns/></AdminPermision>
+                    },
+                    {
+                        path : 'wallet',
+                        element : <Wallet/>
                     }
                 ]
             },

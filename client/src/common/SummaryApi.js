@@ -70,6 +70,9 @@ const SummaryApi = {
     getReturnByOrderId : { url : '/api/return/order', method : 'get' },
     getAllReturnsAdmin : { url : '/api/return/admin/all', method : 'get' },
     updateReturnStatus : { url : '/api/return/admin/update', method : 'put' },
+    getWallet : { url : '/api/wallet/get', method : 'get' },
+    debitWallet : { url : '/api/wallet/debit', method : 'post' },
+    getAdminOrderDetail : { url : '/api/analytics/order-detail', method : 'get' },
 }
 
 export default SummaryApi

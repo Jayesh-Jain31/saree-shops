@@ -14,6 +14,7 @@ import {
   MdOutlineDeliveryDining, MdOutlineImage
 } from 'react-icons/md'
 import { FiPackage, FiHeart, FiMapPin, FiLogOut, FiUser, FiRefreshCw } from 'react-icons/fi'
+import { MdAccountBalanceWallet } from 'react-icons/md'
 import isAdmin from '../utils/isAdmin'
 
 const UserMenu = ({ close }) => {
@@ -94,6 +95,7 @@ const UserMenu = ({ close }) => {
       <div className='text-sm grid gap-0.5 px-1'>
         <MenuItem to="/dashboard/myorders" icon={FiPackage} label="My Orders" />
         <MenuItem to="/dashboard/my-returns" icon={FiRefreshCw} label="My Returns" color="text-orange-400" />
+        <MenuItem to="/dashboard/wallet" icon={MdAccountBalanceWallet} label="My Wallet" color="text-green-500" />
         <MenuItem to="/dashboard/wishlist" icon={FiHeart} label="My Wishlist" color="text-red-400" />
         <MenuItem to="/dashboard/address" icon={FiMapPin} label="Saved Addresses" color="text-blue-400" />
         <button

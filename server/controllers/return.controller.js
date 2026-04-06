@@ -1,5 +1,22 @@
 import ReturnModel from "../models/return.model.js"
 import OrderModel from "../models/order.model.js"
+import WalletModel from "../models/wallet.model.js"
+import Razorpay from "../config/razorpay.js"
+
+const creditWalletInternal = async (userId, amount, description, reference) => {
+    let wallet = await WalletModel.findOne({ userId })
+    if (!wallet) wallet = await WalletModel.create({ userId, balance: 0, transactions: [] })
+    wallet.balance += amount
+    wallet.transactions.unshift({
+        type: 'credit',
+        amount,
+        description,
+        reference: reference || '',
+        balanceAfter: wallet.balance
+    })
+    await wallet.save()
+    return wallet
+}
 
 export const createReturnRequest = async (req, res) => {
     try {
@@ -24,6 +41,8 @@ export const createReturnRequest = async (req, res) => {
             return res.status(400).json({ message: "Return request already submitted for this order", error: true, success: false })
         }
 
+        const isCOD = order.payment_status?.toUpperCase() === 'CASH ON DELIVERY'
+
         const returnReq = await ReturnModel.create({
             userId,
             orderId,
@@ -31,7 +50,9 @@ export const createReturnRequest = async (req, res) => {
             items: order.items,
             reason,
             description: description || '',
-            totalAmt: order.totalAmt
+            totalAmt: order.totalAmt,
+            paymentMethod: isCOD ? 'COD' : 'ONLINE',
+            paymentId: order.paymentId || ''
         })
 
         return res.status(201).json({ message: "Return request submitted successfully", data: returnReq, error: false, success: true })
@@ -81,15 +102,91 @@ export const updateReturnStatus = async (req, res) => {
         const { returnId } = req.params
         const { status, adminNote, refundAmount } = req.body
 
-        const updated = await ReturnModel.findByIdAndUpdate(returnId, {
-            ...(status && { status }),
-            ...(adminNote !== undefined && { adminNote }),
-            ...(refundAmount !== undefined && { refundAmount })
-        }, { new: true })
+        const returnReq = await ReturnModel.findById(returnId)
+        if (!returnReq) return res.status(404).json({ message: "Return request not found", error: true, success: false })
 
-        if (!updated) return res.status(404).json({ message: "Return request not found", error: true, success: false })
+        const prevStatus = returnReq.status
+        const newStatus = status || prevStatus
+        const finalRefundAmount = parseFloat(refundAmount) || returnReq.totalAmt
 
-        return res.json({ message: "Return request updated", data: updated, error: false, success: true })
+        returnReq.status = newStatus
+        if (adminNote !== undefined) returnReq.adminNote = adminNote
+        if (refundAmount !== undefined) returnReq.refundAmount = finalRefundAmount
+
+        let autoAction = null
+
+        if (newStatus === 'Approved' && prevStatus !== 'Approved') {
+            const order = await OrderModel.findById(returnReq.orderId)
+            const isCOD = returnReq.paymentMethod === 'COD' ||
+                order?.payment_status?.toUpperCase() === 'CASH ON DELIVERY'
+
+            if (isCOD) {
+                try {
+                    await creditWalletInternal(
+                        returnReq.userId,
+                        finalRefundAmount,
+                        `Refund for order ${returnReq.orderDisplayId}`,
+                        `RET-${returnReq._id}`
+                    )
+                    returnReq.status = 'Refunded'
+                    returnReq.refundAmount = finalRefundAmount
+                    autoAction = 'wallet_credited'
+                } catch (e) {
+                    console.log('Wallet credit failed:', e.message)
+                }
+            } else {
+                const paymentId = returnReq.paymentId || order?.paymentId
+                if (paymentId && Razorpay) {
+                    try {
+                        await Razorpay.payments.refund(paymentId, {
+                            amount: Math.round(finalRefundAmount * 100)
+                        })
+                        returnReq.status = 'Refund Initiated'
+                        autoAction = 'razorpay_refund_initiated'
+                    } catch (e) {
+                        console.log('Razorpay refund failed:', e.message)
+                        autoAction = 'razorpay_refund_failed'
+                    }
+                } else {
+                    returnReq.status = 'Refund Initiated'
+                    autoAction = 'manual_refund_needed'
+                }
+            }
+        }
+
+        if (newStatus === 'Refunded' && prevStatus !== 'Refunded') {
+            const order = await OrderModel.findById(returnReq.orderId)
+            const isCOD = returnReq.paymentMethod === 'COD' ||
+                order?.payment_status?.toUpperCase() === 'CASH ON DELIVERY'
+
+            if (isCOD && autoAction !== 'wallet_credited') {
+                try {
+                    await creditWalletInternal(
+                        returnReq.userId,
+                        finalRefundAmount,
+                        `Refund for order ${returnReq.orderDisplayId}`,
+                        `RET-${returnReq._id}`
+                    )
+                    autoAction = 'wallet_credited'
+                } catch (e) {
+                    console.log('Wallet credit failed:', e.message)
+                }
+            }
+        }
+
+        await returnReq.save()
+
+        return res.json({
+            message: autoAction === 'wallet_credited'
+                ? `Refund of ₹${finalRefundAmount} credited to customer wallet`
+                : autoAction === 'razorpay_refund_initiated'
+                    ? `Razorpay refund initiated for ₹${finalRefundAmount}`
+                    : "Return request updated",
+            data: returnReq,
+            autoAction,
+            error: false,
+            success: true
+        })
     } catch (err) {
         return res.status(500).json({ message: err.message || err, error: true, success: false })
     }

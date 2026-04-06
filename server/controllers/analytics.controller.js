@@ -110,6 +110,19 @@ export async function getAllOrdersAdminController(request, response) {
     }
 }
 
+export async function getOrderDetailAdminController(request, response) {
+    try {
+        const { orderId } = request.query
+        const order = await OrderModel.findById(orderId)
+            .populate('userId', 'name email mobile avatar')
+            .populate('delivery_address')
+        if (!order) return response.status(404).json({ message: "Order not found", error: true, success: false })
+        return response.json({ data: order, error: false, success: true })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
 export async function updateOrderStatusAdminController(request, response) {
     try {
         const { orderId, status } = request.body
