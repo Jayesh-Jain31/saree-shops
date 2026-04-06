@@ -60,6 +60,11 @@ const SummaryApi = {
     updateDeliveryZone : { url : '/api/delivery-zone/update', method : 'put' },
     deleteDeliveryZone : { url : '/api/delivery-zone/delete', method : 'delete' },
     checkPincode : { url : '/api/delivery-zone/check-pincode', method : 'post' },
+    getBanners : { url : '/api/banner/get', method : 'get' },
+    getAllBannersAdmin : { url : '/api/banner/all', method : 'get' },
+    createBanner : { url : '/api/banner/create', method : 'post' },
+    updateBanner : { url : '/api/banner/update', method : 'put' },
+    deleteBanner : { url : '/api/banner/delete', method : 'delete' },
 }
 
 export default SummaryApi
