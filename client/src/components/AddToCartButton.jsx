@@ -75,40 +75,33 @@ const AddToCartButton = ({ data }) => {
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full" onClick={e => e.preventDefault()}>
       {isAvailableCart ? (
-        /* ── Quantity Counter ── */
-        <div className="flex items-center w-full h-10 rounded-full overflow-hidden border-2 border-primary shadow">
+        /* ── Quantity Counter — Blinkit style ── */
+        <div className="flex items-center justify-between w-full gap-1">
           <button
             onClick={decreaseQty}
-            className="btn-primary flex-1 h-full flex items-center justify-center transition-colors active:scale-90"
+            className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-90 transition-transform"
           >
-            <FaMinus size={13} />
+            <FaMinus size={11} />
           </button>
-          <span className="flex-[0_0_36px] h-full font-bold text-primary-text flex items-center justify-center text-base bg-white select-none">
+          <span className="flex-1 text-center font-bold text-primary text-base select-none">
             {qty}
           </span>
           <button
             onClick={increaseQty}
-            className="btn-primary flex-1 h-full flex items-center justify-center transition-colors active:scale-90"
+            className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-90 transition-transform"
           >
-            <FaPlus size={13} />
+            <FaPlus size={11} />
           </button>
         </div>
       ) : (
-        /* ── Add Button ── */
+        /* ── ADD Button — Blinkit style ── */
         <button
           onClick={handleADDTocart}
-          className="btn-primary w-full h-10 font-bold rounded-full text-sm flex items-center justify-center gap-1.5 shadow active:scale-95 transition-transform"
+          className="border-2 border-primary text-primary bg-white w-full h-9 font-bold rounded-xl text-sm tracking-wide hover:bg-primary/5 active:scale-95 transition-all"
         >
-          {loading ? (
-            <Loading />
-          ) : (
-            <>
-              <FaPlus size={13} />
-              <span>Add</span>
-            </>
-          )}
+          {loading ? <Loading /> : 'ADD'}
         </button>
       )}
     </div>

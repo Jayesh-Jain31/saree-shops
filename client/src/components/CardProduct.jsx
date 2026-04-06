@@ -78,11 +78,11 @@ const CardProduct = ({ data, grid = false }) => {
       )}
 
       {/* Price + Add button */}
-      <div className='px-2 pb-2 pt-1 flex items-center justify-between gap-1'>
-        <span className='font-semibold text-sm lg:text-base'>
+      <div className='px-2 pb-2 pt-1 flex items-center justify-between gap-2'>
+        <span className='font-semibold text-sm lg:text-base truncate'>
           {DisplayPriceInRupees(pricewithDiscount(data.price, data.discount))}
         </span>
-        <div>
+        <div className='w-24 flex-shrink-0'>
           {data.stock === 0 ? (
             <p className='text-red-500 text-xs text-center'>Out of stock</p>
           ) : (
