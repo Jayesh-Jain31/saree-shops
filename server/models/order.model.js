@@ -62,6 +62,18 @@ const orderSchema = new mongoose.Schema({
     invoice_receipt: {
         type: String,
         default: ""
+    },
+    shiprocketOrderId: {
+        type: String,
+        default: ""
+    },
+    shipmentId: {
+        type: String,
+        default: ""
+    },
+    awbCode: {
+        type: String,
+        default: ""
     }
 }, {
     timestamps: true

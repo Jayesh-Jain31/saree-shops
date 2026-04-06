@@ -114,6 +114,14 @@ const ProductDisplayPage = () => {
     if (user?._id) checkWishlist()
   }, [params])
 
+  useEffect(() => {
+    if (!data.image || data.image.length <= 1) return
+    const interval = setInterval(() => {
+      setImage(prev => (prev + 1) % data.image.length)
+    }, 3500)
+    return () => clearInterval(interval)
+  }, [data.image])
+
   const handleScrollRight = () => { imageContainer.current.scrollLeft += 100 }
   const handleScrollLeft = () => { imageContainer.current.scrollLeft -= 100 }
 

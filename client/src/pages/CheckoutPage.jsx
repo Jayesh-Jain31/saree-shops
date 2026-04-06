@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useGlobalContext } from '../provider/GlobalProvider'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import AddAddress from '../components/AddAddress'
@@ -9,7 +9,7 @@ import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { FaTag, FaTimes, FaCheckCircle, FaTruck, FaMapMarkerAlt } from 'react-icons/fa'
-import { MdDeliveryDining } from 'react-icons/md'
+import { MdDeliveryDining, MdAccountBalanceWallet } from 'react-icons/md'
 import { addNotification } from '../components/NotificationBell'
 
 const loadRazorpayScript = () => {
@@ -36,6 +36,7 @@ const CheckoutPage = () => {
   const cartItemsList = useSelector(state => state.cartItem.cart)
   const navigate = useNavigate()
   const addressSectionRef = useRef(null)
+  const user = useSelector(state => state.user)
 
   const [deliveryInfo, setDeliveryInfo] = useState(null)
   const [deliveryLoading, setDeliveryLoading] = useState(false)
@@ -44,10 +45,32 @@ const CheckoutPage = () => {
   const [couponLoading, setCouponLoading] = useState(false)
   const [appliedCoupon, setAppliedCoupon] = useState(null)
 
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [useWallet, setUseWallet] = useState(false)
+  const [walletLoading, setWalletLoading] = useState(false)
+
   const deliveryCharge = (deliveryInfo && deliveryInfo.available && deliveryInfo.deliveryCharge > 0) ? deliveryInfo.deliveryCharge : 0
   const baseAmount = appliedCoupon ? appliedCoupon.finalAmount : totalPrice
   const finalAmount = baseAmount + deliveryCharge
   const couponDiscount = appliedCoupon ? appliedCoupon.discountAmount : 0
+
+  const walletDeduction = useWallet ? Math.min(walletBalance, finalAmount) : 0
+  const payableAmount = finalAmount - walletDeduction
+
+  useEffect(() => {
+    if (!user?._id) return
+    const fetchWallet = async () => {
+      setWalletLoading(true)
+      try {
+        const res = await Axios({ ...SummaryApi.getWallet })
+        if (res.data.success) {
+          setWalletBalance(res.data.data.balance || 0)
+        }
+      } catch {}
+      finally { setWalletLoading(false) }
+    }
+    fetchWallet()
+  }, [user?._id])
 
   const checkDeliveryPincode = async (pincode) => {
     if (!pincode) return
@@ -104,12 +127,35 @@ const CheckoutPage = () => {
     setCouponCode('')
   }
 
+  const debitWalletIfNeeded = async () => {
+    if (!useWallet || walletDeduction <= 0) return true
+    try {
+      const res = await Axios({
+        ...SummaryApi.debitWallet,
+        data: { amount: walletDeduction, description: 'Order payment via wallet' }
+      })
+      if (res.data.success) {
+        setWalletBalance(prev => prev - walletDeduction)
+        return true
+      }
+      toast.error('Failed to debit wallet. Please try again.')
+      return false
+    } catch (err) {
+      AxiosToastError(err)
+      return false
+    }
+  }
+
   const handleCashOnDelivery = async () => {
     const selectedAddr = addressList[selectAddress]
     if (!selectedAddr?._id || !selectedAddr?.status) {
       setShowAddressPopup(true)
       return
     }
+
+    const walletOk = await debitWalletIfNeeded()
+    if (!walletOk) return
+
     try {
       const response = await Axios({
         ...SummaryApi.CashOnDeliveryOrder,
@@ -117,7 +163,7 @@ const CheckoutPage = () => {
           list_items: cartItemsList,
           addressId: addressList[selectAddress]?._id,
           subTotalAmt: totalPrice,
-          totalAmt: finalAmount,
+          totalAmt: payableAmount,
           discountAmt: couponDiscount,
         }
       })
@@ -140,6 +186,34 @@ const CheckoutPage = () => {
       setShowAddressPopup(true)
       return
     }
+
+    if (payableAmount <= 0) {
+      const walletOk = await debitWalletIfNeeded()
+      if (!walletOk) return
+      try {
+        const response = await Axios({
+          ...SummaryApi.CashOnDeliveryOrder,
+          data: {
+            list_items: cartItemsList,
+            addressId: addressList[selectAddress]?._id,
+            subTotalAmt: totalPrice,
+            totalAmt: 0,
+            discountAmt: couponDiscount,
+          }
+        })
+        if (response.data.success) {
+          toast.success('Order placed using wallet balance!')
+          addNotification('Your order has been placed using your wallet balance.', 'success')
+          if (fetchCartItem) fetchCartItem()
+          if (fetchOrder) fetchOrder()
+          navigate('/success', { state: { text: "Order" } })
+        }
+      } catch (error) {
+        AxiosToastError(error)
+      }
+      return
+    }
+
     try {
       const scriptLoaded = await loadRazorpayScript()
       if (!scriptLoaded) {
@@ -147,7 +221,6 @@ const CheckoutPage = () => {
         return
       }
 
-      // Fetch the public key from backend
       const configRes = await Axios({ url: '/api/config/razorpay-key', method: 'get' })
       const razorpayKeyId = configRes.data?.keyId
 
@@ -160,7 +233,7 @@ const CheckoutPage = () => {
 
       const response = await Axios({
         ...SummaryApi.razorpayOrder,
-        data: { totalAmt: finalAmount }
+        data: { totalAmt: payableAmount }
       })
 
       toast.dismiss(toastId)
@@ -177,11 +250,13 @@ const CheckoutPage = () => {
         key: razorpayKeyId,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
-        name: 'Blinkit',
+        name: 'Binkeyit',
         description: 'Order Payment',
         order_id: razorpayOrder.id,
         handler: async (paymentResponse) => {
           try {
+            const walletOk = await debitWalletIfNeeded()
+            if (!walletOk) return
             const verifyToastId = toast.loading('Verifying payment...')
             const verifyRes = await Axios({
               ...SummaryApi.razorpayVerify,
@@ -303,6 +378,37 @@ const CheckoutPage = () => {
         {/* Right panel */}
         <div className='w-full max-w-md space-y-4'>
 
+          {/* Wallet Section */}
+          {walletBalance > 0 && (
+            <div className='bg-white rounded-lg p-4 shadow-sm border border-green-100'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                  <div className='w-9 h-9 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'>
+                    <MdAccountBalanceWallet className='text-green-600' size={20} />
+                  </div>
+                  <div>
+                    <p className='text-sm font-semibold text-gray-800'>Binkeyit Wallet</p>
+                    <p className='text-xs text-green-600 font-medium'>
+                      Balance: {DisplayPriceInRupees(walletBalance)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setUseWallet(p => !p)}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${useWallet ? 'bg-green-500' : 'bg-gray-300'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${useWallet ? 'translate-x-6' : ''}`} />
+                </button>
+              </div>
+              {useWallet && walletDeduction > 0 && (
+                <div className='mt-3 bg-green-50 rounded-lg p-2.5 flex items-center justify-between'>
+                  <p className='text-xs text-green-700 font-medium'>Wallet discount applied</p>
+                  <p className='text-sm font-bold text-green-700'>- {DisplayPriceInRupees(walletDeduction)}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Coupon Section */}
           <div className='bg-white rounded-lg p-4 shadow-sm'>
             <h3 className='text-base font-semibold mb-3 flex items-center gap-2'>
@@ -378,13 +484,26 @@ const CheckoutPage = () => {
                   <p>- {DisplayPriceInRupees(couponDiscount)}</p>
                 </div>
               )}
+              {useWallet && walletDeduction > 0 && (
+                <div className='flex justify-between text-green-600 font-medium'>
+                  <p className='flex items-center gap-1'>
+                    <MdAccountBalanceWallet size={14} /> Wallet Balance
+                  </p>
+                  <p>- {DisplayPriceInRupees(walletDeduction)}</p>
+                </div>
+              )}
               <div className='border-t pt-2 font-semibold flex items-center justify-between text-base'>
                 <p>Grand Total</p>
-                <p className='text-green-700'>{DisplayPriceInRupees(finalAmount)}</p>
+                <div className='text-right'>
+                  {useWallet && walletDeduction > 0 && (
+                    <p className='text-xs line-through text-gray-400'>{DisplayPriceInRupees(finalAmount)}</p>
+                  )}
+                  <p className='text-green-700'>{DisplayPriceInRupees(Math.max(0, payableAmount))}</p>
+                </div>
               </div>
-              {appliedCoupon && (
+              {(appliedCoupon || (useWallet && walletDeduction > 0)) && (
                 <p className='text-green-600 text-xs text-right'>
-                  Total savings: {DisplayPriceInRupees(couponDiscount + (notDiscountTotalPrice - totalPrice))}
+                  Total savings: {DisplayPriceInRupees(couponDiscount + (notDiscountTotalPrice - totalPrice) + walletDeduction)}
                 </p>
               )}
             </div>
@@ -395,14 +514,18 @@ const CheckoutPage = () => {
                 className='py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-lg text-white font-semibold transition-all flex items-center justify-center gap-2 text-sm'
                 onClick={handleRazorpayPayment}
               >
-                Pay with Razorpay
+                {payableAmount <= 0
+                  ? 'Place Order (Fully from Wallet)'
+                  : `Pay ${DisplayPriceInRupees(payableAmount)} with Razorpay`}
               </button>
 
               <button
                 className='py-3 px-4 border-2 border-green-600 font-semibold text-green-600 hover:bg-green-600 hover:text-white active:scale-95 rounded-lg transition-all text-sm'
                 onClick={handleCashOnDelivery}
               >
-                Cash on Delivery
+                {useWallet && walletDeduction > 0 && payableAmount > 0
+                  ? `Pay ${DisplayPriceInRupees(payableAmount)} via COD + Wallet`
+                  : 'Cash on Delivery'}
               </button>
             </div>
           </div>

@@ -48,40 +48,40 @@ const Search = () => {
         <div className='w-full h-full'>
             {
                 !isSearchPage ? (
-                     //not in search page
                      <div onClick={redirectToSearchPage} className='w-full h-full flex items-center'>
                         <TypeAnimation
-                                sequence={[
-                                    // Same substring at the start will only be typed out once, initially
-                                    'Search "milk"',
-                                    1000, // wait 1s before replacing "Mice" with "Hamsters"
-                                    'Search "bread"',
-                                    1000,
-                                    'Search "sugar"',
-                                    1000,
-                                    'Search "panner"',
-                                    1000,
-                                    'Search "chocolate"',
-                                    1000,
-                                    'Search "curd"',
-                                    1000,
-                                    'Search "rice"',
-                                    1000,
-                                    'Search "egg"',
-                                    1000,
-                                    'Search "chips"',
-                                ]}
-                                wrapper="span"
-                                speed={50}
-                                repeat={Infinity}
-                            />
+                            sequence={[
+                                'Search "Printed Saree"',
+                                1000,
+                                'Search "Silk Saree"',
+                                1000,
+                                'Search "Cotton Saree"',
+                                1000,
+                                'Search "Party Wear Saree"',
+                                1000,
+                                'Search "Designer Saree"',
+                                1000,
+                                'Search "Bandhani Saree"',
+                                1000,
+                                'Search "Georgette Saree"',
+                                1000,
+                                'Search "Banarasi Saree"',
+                                1000,
+                                'Search "Net Saree"',
+                                1000,
+                                'Search "Chiffon Saree"',
+                                1000,
+                            ]}
+                            wrapper="span"
+                            speed={50}
+                            repeat={Infinity}
+                        />
                      </div>
                 ) : (
-                    //when i was search page
                     <div className='w-full h-full'>
                         <input
                             type='text'
-                            placeholder='Search for atta dal and more.'
+                            placeholder='Search for sarees, silk, cotton and more.'
                             autoFocus
                             defaultValue={searchText}
                             className='bg-transparent w-full h-full outline-none'

@@ -73,6 +73,8 @@ const SummaryApi = {
     getWallet : { url : '/api/wallet/get', method : 'get' },
     debitWallet : { url : '/api/wallet/debit', method : 'post' },
     getAdminOrderDetail : { url : '/api/analytics/order-detail', method : 'get' },
+    createShiprocketOrder : { url : '/api/shiprocket/create-order', method : 'post' },
+    trackShiprocketOrder : { url : '/api/shiprocket/track', method : 'get' },
 }
 
 export default SummaryApi

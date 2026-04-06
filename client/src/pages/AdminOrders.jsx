@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import {
   FaBoxOpen, FaSearch, FaChevronLeft, FaChevronRight, FaFilter,
   FaCheckCircle, FaMoneyBillWave, FaCreditCard, FaTruck, FaTimes,
-  FaUser, FaPhone, FaMapMarkerAlt, FaTag, FaPrint, FaUndoAlt
+  FaUser, FaPhone, FaMapMarkerAlt, FaTag, FaPrint, FaUndoAlt, FaRocket
 } from 'react-icons/fa'
 import {
   MdAccessTime, MdDone, MdInventory, MdPending, MdEdit, MdSave,
@@ -62,6 +62,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
   const [editingStatus, setEditingStatus] = useState(false)
   const [newStatus, setNewStatus] = useState('')
   const [saving, setSaving] = useState(false)
+  const [shipping, setShipping] = useState(false)
 
   useEffect(() => {
     if (!orderId) return
@@ -94,6 +95,23 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
       }
     } catch { toast.error('Failed to update status') }
     finally { setSaving(false) }
+  }
+
+  const handleShiprocket = async () => {
+    setShipping(true)
+    try {
+      const res = await Axios({ ...SummaryApi.createShiprocketOrder, data: { orderId: order._id } })
+      if (res.data.success) {
+        toast.success('Shipment created on Shiprocket!')
+        setOrder(o => ({ ...o, shiprocketOrderId: res.data.data.shiprocketOrderId, shipmentId: res.data.data.shipmentId, orderStatus: 'Shipped' }))
+        onStatusUpdate(order._id, 'Shipped')
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Shiprocket error. Check credentials.'
+      toast.error(msg)
+    } finally {
+      setShipping(false)
+    }
   }
 
   const handlePrint = () => {
@@ -355,6 +373,51 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Shiprocket Shipping */}
+            <div className='bg-white rounded-2xl border p-4'>
+              <h3 className='font-bold text-gray-700 text-sm mb-3 flex items-center gap-2'>
+                <FaRocket className='text-orange-500' size={13} /> Shiprocket Delivery
+              </h3>
+              {order.shiprocketOrderId ? (
+                <div className='bg-orange-50 rounded-xl p-3 space-y-1.5'>
+                  <div className='flex items-center gap-2 mb-1'>
+                    <div className='w-2 h-2 rounded-full bg-orange-400'></div>
+                    <p className='text-xs font-semibold text-orange-700'>Shipment Created</p>
+                  </div>
+                  <div className='flex justify-between text-xs'>
+                    <span className='text-gray-500'>SR Order ID</span>
+                    <span className='font-mono text-gray-700'>{order.shiprocketOrderId}</span>
+                  </div>
+                  {order.shipmentId && (
+                    <div className='flex justify-between text-xs'>
+                      <span className='text-gray-500'>Shipment ID</span>
+                      <span className='font-mono text-gray-700'>{order.shipmentId}</span>
+                    </div>
+                  )}
+                  {order.awbCode && (
+                    <div className='flex justify-between text-xs'>
+                      <span className='text-gray-500'>AWB Code</span>
+                      <span className='font-mono text-gray-700 font-bold'>{order.awbCode}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <p className='text-xs text-gray-400 mb-3'>
+                    Create a shipment on Shiprocket to assign a courier and generate an AWB tracking number.
+                  </p>
+                  <button
+                    onClick={handleShiprocket}
+                    disabled={shipping || ['Delivered', 'Cancelled'].includes(order.orderStatus)}
+                    className='w-full flex items-center justify-center gap-2 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-colors'
+                  >
+                    <FaRocket size={13} />
+                    {shipping ? 'Creating Shipment...' : 'Ship with Shiprocket'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Order Meta */}
