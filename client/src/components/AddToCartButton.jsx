@@ -26,11 +26,7 @@ const AddToCartButton = ({ data }) => {
         if (!user?._id) {
             toast('Please login to add items to cart', {
                 icon: '🔒',
-                style: {
-                    borderRadius: '10px',
-                    background: '#1f2937',
-                    color: '#fff',
-                },
+                style: { borderRadius: '10px', background: '#1f2937', color: '#fff' },
             })
             navigate('/login')
             return
@@ -81,20 +77,36 @@ const AddToCartButton = ({ data }) => {
     }
 
     return (
-        <div className='w-full max-w-[150px]'>
+        <div className='w-full'>
             {isAvailableCart ? (
-                <div className='flex w-full h-full'>
-                    <button onClick={decreaseQty} className='bg-green-600 hover:bg-green-700 text-white flex-1 w-full p-1 rounded flex items-center justify-center'>
-                        <FaMinus />
+                <div className='flex w-full h-9 rounded-lg overflow-hidden border-2 border-green-600'>
+                    <button
+                        onClick={decreaseQty}
+                        className='bg-green-600 hover:bg-green-700 active:bg-green-800 text-white flex-1 flex items-center justify-center transition-colors'
+                    >
+                        <FaMinus size={12} />
                     </button>
-                    <p className='flex-1 w-full font-semibold px-1 flex items-center justify-center'>{qty}</p>
-                    <button onClick={increaseQty} className='bg-green-600 hover:bg-green-700 text-white flex-1 w-full p-1 rounded flex items-center justify-center'>
-                        <FaPlus />
+                    <p className='flex-1 font-bold text-green-700 flex items-center justify-center text-sm bg-white'>
+                        {qty}
+                    </p>
+                    <button
+                        onClick={increaseQty}
+                        className='bg-green-600 hover:bg-green-700 active:bg-green-800 text-white flex-1 flex items-center justify-center transition-colors'
+                    >
+                        <FaPlus size={12} />
                     </button>
                 </div>
             ) : (
-                <button onClick={handleADDTocart} className='bg-green-600 hover:bg-green-700 text-white px-2 lg:px-4 py-1 rounded'>
-                    {loading ? <Loading /> : "Add"}
+                <button
+                    onClick={handleADDTocart}
+                    className='w-full h-9 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-center gap-1'
+                >
+                    {loading ? <Loading /> : (
+                        <>
+                            <FaPlus size={11} />
+                            Add
+                        </>
+                    )}
                 </button>
             )}
         </div>
