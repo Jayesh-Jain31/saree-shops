@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { FaWhatsapp, FaUndoAlt, FaTools, FaBan, FaBullhorn, FaBolt } from 'react-icons/fa'
-import { MdSettings, MdSave, MdPalette } from 'react-icons/md'
+import { FaWhatsapp, FaUndoAlt, FaTools, FaBan, FaBullhorn, FaBolt, FaStore } from 'react-icons/fa'
+import { MdSettings, MdSave, MdPalette, MdBrandingWatermark } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { colorPresets, applyTheme } from '../utils/themeColors'
 import uploadImage from '../utils/UploadImage'
 import { useDispatch } from 'react-redux'
-import { setLogoUrl as setLogoUrlAction } from '../store/siteSlice'
+import { setLogoUrl as setLogoUrlAction, setSiteName as setSiteNameAction } from '../store/siteSlice'
 
 const POLICIES = [
   { key: 'page_privacy',  label: 'Privacy Policy',    slug: 'privacy-policy'  },
@@ -191,10 +191,24 @@ const SiteSettings = () => {
     toast.success('Logo removed — site name will be shown instead')
   }
 
+  const [savingBrand, setSavingBrand] = useState(false)
+
+  const handleSaveBrand = async () => {
+    setSavingBrand(true)
+    try {
+      await saveSetting('store_name', storeName)
+      if (storeName) dispatch(setSiteNameAction(storeName))
+      toast.success('Brand identity saved!')
+    } catch {
+      toast.error('Failed to save brand settings')
+    } finally {
+      setSavingBrand(false)
+    }
+  }
+
   const handleSaveSocial = async () => {
     setSavingSocial(true)
     try {
-      if (storeName) await saveSetting('store_name', storeName)
       await Promise.all(SOCIAL_FIELDS.map(f => saveSetting(f.key, social[f.key] || '')))
       toast.success('Social links saved!')
     } catch {
@@ -314,7 +328,99 @@ const SiteSettings = () => {
           </div>
         </div>
 
-        {/* ── Theme Color Card ── */}
+        {/* ── Brand Identity Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b bg-gradient-to-r from-gray-50 to-white'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-primary-light'>
+              <MdBrandingWatermark className='text-primary-text' size={20} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Brand Identity</h2>
+              <p className='text-xs text-gray-500'>Your store logo and name shown in the header</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-5'>
+
+            {/* Live Preview */}
+            <div className='rounded-xl border border-gray-200 bg-gray-50 overflow-hidden'>
+              <p className='text-[10px] text-gray-400 font-semibold px-3 pt-2 pb-1 uppercase tracking-widest'>Header Preview</p>
+              <div className='bg-white border-t px-4 py-3 flex items-center gap-3'>
+                {logoPreview ? (
+                  <img src={logoPreview} alt='preview' className='h-9 object-contain max-w-[140px]' />
+                ) : storeName ? (
+                  <span className='font-black text-xl tracking-tight' style={{ color: 'var(--primary, #16a34a)' }}>{storeName}</span>
+                ) : (
+                  <span className='text-gray-300 font-semibold text-sm italic'>Your store name / logo</span>
+                )}
+              </div>
+            </div>
+
+            {/* Logo Upload */}
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-2'>
+                Logo Image
+                <span className='ml-2 font-normal text-gray-400 text-[10px]'>PNG, JPG, SVG — transparent BG works best</span>
+              </label>
+              <div className='flex items-center gap-4'>
+                <div className='w-24 h-16 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center bg-gray-50 flex-shrink-0 overflow-hidden'>
+                  {uploadingLogo ? (
+                    <div className='w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin' />
+                  ) : logoPreview ? (
+                    <img src={logoPreview} alt='Logo' className='w-full h-full object-contain p-1' />
+                  ) : (
+                    <FaStore className='text-gray-300' size={22} />
+                  )}
+                </div>
+                <div className='flex flex-col gap-1.5 flex-1'>
+                  <label className='cursor-pointer inline-block'>
+                    <span className='inline-flex items-center gap-1.5 btn-primary text-xs font-semibold px-4 py-2 rounded-lg'>
+                      {uploadingLogo ? 'Uploading...' : logoPreview ? 'Change Logo' : 'Upload Logo'}
+                    </span>
+                    <input type='file' accept='image/*' onChange={handleLogoUpload} disabled={uploadingLogo} className='hidden' />
+                  </label>
+                  {logoPreview && (
+                    <button onClick={handleRemoveLogo} className='text-xs text-red-500 hover:text-red-600 text-left'>
+                      Remove logo
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className='relative flex items-center gap-3'>
+              <div className='flex-1 h-px bg-gray-200' />
+              <span className='text-[11px] text-gray-400 font-medium whitespace-nowrap'>AND / OR</span>
+              <div className='flex-1 h-px bg-gray-200' />
+            </div>
+
+            {/* Store Name */}
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>
+                Store Name (text)
+                <span className='ml-2 font-normal text-gray-400 text-[10px]'>Shown when no logo, or alongside logo</span>
+              </label>
+              <input
+                type='text'
+                value={storeName}
+                onChange={e => setStoreName(e.target.value)}
+                placeholder='e.g. My Saree Store'
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition'
+              />
+              <p className='text-[11px] text-gray-400 mt-1'>This also updates the browser tab title, footer, and emails</p>
+            </div>
+
+            <button
+              onClick={handleSaveBrand}
+              disabled={savingBrand}
+              className='w-full flex items-center justify-center gap-2 btn-primary disabled:opacity-50 font-semibold rounded-xl py-3'
+            >
+              {savingBrand ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
+              {savingBrand ? 'Saving...' : 'Save Brand Identity'}
+            </button>
+          </div>
+        </div>
+
+                {/* ── Theme Color Card ── */}
         <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
           <div className='flex items-center gap-3 p-5 border-b'>
             <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-primary-light'>
@@ -415,71 +521,18 @@ const SiteSettings = () => {
 
         {/* ── Social & Store Info Card ── */}
         <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
-          <div className='p-5 border-b'>
-            <h2 className='font-bold text-gray-800'>Store Info & Social Links</h2>
-            <p className='text-xs text-gray-500'>These appear in the footer of your website</p>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-blue-50'>
+              <FaWhatsapp className='text-blue-400' size={18} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Social Links</h2>
+              <p className='text-xs text-gray-500'>Appear in the footer of your website</p>
+            </div>
           </div>
           <div className='p-5 space-y-4'>
 
-            {/* Logo Upload */}
-            <div>
-              <label className='block text-xs font-semibold text-gray-600 mb-2'>
-                Website Logo
-                <span className='ml-2 font-normal text-primary-text bg-primary-light px-2 py-0.5 rounded text-[10px]'>
-                  Shown in header &amp; footer — replaces text name
-                </span>
-              </label>
-              <div className='flex items-center gap-4'>
-                {/* Preview box */}
-                <div className='w-24 h-16 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center bg-gray-50 flex-shrink-0 overflow-hidden'>
-                  {uploadingLogo ? (
-                    <div className='w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin' />
-                  ) : logoPreview ? (
-                    <img src={logoPreview} alt='Logo preview' className='w-full h-full object-contain p-1' />
-                  ) : (
-                    <span className='text-[10px] text-gray-400 text-center px-1'>No logo</span>
-                  )}
-                </div>
-                <div className='flex flex-col gap-2 flex-1'>
-                  <label className='cursor-pointer'>
-                    <span className='inline-flex items-center gap-1.5 btn-primary text-xs font-semibold px-4 py-2 rounded-lg'>
-                      {uploadingLogo ? 'Uploading...' : logoPreview ? 'Change Logo' : 'Upload Logo'}
-                    </span>
-                    <input
-                      type='file'
-                      accept='image/*'
-                      onChange={handleLogoUpload}
-                      disabled={uploadingLogo}
-                      className='hidden'
-                    />
-                  </label>
-                  {logoPreview && (
-                    <button onClick={handleRemoveLogo} className='text-xs text-red-500 hover:text-red-700 text-left'>
-                      Remove logo (use text name instead)
-                    </button>
-                  )}
-                  <p className='text-[11px] text-gray-400'>PNG, JPG, SVG — recommended width: 170px. Transparent background works best.</p>
-                </div>
-              </div>
-            </div>
 
-            <hr className='border-gray-100' />
-
-            <div>
-              <label className='block text-xs font-semibold text-gray-600 mb-1'>
-                Website Name
-                <span className='ml-2 font-normal text-primary-text bg-primary-light px-2 py-0.5 rounded text-[10px]'>
-                  Changes everywhere — footer, wallet, checkout, register page
-                </span>
-              </label>
-              <input
-                type='text'
-                value={storeName}
-                onChange={e => setStoreName(e.target.value)}
-                placeholder='Binkeyit'
-                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition'
-              />
-            </div>
             {SOCIAL_FIELDS.map(field => (
               <div key={field.key}>
                 <label className='block text-xs font-semibold text-gray-600 mb-1'>{field.label}</label>

@@ -3,7 +3,7 @@ import { createSlice } from '@reduxjs/toolkit'
 const siteSlice = createSlice({
   name: 'site',
   initialState: {
-    name: 'Binkeyit',
+    name: '',
     logoUrl: '',
     announcement: '',
     announcementEnabled: false,

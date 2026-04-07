@@ -28,6 +28,9 @@ const Header = () => {
     const announcement = useSelector(state => state.site.announcement)
     const announcementEnabled = useSelector(state => state.site.announcementEnabled)
 
+    // Brand: show custom logo, or text name, or fallback static logo
+    const showLogo = !!logoUrl
+    const showTextName = !logoUrl && !!siteName
     const logoSrc = logoUrl || staticLogo
 
     const handleMobileUser = () => {
@@ -59,13 +62,28 @@ const Header = () => {
                 {!isSearchPage && (
                     <div className='flex items-center justify-between px-3 pt-2.5 pb-1'>
                         {/* Logo */}
-                        <Link to="/" className='flex items-center'>
-                            <img
-                                src={logoSrc}
-                                alt={siteName}
-                                className='object-contain'
-                                style={{ height: '38px', width: 'auto', maxWidth: '130px' }}
-                            />
+                        <Link to="/" className='flex items-center gap-2'>
+                            {showLogo && (
+                                <img
+                                    src={logoSrc}
+                                    alt={siteName}
+                                    className='object-contain'
+                                    style={{ height: '38px', width: 'auto', maxWidth: '130px' }}
+                                />
+                            )}
+                            {showTextName && (
+                                <span className='font-black text-xl tracking-tight' style={{ color: 'var(--primary, #16a34a)' }}>
+                                    {siteName}
+                                </span>
+                            )}
+                            {!showLogo && !showTextName && (
+                                <img
+                                    src={logoSrc}
+                                    alt='Store'
+                                    className='object-contain'
+                                    style={{ height: '38px', width: 'auto', maxWidth: '130px' }}
+                                />
+                            )}
                         </Link>
                         {/* Right icons */}
                         <div className='flex items-center gap-2'>
@@ -92,13 +110,28 @@ const Header = () => {
             {/* ════════════ DESKTOP HEADER ════════════ */}
             <div className='hidden lg:flex items-center h-16 container mx-auto px-4 gap-6'>
                 {/* Logo */}
-                <Link to="/" className='flex-shrink-0'>
-                    <img
-                        src={logoSrc}
-                        alt={siteName}
-                        className='object-contain'
-                        style={{ height: '48px', width: 'auto', maxWidth: '170px' }}
-                    />
+                <Link to="/" className='flex-shrink-0 flex items-center gap-2'>
+                    {showLogo && (
+                        <img
+                            src={logoSrc}
+                            alt={siteName}
+                            className='object-contain'
+                            style={{ height: '48px', width: 'auto', maxWidth: '170px' }}
+                        />
+                    )}
+                    {showTextName && (
+                        <span className='font-black text-2xl tracking-tight' style={{ color: 'var(--primary, #16a34a)' }}>
+                            {siteName}
+                        </span>
+                    )}
+                    {!showLogo && !showTextName && (
+                        <img
+                            src={logoSrc}
+                            alt='Store'
+                            className='object-contain'
+                            style={{ height: '48px', width: 'auto', maxWidth: '170px' }}
+                        />
+                    )}
                 </Link>
 
                 {/* Search — takes remaining space */}
