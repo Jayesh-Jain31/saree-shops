@@ -4,6 +4,7 @@ import { FaCheckCircle, FaMapMarkerAlt, FaTruck, FaBox, FaCreditCard } from 'rea
 import { MdCreditCard, MdLocalShipping } from 'react-icons/md'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
+import TruckAnimation from '../components/TruckAnimation'
 
 const Success = () => {
   const location = useLocation()
@@ -41,12 +42,10 @@ const Success = () => {
     <div className='min-h-screen bg-gray-50 py-8 px-4'>
       <div className='max-w-lg mx-auto'>
 
-        {/* Success header */}
+        {/* Truck animation header */}
         <div className='text-center mb-6'>
-          <div className='w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-            <FaCheckCircle className='text-green-500' size={40} />
-          </div>
-          <h1 className='text-2xl font-bold text-gray-800 mb-1'>Order Placed!</h1>
+          <TruckAnimation />
+          <h1 className='text-2xl font-bold text-gray-800 mb-1 mt-2'>Order Placed!</h1>
           <p className='text-gray-500 text-sm'>Thank you! Your order has been confirmed.</p>
           {orderDate && (
             <p className='text-xs text-gray-400 mt-1'>
