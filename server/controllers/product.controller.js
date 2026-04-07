@@ -131,11 +131,17 @@ export const getProductByCategoryAndSubCategory  = async(request,response)=>{
     try {
         const { categoryId,subCategoryId,page,limit } = request.body
 
-        if(!categoryId || !subCategoryId){
-            return response.status(400).json({
-                message : "Provide categoryId and subCategoryId",
-                error : true,
-                success : false
+        const isValidId = (id) => id && id !== 'undefined' && id !== 'null' && /^[a-f\d]{24}$/i.test(id)
+
+        if(!isValidId(categoryId) || !isValidId(subCategoryId)){
+            return response.status(200).json({
+                message : 'Category not found',
+                data : [],
+                totalCount : 0,
+                page : 1,
+                limit : 10,
+                success : true,
+                error : false
             })
         }
 
