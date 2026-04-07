@@ -182,7 +182,7 @@ const Home = () => {
               </div>
             ))}
             <Link
-              to='/search'
+              to='/categories'
               className='cursor-pointer flex flex-col items-center gap-2 group'
             >
               <div className='w-full aspect-square rounded-2xl overflow-hidden flex items-center justify-center p-2 group-hover:scale-105 transition-all duration-200'

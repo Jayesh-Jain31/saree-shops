@@ -29,6 +29,7 @@ const Wishlist           = lazy(() => import("../pages/Wishlist"));
 const MyReturns          = lazy(() => import("../pages/MyReturns"));
 const Wallet             = lazy(() => import("../pages/Wallet"));
 const PolicyPage         = lazy(() => import("../pages/PolicyPage"));
+const AllCategoriesPage  = lazy(() => import("../pages/AllCategoriesPage"));
 
 // ── Lazy-loaded admin pages ───────────────────────────────────────────────────
 const CategoryPage       = lazy(() => import("../pages/CategoryPage"));
@@ -100,6 +101,7 @@ const router = createBrowserRouter([
             { path : "success",          element : <Lazy><Success/></Lazy> },
             { path : "cancel",           element : <Lazy><Cancel/></Lazy> },
             { path : "page/:slug",       element : <Lazy><PolicyPage/></Lazy> },
+            { path : "categories",       element : <Lazy><AllCategoriesPage/></Lazy> },
         ]
     }
 ]);
