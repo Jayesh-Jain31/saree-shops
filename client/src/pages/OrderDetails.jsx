@@ -132,6 +132,7 @@ const OrderDetails = () => {
   const [returnDesc, setReturnDesc] = useState('')
   const [submittingReturn, setSubmittingReturn] = useState(false)
   const [returnPeriodDays, setReturnPeriodDays] = useState(7)
+  const [selectedReturnItems, setSelectedReturnItems] = useState([])
 
   const fetchOrderDetails = async () => {
     try {
@@ -177,24 +178,43 @@ const OrderDetails = () => {
 
   const handleSubmitReturn = async () => {
     if (!returnReason) { toast.error('Please select a reason'); return }
+    const isMultiItem = (order?.items?.length || 0) > 1
+    if (isMultiItem && selectedReturnItems.length === 0) {
+      toast.error('Please select at least one item to return')
+      return
+    }
     try {
       setSubmittingReturn(true)
-      const res = await Axios({
-        ...SummaryApi.createReturnRequest,
-        data: { orderId: order._id, reason: returnReason, description: returnDesc }
-      })
+      const payload = {
+        orderId: order._id,
+        reason: returnReason,
+        description: returnDesc,
+      }
+      if (isMultiItem && selectedReturnItems.length > 0) {
+        payload.selectedItems = selectedReturnItems
+      }
+      const res = await Axios({ ...SummaryApi.createReturnRequest, data: payload })
       if (res.data.success) {
         toast.success('Return request submitted!')
         setExistingReturn(res.data.data)
         setShowReturnForm(false)
         setReturnReason('')
         setReturnDesc('')
+        setSelectedReturnItems([])
       }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to submit return request')
     } finally {
       setSubmittingReturn(false)
     }
+  }
+
+  const toggleReturnItem = (productId) => {
+    setSelectedReturnItems(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    )
   }
 
   const handleCancelOrder = async () => {
@@ -676,6 +696,58 @@ const OrderDetails = () => {
                 </div>
               ) : showReturnForm ? (
                 <div className='space-y-3'>
+                  {/* Item picker — only for multi-item orders */}
+                  {(order?.items?.length || 0) > 1 && (
+                    <div>
+                      <label className='text-xs font-semibold text-gray-600 mb-2 block'>
+                        Select items to return *
+                      </label>
+                      <div className='space-y-2'>
+                        {order.items.map((item, idx) => {
+                          const pid = String(item.productId)
+                          const checked = selectedReturnItems.includes(pid)
+                          return (
+                            <button
+                              key={idx}
+                              type='button'
+                              onClick={() => toggleReturnItem(pid)}
+                              className={`w-full flex items-center gap-3 p-2.5 rounded-xl border-2 text-left transition-all ${
+                                checked
+                                  ? 'border-orange-400 bg-orange-50'
+                                  : 'border-gray-200 bg-gray-50 hover:border-orange-200'
+                              }`}
+                            >
+                              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${
+                                checked ? 'bg-orange-500 border-orange-500' : 'border-gray-300 bg-white'
+                              }`}>
+                                {checked && (
+                                  <svg className='w-3 h-3 text-white' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={3} d='M5 13l4 4L19 7' />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className='w-10 h-10 rounded-lg border bg-white flex-shrink-0 overflow-hidden'>
+                                <img
+                                  src={item.product_details?.image?.[0]}
+                                  alt={item.product_details?.name}
+                                  className='w-full h-full object-contain'
+                                  onError={e => { e.target.style.display = 'none' }}
+                                />
+                              </div>
+                              <div className='flex-1 min-w-0'>
+                                <p className='text-sm font-semibold text-gray-800 line-clamp-1'>{item.product_details?.name}</p>
+                                <p className='text-xs text-gray-500'>Qty: {item.quantity} · ₹{(item.price * item.quantity).toLocaleString('en-IN')}</p>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {selectedReturnItems.length === 0 && (
+                        <p className='text-[11px] text-orange-500 mt-1'>Please select at least one item</p>
+                      )}
+                    </div>
+                  )}
+
                   <div>
                     <label className='text-xs font-semibold text-gray-600 mb-1 block'>Reason for return *</label>
                     <select
@@ -699,7 +771,7 @@ const OrderDetails = () => {
                   </div>
                   <div className='flex gap-2'>
                     <button
-                      onClick={() => { setShowReturnForm(false); setReturnReason(''); setReturnDesc('') }}
+                      onClick={() => { setShowReturnForm(false); setReturnReason(''); setReturnDesc(''); setSelectedReturnItems([]) }}
                       className='flex-1 py-2.5 border rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50'
                       disabled={submittingReturn}
                     >
@@ -707,7 +779,7 @@ const OrderDetails = () => {
                     </button>
                     <button
                       onClick={handleSubmitReturn}
-                      disabled={submittingReturn || !returnReason}
+                      disabled={submittingReturn || !returnReason || ((order?.items?.length || 0) > 1 && selectedReturnItems.length === 0)}
                       className='flex-1 py-2.5 bg-orange-600 text-white rounded-xl text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-1'
                     >
                       {submittingReturn ? 'Submitting...' : <><FaUndoAlt size={11} /> Submit Return</>}

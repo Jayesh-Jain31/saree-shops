@@ -21,7 +21,7 @@ const creditWalletInternal = async (userId, amount, description, reference) => {
 export const createReturnRequest = async (req, res) => {
     try {
         const userId = req.userId
-        const { orderId, reason, description } = req.body
+        const { orderId, reason, description, selectedItems } = req.body
 
         if (!orderId || !reason) {
             return res.status(400).json({ message: "orderId and reason are required", error: true, success: false })
@@ -43,14 +43,23 @@ export const createReturnRequest = async (req, res) => {
 
         const isCOD = order.payment_status?.toUpperCase() === 'CASH ON DELIVERY'
 
+        let returnItems = order.items
+        if (selectedItems && Array.isArray(selectedItems) && selectedItems.length > 0) {
+            const selectedIds = new Set(selectedItems.map(id => String(id)))
+            returnItems = order.items.filter(item => selectedIds.has(String(item.productId)))
+            if (returnItems.length === 0) returnItems = order.items
+        }
+
+        const returnTotalAmt = returnItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0)
+
         const returnReq = await ReturnModel.create({
             userId,
             orderId,
             orderDisplayId: order.orderId,
-            items: order.items,
+            items: returnItems,
             reason,
             description: description || '',
-            totalAmt: order.totalAmt,
+            totalAmt: returnItems.length === order.items.length ? order.totalAmt : returnTotalAmt,
             paymentMethod: isCOD ? 'COD' : 'ONLINE',
             paymentId: order.paymentId || ''
         })
