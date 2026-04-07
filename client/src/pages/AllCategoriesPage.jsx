@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
@@ -11,6 +11,9 @@ const AllCategoriesPage = () => {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
 
+  // Tracks which category ID the latest fetch belongs to
+  const activeFetchId = useRef(null)
+
   // Auto-select first category on load
   useEffect(() => {
     if (allCategory?.length && !selectedCat) {
@@ -18,28 +21,35 @@ const AllCategoriesPage = () => {
     }
   }, [allCategory])
 
-  // Fetch products when category changes
+  // Fetch products when category changes — stale fetch results are discarded
   useEffect(() => {
     if (!selectedCat?._id) return
-    const fetch = async () => {
-      setLoading(true)
-      setProducts([])
-      try {
-        const res = await Axios({
-          ...SummaryApi.getProductByCategory,
-          data: { id: selectedCat._id }
-        })
+
+    const catId = selectedCat._id
+    activeFetchId.current = catId
+
+    setLoading(true)
+    setProducts([])
+
+    Axios({
+      ...SummaryApi.getProductByCategory,
+      data: { id: catId }
+    })
+      .then(res => {
+        // Only apply if this fetch is still the latest
+        if (activeFetchId.current !== catId) return
         if (res.data.success) {
           setProducts(res.data.data || [])
         }
-      } catch (e) {}
-      finally { setLoading(false) }
-    }
-    fetch()
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (activeFetchId.current === catId) setLoading(false)
+      })
   }, [selectedCat])
 
   return (
-    <div className='flex h-[calc(100vh-64px)] bg-gray-50'>
+    <div className='flex bg-gray-50' style={{ height: 'calc(100vh - 64px)' }}>
 
       {/* ── Left sidebar ── */}
       <aside className='w-24 sm:w-28 flex-shrink-0 bg-white border-r border-gray-100 overflow-y-auto'>
@@ -89,9 +99,8 @@ const AllCategoriesPage = () => {
 
         <div className='p-3'>
           {loading ? (
-            /* Skeleton */
             <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
-              {new Array(8).fill(null).map((_, i) => (
+              {new Array(6).fill(null).map((_, i) => (
                 <div key={i} className='bg-white rounded-2xl p-3 animate-pulse'>
                   <div className='bg-gray-100 aspect-square rounded-xl mb-2' />
                   <div className='bg-gray-100 h-3 rounded w-3/4 mb-1' />
