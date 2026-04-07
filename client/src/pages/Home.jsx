@@ -60,55 +60,67 @@ const BannerCarousel = () => {
   }, [slides.length, next])
 
   if (loading) {
-    return <div className='w-full min-h-48 bg-blue-100 rounded animate-pulse my-2'></div>
+    return (
+      <div className='w-full rounded-2xl overflow-hidden my-3 mx-3 lg:mx-0' style={{ height: '180px' }}>
+        <div className='w-full h-full bg-gradient-to-r from-pink-100 via-rose-50 to-pink-100 animate-pulse' />
+      </div>
+    )
   }
 
   const slide = slides[current]
 
-  const ImageContent = () => (
-    <>
-      <img src={slide.image} className='w-full h-full object-cover hidden lg:block' alt={slide.title || 'banner'} />
-      <img src={slide.imageMobile || slide.image} className='w-full h-full object-cover lg:hidden' alt={slide.title || 'banner'} />
-    </>
-  )
-
   return (
-    <div className='relative w-full overflow-hidden rounded' style={{ minHeight: '150px' }}>
-      {slide.link ? (
-        <Link to={slide.link}><ImageContent /></Link>
-      ) : (
-        <ImageContent />
+    <div className='relative w-full overflow-hidden rounded-2xl my-3 shadow group' style={{ minHeight: '150px' }}>
+      <div key={current} style={{ animation: 'heroFadeIn 0.4s ease' }}>
+        {slide.link ? (
+          <Link to={slide.link} className='block w-full'>
+            <img src={slide.image} className='w-full object-cover hidden lg:block' style={{ maxHeight: '420px' }} alt={slide.title || 'banner'} />
+            <img src={slide.imageMobile || slide.image} className='w-full object-cover lg:hidden' alt={slide.title || 'banner'} />
+          </Link>
+        ) : (
+          <>
+            <img src={slide.image} className='w-full object-cover hidden lg:block' style={{ maxHeight: '420px' }} alt={slide.title || 'banner'} />
+            <img src={slide.imageMobile || slide.image} className='w-full object-cover lg:hidden' alt={slide.title || 'banner'} />
+          </>
+        )}
+      </div>
+
+      {slides.length > 1 && (
+        <div className='absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-black/25 to-transparent pointer-events-none' />
       )}
 
       {slides.length > 1 && (
         <>
           <button
             onClick={prev}
-            className='absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors text-lg font-bold'
+            className='absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/85 hover:bg-white text-gray-700 rounded-full flex items-center justify-center shadow-md transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100 text-xl font-bold'
             aria-label='Previous'
           >‹</button>
           <button
             onClick={next}
-            className='absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors text-lg font-bold'
+            className='absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/85 hover:bg-white text-gray-700 rounded-full flex items-center justify-center shadow-md transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100 text-xl font-bold'
             aria-label='Next'
           >›</button>
-
-          <div className='absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5'>
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrent(i)}
-                className={`rounded-full transition-all ${i === current ? 'w-5 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/60 hover:bg-white/80'}`}
-                aria-label={`Slide ${i + 1}`}
-              />
-            ))}
-          </div>
         </>
       )}
+
+      {slides.length > 1 && (
+        <div className='absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5'>
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={'rounded-full transition-all duration-300 ' + (i === current ? 'w-6 h-2 bg-white shadow' : 'w-2 h-2 bg-white/55 hover:bg-white/80')}
+              aria-label={'Slide ' + (i + 1)}
+            />
+          ))}
+        </div>
+      )}
+
+      <style>{'@keyframes heroFadeIn { from { opacity: 0.75; transform: scale(1.015); } to { opacity: 1; transform: scale(1); } }'}</style>
     </div>
   )
 }
-
 const Home = () => {
   const loadingCategory = useSelector(state => state.product.loadingCategory)
   const categoryData = useSelector(state => state.product.allCategory)
