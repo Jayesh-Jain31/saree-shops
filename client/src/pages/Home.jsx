@@ -163,7 +163,7 @@ const Home = () => {
           ))
         ) : (
 <>
-            {visibleCategories.map((cat) => (
+            {visibleCategories.slice(0, 5).map((cat) => (
               <div
                 key={cat._id + 'displayCategory'}
                 className='cursor-pointer flex flex-col items-center gap-2 group'
