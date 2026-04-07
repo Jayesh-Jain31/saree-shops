@@ -115,6 +115,9 @@ const Home = () => {
   const subCategoryData = useSelector(state => state.product.allSubCategory)
   const navigate = useNavigate()
 
+  // Only show categories that have showOnHome !== false (default true for existing ones)
+  const visibleCategories = categoryData.filter(c => c.showOnHome !== false)
+
   const handleRedirectProductListpage = (id, cat) => {
     const subcategory = subCategoryData.find(sub => sub.category.some(c => c._id == id))
     if (!subcategory) return
@@ -140,7 +143,7 @@ const Home = () => {
             </div>
           ))
         ) : (
-          categoryData.map((cat) => (
+          visibleCategories.map((cat) => (
             <div
               key={cat._id + 'displayCategory'}
               className='cursor-pointer flex flex-col items-center gap-2 group'
@@ -161,8 +164,8 @@ const Home = () => {
         )}
       </div>
 
-      {categoryData?.map((c) => (
-        <CategoryWiseProductDisplay key={c?._id + 'CategorywiseProduct'} id={c?._id} name={c?.name} />
+      {visibleCategories.map((c) => (
+        <CategoryWiseProductDisplay key={c._id + 'CategorywiseProduct'} id={c._id} name={c.name} />
       ))}
 
       <RecentlyViewed />

@@ -16,7 +16,8 @@ export const AddCategoryController = async(request,response)=>{
 
         const addCategory = new CategoryModel({
             name,
-            image
+            image,
+            showOnHome : true
         })
 
         const saveCategory = await addCategory.save()
@@ -47,7 +48,6 @@ export const AddCategoryController = async(request,response)=>{
 
 export const getCategoryController = async(request,response)=>{
     try {
-        
         const data = await CategoryModel.find().sort({ createdAt : -1 })
 
         return response.json({
@@ -66,14 +66,14 @@ export const getCategoryController = async(request,response)=>{
 
 export const updateCategoryController = async(request,response)=>{
     try {
-        const { _id ,name, image } = request.body 
+        const { _id, name, image, showOnHome } = request.body 
 
-        const update = await CategoryModel.updateOne({
-            _id : _id
-        },{
-           name, 
-           image 
-        })
+        const updateFields = {}
+        if (name !== undefined) updateFields.name = name
+        if (image !== undefined) updateFields.image = image
+        if (showOnHome !== undefined) updateFields.showOnHome = showOnHome
+
+        const update = await CategoryModel.updateOne({ _id : _id }, updateFields)
 
         return response.json({
             message : "Updated Category",
