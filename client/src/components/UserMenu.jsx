@@ -14,6 +14,7 @@ import {
   MdOutlineDeliveryDining, MdOutlineImage, MdSettings
 } from 'react-icons/md'
 import { FiPackage, FiHeart, FiMapPin, FiLogOut, FiUser, FiRefreshCw } from 'react-icons/fi'
+import { FaShieldAlt } from 'react-icons/fa'
 import { MdAccountBalanceWallet } from 'react-icons/md'
 import isAdmin from '../utils/isAdmin'
 
@@ -85,6 +86,7 @@ const UserMenu = ({ close }) => {
             <MenuItem to="/dashboard/delivery-zones" icon={MdOutlineDeliveryDining} label="Delivery Zones" color="text-teal-500" />
             <MenuItem to="/dashboard/banners" icon={MdOutlineImage} label="Manage Banners" color="text-indigo-500" />
             <MenuItem to="/dashboard/admin-returns" icon={FiRefreshCw} label="Return Requests" color="text-orange-500" />
+            <MenuItem to="/dashboard/fraud-detection" icon={FaShieldAlt} label="Fraud Detection" color="text-red-500" />
             <MenuItem to="/dashboard/site-settings" icon={MdSettings} label="Site Settings" color="text-gray-500" />
           </div>
           <Divider />

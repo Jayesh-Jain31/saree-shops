@@ -64,6 +64,7 @@ A full-stack quick-commerce (Blinkit Clone) application built with the MERN stac
 - **Delivery Zones** (`/dashboard/delivery-zones`): Admin configurable pincode-based delivery time estimates + delivery charge. Advanced: set `freeDeliveryAbove` to auto-apply free delivery when cart total meets threshold. Checkout shows "Add ₹X more for free delivery" tip.
 - **Site Settings** (`/dashboard/site-settings`): Theme color, policy pages, store name/logo, social links, WhatsApp button, return period, **Maintenance Mode** (on/off + custom message), **COD Restriction** (enable/disable cash on delivery)
 - **Maintenance Mode**: Admin toggle in Site Settings. Customers see full-screen maintenance overlay; admins bypass it and shop normally
+- **Fraud Detection** (`/dashboard/fraud-detection`): Automatic rule-based COD fraud scoring on every order. Rules: new account + high-value COD, repeated COD cancellations, shared mobile across accounts, burst ordering in 24h, no delivery history. Scores 0–100; critical (80+) orders are hard-blocked at checkout. Scores 30+ auto-flag for admin review. Admin panel: stats cards, filter by type/status/risk level, search, review modal (clear/flag/block), user-level batch scan, delete flags
 - **Admin**: Category/subcategory/product management, coupon management
 
 ## API Endpoints (New)

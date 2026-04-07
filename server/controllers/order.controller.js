@@ -7,6 +7,8 @@ import mongoose from "mongoose";
 import crypto from "crypto";
 import sendEmail from "../config/sendEmail.js";
 import orderConfirmationTemplate from "../utils/orderConfirmationTemplate.js";
+import FraudFlagModel from "../models/fraudFlag.model.js";
+import { assessOrderRisk } from "../utils/fraudDetection.js";
 
 // Helper: decrement stock for each ordered item
 async function decrementStock(items) {
@@ -32,6 +34,17 @@ export async function CashOnDeliveryOrderController(request, response) {
             price: el.productId.price || 0,
         }))
 
+        // Fraud detection for COD orders
+        const fraud = await assessOrderRisk({ userId, totalAmt, items })
+        if (fraud.shouldBlock) {
+            return response.status(403).json({
+                message: 'This order cannot be placed. Please contact support or choose online payment.',
+                error: true,
+                success: false,
+                fraudBlocked: true,
+            })
+        }
+
         const order = await OrderModel.create({
             userId: userId,
             orderId: `ORD-${new mongoose.Types.ObjectId()}`,
@@ -46,7 +59,22 @@ export async function CashOnDeliveryOrderController(request, response) {
             couponDiscount: couponDiscount,
             walletDeduction: walletDeduction,
             orderStatus: "Confirmed",
+            fraudRiskScore: fraud.riskScore,
+            fraudRiskLevel: fraud.riskLevel,
         })
+
+        // Flag suspicious orders (score >= 30) for admin review
+        if (fraud.riskScore >= 30) {
+            FraudFlagModel.create({
+                type: 'order',
+                orderId: order._id,
+                userId,
+                riskScore: fraud.riskScore,
+                riskLevel: fraud.riskLevel,
+                reasons: fraud.reasons,
+                snapshot: { orderId: order.orderId, totalAmt, paymentMethod: 'COD' }
+            }).catch(() => {})
+        }
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })

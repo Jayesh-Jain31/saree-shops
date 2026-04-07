@@ -28,6 +28,7 @@ import returnRouter from './route/return.route.js'
 import walletRouter from './route/wallet.route.js'
 import shiprocketRouter from './route/shiprocket.route.js'
 import settingsRouter from './route/settings.route.js'
+import fraudRouter from './route/fraud.route.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -92,6 +93,7 @@ app.use('/api/return', returnRouter)
 app.use('/api/wallet', walletRouter)
 app.use('/api/shiprocket', shiprocketRouter)
 app.use('/api/settings', settingsRouter)
+app.use('/api/fraud', fraudRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })

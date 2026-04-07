@@ -78,6 +78,11 @@ const SummaryApi = {
     trackShiprocketOrder : { url : '/api/shiprocket/track', method : 'get' },
     getSettings : { url : '/api/settings/get', method : 'get' },
     updateSetting : { url : '/api/settings/update', method : 'put' },
+    getFraudFlags : { url : '/api/fraud/flags', method : 'get' },
+    getFraudStats : { url : '/api/fraud/stats', method : 'get' },
+    updateFraudFlag : { url : '/api/fraud/flags', method : 'put' },
+    deleteFraudFlag : { url : '/api/fraud/flags', method : 'delete' },
+    runFraudScan : { url : '/api/fraud/scan-users', method : 'post' },
 }
 
 export default SummaryApi
