@@ -74,7 +74,14 @@ export const getMyReturns = async (req, res) => {
     try {
         const userId = req.userId
         const returns = await ReturnModel.find({ userId })
-            .populate('orderId', 'payment_status paymentId delivery_address subTotalAmt totalAmt orderId orderStatus')
+            .populate({
+                path: 'orderId',
+                select: 'payment_status paymentId delivery_address subTotalAmt totalAmt orderId orderStatus',
+                populate: {
+                    path: 'delivery_address',
+                    model: 'address'
+                }
+            })
             .sort({ createdAt: -1 })
         return res.json({ data: returns, error: false, success: true })
     } catch (err) {

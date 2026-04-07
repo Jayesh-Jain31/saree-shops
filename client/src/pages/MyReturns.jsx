@@ -230,16 +230,17 @@ const DetailModal = ({ ret, onClose }) => {
           </div>
 
           {/* Delivery Address */}
-          {addr && (
+          {addr && typeof addr === 'object' && (addr.address_line || addr.city) && (
             <div className='border border-gray-100 rounded-2xl overflow-hidden'>
               <div className='bg-gray-50 px-4 py-2 border-b flex items-center gap-2'>
                 <FaMapMarkerAlt className='text-gray-400' size={12} />
                 <p className='text-xs font-bold text-gray-500 uppercase tracking-wide'>Delivery Address</p>
               </div>
-              <div className='px-4 py-3'>
-                <p className='text-sm font-semibold text-gray-800'>{addr.name}</p>
-                {addr.mobile && <p className='text-xs text-gray-500'>{addr.mobile}</p>}
-                <p className='text-xs text-gray-600 mt-1 leading-relaxed'>
+              <div className='px-4 py-3 space-y-0.5'>
+                {addr.mobile && (
+                  <p className='text-xs font-semibold text-gray-700'>📞 {addr.mobile}</p>
+                )}
+                <p className='text-xs text-gray-600 leading-relaxed'>
                   {[addr.address_line, addr.city, addr.state, addr.pincode, addr.country]
                     .filter(Boolean).join(', ')}
                 </p>
