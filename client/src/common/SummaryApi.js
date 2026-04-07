@@ -51,6 +51,7 @@ const SummaryApi = {
     getWishlist : { url : '/api/wishlist/get', method : 'get' },
     addReview : { url : '/api/review/add', method : 'post' },
     getProductReviews : { url : '/api/review/get', method : 'post' },
+    getMyReviews : { url : '/api/review/my-reviews', method : 'get' },
     deleteReview : { url : '/api/review/delete', method : 'delete' },
     getAnalytics : { url : '/api/analytics/dashboard', method : 'get' },
     getAllOrdersAdmin : { url : '/api/analytics/orders', method : 'post' },

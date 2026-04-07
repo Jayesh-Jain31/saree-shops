@@ -32,7 +32,12 @@ export async function addReviewController(request, response) {
             : 0
         await ProductModel.findByIdAndUpdate(productId, { avgRating, reviewCount })
 
-        return response.json({ message: existing ? "Review updated" : "Review added", error: false, success: true })
+        return response.json({
+            message: existing ? "Review updated" : "Review added",
+            error: false,
+            success: true,
+            data: { avgRating, reviewCount }
+        })
 
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false })
@@ -60,6 +65,20 @@ export async function getProductReviewsController(request, response) {
             error: false,
             success: true
         })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+// Returns all productIds the current user has reviewed — used to persist rating state across refreshes
+export async function getMyReviewedProductsController(request, response) {
+    try {
+        const userId = request.userId
+        const reviews = await ReviewModel.find({ userId }, { productId: 1, rating: 1, _id: 0 }).lean()
+        // Build a map: { [productId]: rating }
+        const map = {}
+        reviews.forEach(r => { map[String(r.productId)] = r.rating })
+        return response.json({ message: "My reviews", data: map, error: false, success: true })
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false })
     }

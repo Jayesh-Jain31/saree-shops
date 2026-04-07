@@ -75,7 +75,7 @@ export const getProductController = async(request,response)=>{
         const skip = (page - 1) * limit
 
         const [data,totalCount] = await Promise.all([
-            ProductModel.find(query).sort({createdAt : -1 }).skip(skip).limit(limit).populate('category subCategory'),
+            ProductModel.find(query).sort({createdAt : -1 }).skip(skip).limit(limit).populate('category subCategory').lean(),
             ProductModel.countDocuments(query)
         ])
 
@@ -161,7 +161,7 @@ export const getProductByCategoryAndSubCategory  = async(request,response)=>{
         const skip = (page - 1) * limit
 
         const [data,dataCount] = await Promise.all([
-            ProductModel.find(query).sort({createdAt : -1 }).skip(skip).limit(limit),
+            ProductModel.find(query).sort({createdAt : -1 }).skip(skip).limit(limit).lean(),
             ProductModel.countDocuments(query)
         ])
 
@@ -303,7 +303,7 @@ export const searchProduct = async(request,response)=>{
         const skip = ( page - 1) * limit
 
         const [data,dataCount] = await Promise.all([
-            ProductModel.find(query).sort({ createdAt  : -1 }).skip(skip).limit(limit).populate('category subCategory'),
+            ProductModel.find(query).sort({ createdAt  : -1 }).skip(skip).limit(limit).populate('category subCategory').lean(),
             ProductModel.countDocuments(query)
         ])
 

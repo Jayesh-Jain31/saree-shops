@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser'
 import morgan from 'morgan'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
+import compression from 'compression'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import connectDB from './config/connectDB.js'
@@ -51,6 +52,8 @@ const authLimiter = rateLimit({
 })
 
 // ── Core middleware ───────────────────────────────────────────────────
+// Gzip compress all responses for faster transfer
+app.use(compression())
 app.use(cors({
     credentials: true,
     origin: process.env.FRONTEND_URL,

@@ -225,7 +225,7 @@ export async function getOrderDetailsController(request, response) {
 
         const orderlist = await OrderModel.find({ userId: userId })
             .sort({ createdAt: -1 })
-            .populate('delivery_address')
+            .populate('delivery_address').lean()
 
         return response.json({
             message: "order list",
@@ -256,7 +256,7 @@ export async function getOrderByIdController(request, response) {
         }
 
         const order = await OrderModel.findOne({ _id: id, userId: userId })
-            .populate('delivery_address')
+            .populate('delivery_address').lean()
 
         if (!order) {
             return response.status(404).json({

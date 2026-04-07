@@ -6,30 +6,61 @@ const Axios = axios.create({
     withCredentials: true,
 })
 
-// Attach access token from cookie automatically (withCredentials handles it)
-// No localStorage needed — tokens live in httpOnly cookies
+// ── Shared refresh-token deduplication ──────────────────────────────────────
+// If multiple 401s arrive simultaneously, only ONE refresh call is made.
+// All pending requests wait for that single refresh and then retry.
+let isRefreshing = false
+let failedRequestQueue = []
+
+function processQueue(error) {
+    failedRequestQueue.forEach(({ resolve, reject }) => {
+        if (error) {
+            reject(error)
+        } else {
+            resolve()
+        }
+    })
+    failedRequestQueue = []
+}
+
+// ── Request interceptor ──────────────────────────────────────────────────────
 Axios.interceptors.request.use(
-    async (config) => {
-        return config
-    },
-    (error) => {
-        return Promise.reject(error)
-    }
+    (config) => config,
+    (error) => Promise.reject(error)
 )
 
-// On 401, silently attempt a token refresh via cookie
+// ── Response interceptor — handle 401 with single shared refresh ─────────────
 Axios.interceptors.response.use(
     (response) => response,
     async (error) => {
-        let originRequest = error.config
+        const originRequest = error.config
 
-        if (error.response?.status === 401 && !originRequest._retry) {
+        // Don't retry the refresh-token endpoint itself
+        if (
+            error.response?.status === 401 &&
+            !originRequest._retry &&
+            !originRequest.url?.includes('refresh-token')
+        ) {
+            if (isRefreshing) {
+                // Another refresh is already in progress — queue this request
+                return new Promise((resolve, reject) => {
+                    failedRequestQueue.push({ resolve, reject })
+                }).then(() => Axios(originRequest))
+                  .catch(() => Promise.reject(error))
+            }
+
             originRequest._retry = true
+            isRefreshing = true
+
             try {
                 await Axios({ ...SummaryApi.refreshToken })
+                processQueue(null)
                 return Axios(originRequest)
-            } catch {
-                return Promise.reject(error)
+            } catch (refreshError) {
+                processQueue(refreshError)
+                return Promise.reject(refreshError)
+            } finally {
+                isRefreshing = false
             }
         }
 

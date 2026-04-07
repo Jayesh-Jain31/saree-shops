@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import NoData from '../components/NoData'
@@ -67,28 +67,47 @@ const PaymentBadge = ({ status }) => {
   )
 }
 
-const RateOrderSection = ({ order }) => {
+const RateOrderSection = ({ order, myReviews }) => {
   const [selectedRating, setSelectedRating] = useState(0)
   const [hoverRating, setHoverRating] = useState(0)
   const [comment, setComment] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [savedRating, setSavedRating] = useState(0)
   const [loading, setLoading] = useState(false)
+  const submittingRef = useRef(false)
 
   useEffect(() => {
+    // 1. Check server-side reviews map (most reliable)
+    const items = order?.items || []
+    const firstProductId = String(items[0]?.productId?._id || items[0]?.productId || '')
+    if (myReviews && firstProductId && myReviews[firstProductId] !== undefined) {
+      setSubmitted(true)
+      setSavedRating(myReviews[firstProductId])
+      return
+    }
+    // 2. Fallback: localStorage
     try {
       const rated = JSON.parse(localStorage.getItem(`rated_order_${order._id}`) || 'null')
       if (rated) { setSubmitted(true); setSavedRating(rated.rating) }
     } catch {}
-  }, [order._id])
+  }, [order._id, myReviews])
 
   const handleSubmit = async (e) => {
     e.stopPropagation()
-    if (!selectedRating) return
+    if (!selectedRating || loading || submittingRef.current) return
+    submittingRef.current = true
     setLoading(true)
     try {
       const items = order?.items || []
-      await Promise.all(items.map(item =>
+      // Submit one review per unique product
+      const seen = new Set()
+      const uniqueItems = items.filter(item => {
+        const pid = String(item.productId?._id || item.productId || '')
+        if (!pid || seen.has(pid)) return false
+        seen.add(pid)
+        return true
+      })
+      await Promise.all(uniqueItems.map(item =>
         Axios({ ...SummaryApi.addReview, data: { productId: item.productId?._id || item.productId, rating: selectedRating, comment } })
       ))
       localStorage.setItem(`rated_order_${order._id}`, JSON.stringify({ rating: selectedRating }))
@@ -99,6 +118,7 @@ const RateOrderSection = ({ order }) => {
       toast.error('Failed to submit rating')
     } finally {
       setLoading(false)
+      submittingRef.current = false
     }
   }
 
@@ -152,7 +172,7 @@ const RateOrderSection = ({ order }) => {
   )
 }
 
-const OrderCard = ({ order, onClick }) => {
+const OrderCard = ({ order, onClick, myReviews }) => {
   const items = order?.items || []
   const totalItems = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
   const previewImages = items.slice(0, 4).map(item => item.product_details?.image?.[0]).filter(Boolean)
@@ -217,7 +237,7 @@ const OrderCard = ({ order, onClick }) => {
         </div>
       </div>
       {order?.orderStatus === 'Delivered' && (
-        <RateOrderSection order={order} />
+        <RateOrderSection order={order} myReviews={myReviews} />
       )}
     </div>
   )
@@ -225,10 +245,20 @@ const OrderCard = ({ order, onClick }) => {
 
 const MyOrders = () => {
   const orders = useSelector(state => state.orders.order)
+  const user = useSelector(state => state.user)
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterPayment, setFilterPayment] = useState('all')
+  const [myReviews, setMyReviews] = useState(null)
+
+  // Fetch which products this user has already reviewed — persists rating state across refreshes
+  useEffect(() => {
+    if (!user?._id) return
+    Axios({ ...SummaryApi.getMyReviews })
+      .then(res => { if (res.data.success) setMyReviews(res.data.data) })
+      .catch(() => {})
+  }, [user?._id])
 
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
@@ -348,6 +378,7 @@ const MyOrders = () => {
             <OrderCard
               key={order._id + index}
               order={order}
+              myReviews={myReviews}
               onClick={() => navigate(`/dashboard/order/${order._id}`)}
             />
           ))}
