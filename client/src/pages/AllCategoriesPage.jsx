@@ -52,20 +52,20 @@ const AllCategoriesPage = () => {
     <div className='flex bg-gray-50' style={{ height: 'calc(100vh - 64px)' }}>
 
       {/* ── Left sidebar ── */}
-      <aside className='w-24 sm:w-28 flex-shrink-0 bg-white border-r border-gray-100 overflow-y-auto'>
+      <aside className='w-20 sm:w-24 flex-shrink-0 bg-white border-r border-gray-100 overflow-y-auto'>
         {allCategory.map(cat => {
           const active = selectedCat?._id === cat._id
           return (
             <button
               key={cat._id}
               onClick={() => setSelectedCat(cat)}
-              className={`w-full flex flex-col items-center gap-1.5 px-1 py-3 border-b border-gray-50 transition-all ${
+              className={`w-full flex flex-col items-center gap-1 px-1 py-2.5 border-b border-gray-50 transition-all ${
                 active
                   ? 'bg-pink-50 border-l-4 border-l-[var(--primary,#ec4899)]'
                   : 'hover:bg-gray-50 border-l-4 border-l-transparent'
               }`}
             >
-              <div className={`w-14 h-14 rounded-full overflow-hidden flex-shrink-0 border-2 transition-all ${
+              <div className={`w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border-2 transition-all ${
                 active ? 'border-[var(--primary,#ec4899)]' : 'border-gray-100'
               }`}>
                 <img
@@ -97,14 +97,14 @@ const AllCategoriesPage = () => {
           </div>
         )}
 
-        <div className='p-3'>
+        <div className='p-2'>
           {loading ? (
-            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
+            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2'>
               {new Array(6).fill(null).map((_, i) => (
-                <div key={i} className='bg-white rounded-2xl p-3 animate-pulse'>
-                  <div className='bg-gray-100 aspect-square rounded-xl mb-2' />
-                  <div className='bg-gray-100 h-3 rounded w-3/4 mb-1' />
-                  <div className='bg-gray-100 h-3 rounded w-1/2' />
+                <div key={i} className='bg-white rounded-xl p-2 animate-pulse'>
+                  <div className='bg-gray-100 aspect-square rounded-lg mb-2' />
+                  <div className='bg-gray-100 h-2.5 rounded w-3/4 mb-1' />
+                  <div className='bg-gray-100 h-2.5 rounded w-1/2' />
                 </div>
               ))}
             </div>
@@ -114,9 +114,9 @@ const AllCategoriesPage = () => {
               <p className='text-sm font-medium'>No products in this category yet</p>
             </div>
           ) : (
-            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
+            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2'>
               {products.map(p => (
-                <CardProduct key={p._id} data={p} />
+                <CardProduct key={p._id} data={p} grid={true} />
               ))}
             </div>
           )}
