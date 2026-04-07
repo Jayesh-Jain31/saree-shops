@@ -43,11 +43,13 @@ export async function registerUserController(request,response){
         const newUser = new UserModel(payload)
         const save = await newUser.save()
 
-        const VerifyEmailUrl = `${process.env.FRONTEND_URL}/verify-email?code=${save?._id}`
+        const frontendUrl = process.env.FRONTEND_URL
+            || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : '')
+        const VerifyEmailUrl = `${frontendUrl}/verify-email?code=${save?._id}`
 
         const verifyEmail = await sendEmail({
             sendTo : email,
-            subject : "Verify email from binkeyit",
+            subject : "Verify your email",
             html : verifyEmailTemplate({
                 name,
                 url : VerifyEmailUrl
