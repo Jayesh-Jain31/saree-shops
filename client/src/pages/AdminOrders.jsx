@@ -145,6 +145,153 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     <table><thead><tr><th>#</th><th>Product</th><th class="tr">Qty</th><th class="tr">Price</th></tr></thead><tbody>
     ${items.map((item, i) => `<tr><td>${i+1}</td><td>${item.product_details?.name || 'Product'}</td><td class="tr">${item.quantity || 1}</td><td class="tr">₹${item.price || 0}</td></tr>`).join('')}
     </tbody></table>
+    <div class="totals">${order.couponCode && order.couponDiscount > 0 ? `<div class="trow"><span>Coupon (${order.couponCode})</span><span style="color:#16a34a">- ₹${order.couponDiscount}</span></div>` : ''}${order.walletDeduction > 0 ? `<div class="trow"><span>Wallet used</span><span style="color:#2563eb">- ₹${order.walletDeduction}</span></div>` : ''}${!order.couponCode && !order.walletDeduction && order.discountAmt > 0 ? `<div class="trow"><span>Discount</span><span style="color:#16a34a">- ₹${order.discountAmt}</span></div>` : ''}ort React, { useEffect, useState, useMemo } from 'react'
+import Axios from '../utils/Axios'
+import SummaryApi from '../common/SummaryApi'
+import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
+import toast from 'react-hot-toast'
+import {
+  FaBoxOpen, FaSearch, FaChevronLeft, FaChevronRight, FaFilter,
+  FaCheckCircle, FaMoneyBillWave, FaCreditCard, FaTruck, FaTimes,
+  FaUser, FaPhone, FaMapMarkerAlt, FaTag, FaPrint, FaUndoAlt, FaRocket
+} from 'react-icons/fa'
+import {
+  MdAccessTime, MdDone, MdInventory, MdPending, MdEdit, MdSave,
+  MdClose, MdLocalShipping, MdDeliveryDining, MdEmail
+} from 'react-icons/md'
+
+const STATUS_OPTIONS = ['Pending', 'Confirmed', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled']
+
+const statusConfig = {
+  'Pending':          { color: 'bg-yellow-50 text-yellow-700 border-yellow-200',   dot: 'bg-yellow-400', icon: <MdPending size={12} /> },
+  'Confirmed':        { color: 'bg-blue-50 text-blue-700 border-blue-200',          dot: 'bg-blue-400',   icon: <FaCheckCircle size={10} /> },
+  'Shipped':          { color: 'bg-indigo-50 text-indigo-700 border-indigo-200',    dot: 'bg-indigo-400', icon: <MdInventory size={12} /> },
+  'Out for Delivery': { color: 'bg-purple-50 text-purple-700 border-purple-200',   dot: 'bg-purple-400', icon: <FaTruck size={11} /> },
+  'Delivered':        { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-400',icon: <MdDone size={13} /> },
+  'Cancelled':        { color: 'bg-red-50 text-red-700 border-red-200',             dot: 'bg-red-400',    icon: <FaTimes size={10} /> },
+}
+
+const statusSteps = ['Pending', 'Confirmed', 'Shipped', 'Out for Delivery', 'Delivered']
+
+const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+const fmtFull = (d) => d ? new Date(d).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
+const fmtRel = (d) => {
+  if (!d) return ''
+  const diff = Math.floor((Date.now() - new Date(d)) / 60000)
+  if (diff < 1) return 'Just now'
+  if (diff < 60) return `${diff}m ago`
+  if (diff < 1440) return `${Math.floor(diff/60)}h ago`
+  if (diff < 10080) return `${Math.floor(diff/1440)}d ago`
+  return fmt(d)
+}
+
+const StatusBadge = ({ status }) => {
+  const cfg = statusConfig[status] || statusConfig['Pending']
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cfg.color}`}>
+      {cfg.icon} {status || 'Pending'}
+    </span>
+  )
+}
+
+const PaymentBadge = ({ status }) => {
+  if (!status) return null
+  const isCOD = status.toUpperCase() === 'CASH ON DELIVERY'
+  return isCOD
+    ? <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200'><FaMoneyBillWave size={9} />COD</span>
+    : <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200'><FaCreditCard size={9} />Online Paid</span>
+}
+
+/* ─────────── FULL ORDER DETAIL DRAWER ─────────── */
+const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
+  const [order, setOrder] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [editingStatus, setEditingStatus] = useState(false)
+  const [newStatus, setNewStatus] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [shipping, setShipping] = useState(false)
+
+  useEffect(() => {
+    if (!orderId) return
+    const fetch = async () => {
+      try {
+        setLoading(true)
+        const res = await Axios({
+          ...SummaryApi.getAdminOrderDetail,
+          params: { orderId }
+        })
+        if (res.data.success) {
+          setOrder(res.data.data)
+          setNewStatus(res.data.data.orderStatus)
+        }
+      } catch { toast.error('Failed to load order details') }
+      finally { setLoading(false) }
+    }
+    fetch()
+  }, [orderId])
+
+  const handleSaveStatus = async () => {
+    setSaving(true)
+    try {
+      const res = await Axios({ ...SummaryApi.updateOrderStatusAdmin, data: { orderId: order._id, status: newStatus } })
+      if (res.data.success) {
+        toast.success('Status updated')
+        setOrder(o => ({ ...o, orderStatus: newStatus }))
+        setEditingStatus(false)
+        onStatusUpdate(order._id, newStatus)
+      }
+    } catch { toast.error('Failed to update status') }
+    finally { setSaving(false) }
+  }
+
+  const handleShiprocket = async () => {
+    setShipping(true)
+    try {
+      const res = await Axios({ ...SummaryApi.createShiprocketOrder, data: { orderId: order._id } })
+      if (res.data.success) {
+        toast.success('Shipment created on Shiprocket!')
+        setOrder(o => ({ ...o, shiprocketOrderId: res.data.data.shiprocketOrderId, shipmentId: res.data.data.shipmentId, orderStatus: 'Shipped' }))
+        onStatusUpdate(order._id, 'Shipped')
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Shiprocket error. Check credentials.'
+      toast.error(msg)
+    } finally {
+      setShipping(false)
+    }
+  }
+
+  const esc = (str) => String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+
+  const handlePrint = () => {
+    if (!order) return
+    const items = order.items || []
+    const addr = order.delivery_address || {}
+    const w = window.open('', '_blank')
+    w.document.write(`<!DOCTYPE html><html><head><title>Order ${esc(order.orderId)}</title>
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui;padding:32px;color:#333;max-width:800px;margin:0 auto}
+    .brand{font-size:22px;font-weight:700;color:#16a34a}.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #16a34a;padding-bottom:16px;margin-bottom:24px}
+    h3{font-size:12px;text-transform:uppercase;color:#999;letter-spacing:.5px;margin-bottom:6px}
+    table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#f8f9fa;padding:10px;text-align:left;font-size:11px;text-transform:uppercase;color:#666;border-bottom:2px solid #e5e7eb}
+    td{padding:10px;border-bottom:1px solid #f3f4f6;font-size:13px}.tr{text-align:right}.totals{margin-top:16px}.trow{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}
+    .grand{border-top:2px solid #333;padding-top:10px;margin-top:6px;font-size:16px;font-weight:700;color:#16a34a}.badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
+    .bg-green{background:#dcfce7;color:#16a34a}.bg-amber{background:#fef3c7;color:#d97706}@media print{body{padding:16px}}</style></head>
+    <body><div class="hdr"><div><div class="brand">Binkeyit</div><p style="font-size:11px;color:#999;margin-top:3px">Admin Order Copy</p></div>
+    <div style="text-align:right"><div style="font-size:20px;font-weight:700">ORDER RECEIPT</div>
+    <div style="font-size:12px;color:#666;margin-top:4px">#${order.orderId}<br>${fmtFull(order.createdAt)}</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px">
+    <div><h3>Customer</h3><p style="font-size:13px">${esc(order.userId?.name || 'N/A')}</p>
+    ${order.userId?.email ? `<p style="font-size:12px;color:#666">${esc(order.userId.email)}</p>` : ''}
+    ${order.userId?.mobile ? `<p style="font-size:12px;color:#666">${esc(order.userId.mobile)}</p>` : ''}</div>
+    <div><h3>Delivery Address</h3><p style="font-size:13px;line-height:1.5">${addr.address_line || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.pincode || ''}</p>
+    ${addr.mobile ? `<p style="font-size:12px;color:#666">📞 ${esc(addr.mobile)}</p>` : ''}</div></div>
+    <div style="margin-bottom:16px"><h3>Payment</h3>
+    <span class="badge ${order.payment_status?.toUpperCase() === 'PAID' ? 'bg-green' : 'bg-amber'}">${order.payment_status?.toUpperCase() === 'PAID' ? 'Online Paid' : 'Cash on Delivery'}</span>
+    ${order.paymentId ? `<span style="font-size:11px;color:#999;margin-left:8px;font-family:monospace">${esc(order.paymentId)}</span>` : ''}</div>
+    <h3>Items</h3>
+    <table><thead><tr><th>#</th><th>Product</th><th class="tr">Qty</th><th class="tr">Price</th></tr></thead><tbody>
+    ${items.map((item, i) => `<tr><td>${i+1}</td><td>${item.product_details?.name || 'Product'}</td><td class="tr">${item.quantity || 1}</td><td class="tr">₹${item.price || 0}</td></tr>`).join('')}
+    </tbody></table>
     <div class="totals">${order.discountAmt > 0 ? `<div class="trow"><span>Discount</span><span style="color:#16a34a">- ₹${order.discountAmt}</span></div>` : ''}
     <div class="trow grand"><span>Grand Total</span><span>₹${order.totalAmt}</span></div></div>
     <p style="margin-top:32px;text-align:center;font-size:11px;color:#999">Order Status: ${order.orderStatus}</p>
@@ -360,7 +507,25 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                   <div className='flex justify-between text-xs text-gray-500'>
                     <span>Subtotal</span><span>{DisplayPriceInRupees(order.subTotalAmt)}</span>
                   </div>
-                  {order.discountAmt > 0 && (
+                  {order.couponCode && order.couponDiscount > 0 && (
+                    <div className='flex justify-between text-xs text-green-600 font-medium'>
+                      <span className='flex items-center gap-1'>
+                        <FaTag size={9} />
+                        Coupon
+                        <span className='font-mono bg-green-50 border border-green-200 px-1 rounded text-[10px]'>{order.couponCode}</span>
+                      </span>
+                      <span>- {DisplayPriceInRupees(order.couponDiscount)}</span>
+                    </div>
+                  )}
+                  {order.walletDeduction > 0 && (
+                    <div className='flex justify-between text-xs text-blue-600 font-medium'>
+                      <span className='flex items-center gap-1'>
+                        <FaTag size={9} />Wallet used
+                      </span>
+                      <span>- {DisplayPriceInRupees(order.walletDeduction)}</span>
+                    </div>
+                  )}
+                  {!order.couponCode && !order.walletDeduction && order.discountAmt > 0 && (
                     <div className='flex justify-between text-xs text-green-600 font-medium'>
                       <span className='flex items-center gap-1'><FaTag size={9} />Discount</span>
                       <span>- {DisplayPriceInRupees(order.discountAmt)}</span>

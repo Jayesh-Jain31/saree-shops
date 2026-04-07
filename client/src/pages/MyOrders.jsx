@@ -233,6 +233,20 @@ const OrderCard = ({ order, onClick, myReviews }) => {
             <p className='text-base font-bold text-gray-800 mt-2'>
               {DisplayPriceInRupees(order?.totalAmt)}
             </p>
+            {(order?.couponCode || order?.walletDeduction > 0) && (
+              <div className='flex flex-wrap gap-1 mt-1'>
+                {order?.couponCode && order?.couponDiscount > 0 && (
+                  <span className='text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-0.5'>
+                    🏷 {order.couponCode} saved {DisplayPriceInRupees(order.couponDiscount)}
+                  </span>
+                )}
+                {order?.walletDeduction > 0 && (
+                  <span className='text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium'>
+                    👛 Wallet {DisplayPriceInRupees(order.walletDeduction)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

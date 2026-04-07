@@ -20,7 +20,7 @@ async function decrementStock(items) {
 export async function CashOnDeliveryOrderController(request, response) {
     try {
         const userId = request.userId
-        const { list_items, totalAmt, addressId, subTotalAmt, discountAmt = 0 } = request.body
+        const { list_items, totalAmt, addressId, subTotalAmt, discountAmt = 0, couponCode = "", couponDiscount = 0, walletDeduction = 0 } = request.body
 
         const items = list_items.map(el => ({
             productId: el.productId._id,
@@ -42,6 +42,9 @@ export async function CashOnDeliveryOrderController(request, response) {
             subTotalAmt: subTotalAmt,
             totalAmt: totalAmt,
             discountAmt: discountAmt,
+            couponCode: couponCode,
+            couponDiscount: couponDiscount,
+            walletDeduction: walletDeduction,
             orderStatus: "Confirmed",
         })
 
@@ -140,6 +143,9 @@ export async function razorpayVerifyController(request, response) {
             subTotalAmt,
             totalAmt,
             discountAmt = 0,
+            couponCode = "",
+            couponDiscount = 0,
+            walletDeduction = 0,
         } = request.body
 
         const body = razorpay_order_id + "|" + razorpay_payment_id
@@ -176,6 +182,9 @@ export async function razorpayVerifyController(request, response) {
             subTotalAmt: subTotalAmt,
             totalAmt: totalAmt,
             discountAmt: discountAmt,
+            couponCode: couponCode,
+            couponDiscount: couponDiscount,
+            walletDeduction: walletDeduction,
             orderStatus: "Confirmed",
         })
 

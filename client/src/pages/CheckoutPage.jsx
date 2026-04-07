@@ -128,7 +128,7 @@ const CheckoutPage = () => {
     try {
       const response = await Axios({
         ...SummaryApi.CashOnDeliveryOrder,
-        data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount }
+        data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction }
       })
       if (response.data.success) {
         const itemsSnapshot = [...cartItemsList]
@@ -151,7 +151,7 @@ const CheckoutPage = () => {
       try {
         const response = await Axios({
           ...SummaryApi.CashOnDeliveryOrder,
-          data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: 0, discountAmt: couponDiscount }
+          data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: 0, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction }
         })
         if (response.data.success) {
           const itemsSnapshot = [...cartItemsList]
@@ -190,7 +190,7 @@ const CheckoutPage = () => {
             const verifyToastId = toast.loading('Verifying payment...')
             const verifyRes = await Axios({
               ...SummaryApi.razorpayVerify,
-              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: finalAmount, discountAmt: couponDiscount }
+              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: finalAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction }
             })
             toast.dismiss(verifyToastId)
             if (verifyRes.data.success) {
