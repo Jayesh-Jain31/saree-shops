@@ -29,7 +29,7 @@ const CardProduct = ({ data, grid = false }) => {
         grid ? 'w-full' : 'w-44 sm:w-48 lg:w-56 flex-shrink-0'
       }`}
     >
-      {/* ── Image — fills the card, portrait aspect ── */}
+      {/* Image */}
       <div className='w-full aspect-[3/4] bg-gray-50 overflow-hidden relative'>
         <img
           key={imgIdx}
@@ -53,14 +53,14 @@ const CardProduct = ({ data, grid = false }) => {
           </div>
         )}
 
-        {/* Discount badge — top-right */}
+        {/* Discount badge */}
         {Boolean(data.discount) && (
           <div className='absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm'>
             {data.discount}% OFF
           </div>
         )}
 
-        {/* Low stock badge — top-left */}
+        {/* Low stock badge */}
         {data.stock > 0 && data.stock <= 5 && (
           <div className='absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm'>
             Only {data.stock} left!
@@ -77,16 +77,16 @@ const CardProduct = ({ data, grid = false }) => {
         )}
       </div>
 
-      {/* ── Content ── */}
-      <div className='flex flex-col flex-1 px-2.5 pt-2 pb-2.5 gap-1'>
+      {/* Content */}
+      <div className={`flex flex-col flex-1 pt-2 pb-2.5 gap-1 ${grid ? 'px-1.5' : 'px-2.5'}`}>
         {/* Name */}
-        <p className='font-medium text-sm lg:text-[15px] leading-snug line-clamp-2 text-gray-800 flex-1'>
+        <p className={`font-medium leading-snug line-clamp-2 text-gray-800 flex-1 ${grid ? 'text-xs' : 'text-sm lg:text-[15px]'}`}>
           {data.name}
         </p>
 
         {/* Unit */}
         {data.unit && (
-          <p className='text-[11px] text-gray-400'>{data.unit}</p>
+          <p className='text-[10px] text-gray-400'>{data.unit}</p>
         )}
 
         {/* Star Rating */}
@@ -95,36 +95,62 @@ const CardProduct = ({ data, grid = false }) => {
             <div className='flex gap-0.5'>
               {[1,2,3,4,5].map(s => (
                 s <= Math.round(data.avgRating)
-                  ? <FaStar key={s} size={10} className='text-yellow-400' />
-                  : <FaRegStar key={s} size={10} className='text-gray-300' />
+                  ? <FaStar key={s} size={8} className='text-yellow-400' />
+                  : <FaRegStar key={s} size={8} className='text-gray-300' />
               ))}
             </div>
-            <span className='text-[10px] text-gray-500 font-medium'>{data.avgRating} ({data.reviewCount})</span>
+            {!grid && (
+              <span className='text-[10px] text-gray-500 font-medium'>{data.avgRating} ({data.reviewCount})</span>
+            )}
           </div>
         )}
 
-        {/* Price + Add */}
-        <div className='flex items-center justify-between gap-2 mt-1'>
-          <div>
-            <p className='font-bold text-sm lg:text-base text-gray-900'>
-              {DisplayPriceInRupees(discountedPrice)}
-            </p>
-            {data.discount > 0 && (
-              <p className='text-[10px] text-gray-400 line-through leading-none'>
-                {DisplayPriceInRupees(data.price)}
+        {/* Price + Add — stacked vertically in grid mode for narrow cells */}
+        {grid ? (
+          <div className='flex flex-col gap-1.5 mt-1'>
+            <div>
+              <p className='font-bold text-xs text-gray-900'>
+                {DisplayPriceInRupees(discountedPrice)}
               </p>
-            )}
+              {data.discount > 0 && (
+                <p className='text-[9px] text-gray-400 line-through leading-none'>
+                  {DisplayPriceInRupees(data.price)}
+                </p>
+              )}
+            </div>
+            <div onClick={e => e.preventDefault()}>
+              {data.stock === 0 ? (
+                <div className='bg-red-50 border border-red-200 text-red-600 text-[9px] font-extrabold text-center py-1 rounded-lg tracking-wide uppercase'>
+                  Sold Out
+                </div>
+              ) : (
+                <AddToCartButton data={data} compact />
+              )}
+            </div>
           </div>
-          <div className='w-20 flex-shrink-0'>
-            {data.stock === 0 ? (
-              <div className='bg-red-50 border border-red-200 text-red-600 text-[10px] font-extrabold text-center py-1.5 rounded-lg tracking-wide uppercase'>
-                Sold Out
-              </div>
-            ) : (
-              <AddToCartButton data={data} />
-            )}
+        ) : (
+          <div className='flex items-center justify-between gap-2 mt-1'>
+            <div>
+              <p className='font-bold text-sm lg:text-base text-gray-900'>
+                {DisplayPriceInRupees(discountedPrice)}
+              </p>
+              {data.discount > 0 && (
+                <p className='text-[10px] text-gray-400 line-through leading-none'>
+                  {DisplayPriceInRupees(data.price)}
+                </p>
+              )}
+            </div>
+            <div className='w-20 flex-shrink-0'>
+              {data.stock === 0 ? (
+                <div className='bg-red-50 border border-red-200 text-red-600 text-[10px] font-extrabold text-center py-1.5 rounded-lg tracking-wide uppercase'>
+                  Sold Out
+                </div>
+              ) : (
+                <AddToCartButton data={data} />
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </Link>
   )

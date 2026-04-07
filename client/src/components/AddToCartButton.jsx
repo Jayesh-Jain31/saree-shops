@@ -9,7 +9,7 @@ import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { FaMinus, FaPlus } from 'react-icons/fa6'
 
-const AddToCartButton = ({ data }) => {
+const AddToCartButton = ({ data, compact = false }) => {
   const { fetchCartItem, updateCartItem, deleteCartItem } = useGlobalContext()
   const [loading, setLoading] = useState(false)
   const cartItem = useSelector(state => state.cartItem.cart)
@@ -89,21 +89,24 @@ const AddToCartButton = ({ data }) => {
     }
   }
 
+  const btnSize = compact ? 'w-7 h-7' : 'w-8 h-8'
+  const iconSize = compact ? 9 : 11
+
   return (
     <div className="w-full" onClick={e => e.preventDefault()}>
       {isAvailableCart ? (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between w-full gap-1">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center justify-between w-full gap-0.5">
             <button
               onClick={decreaseQty}
-              className="btn-primary w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-75 transition-transform duration-150"
+              className={`btn-primary ${btnSize} rounded-full flex items-center justify-center flex-shrink-0 shadow active:scale-75 transition-transform duration-150`}
             >
-              <FaMinus size={11} />
+              <FaMinus size={iconSize} />
             </button>
 
             <span
               key={qty}
-              className={`flex-1 text-center font-bold text-primary text-base select-none transition-all ${bounce ? 'scale-125' : 'scale-100'}`}
+              className={`flex-1 text-center font-bold text-primary select-none transition-all ${compact ? 'text-sm' : 'text-base'} ${bounce ? 'scale-125' : 'scale-100'}`}
               style={{ transition: 'transform 0.15s ease' }}
             >
               {qty}
@@ -112,26 +115,28 @@ const AddToCartButton = ({ data }) => {
             <button
               onClick={increaseQty}
               disabled={atMaxStock}
-              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow transition-all duration-150 ${
+              className={`${btnSize} rounded-full flex items-center justify-center flex-shrink-0 shadow transition-all duration-150 ${
                 atMaxStock
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'btn-primary active:scale-75'
               }`}
             >
-              <FaPlus size={11} />
+              <FaPlus size={iconSize} />
             </button>
           </div>
 
           {atMaxStock && (
-            <p className="text-[9px] text-center text-red-500 font-bold uppercase tracking-wide leading-tight">
-              Max stock reached
+            <p className="text-[8px] text-center text-red-500 font-bold uppercase tracking-wide leading-tight">
+              Max stock
             </p>
           )}
         </div>
       ) : (
         <button
           onClick={handleADDTocart}
-          className="border-2 border-primary text-primary bg-white w-full h-9 font-bold rounded-xl text-sm tracking-wide hover:bg-primary hover:text-white active:scale-95 transition-all duration-150"
+          className={`border-2 border-primary text-primary bg-white w-full font-bold rounded-xl tracking-wide hover:bg-primary hover:text-white active:scale-95 transition-all duration-150 ${
+            compact ? 'h-7 text-xs' : 'h-9 text-sm'
+          }`}
         >
           {loading ? <Loading /> : 'ADD'}
         </button>
