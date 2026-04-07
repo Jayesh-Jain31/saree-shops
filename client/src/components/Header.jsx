@@ -60,19 +60,19 @@ const Header = () => {
             <div className='lg:hidden'>
                 {/* Row 1: Logo + Icons */}
                 {!isSearchPage && (
-                    <div className='flex items-center justify-between px-3 pt-2.5 pb-1'>
-                        {/* Logo */}
-                        <Link to="/" className='flex items-center gap-2'>
+                    <div className='flex items-center justify-between px-3 pt-2.5 pb-1 w-full overflow-hidden'>
+                        {/* Logo — flex-shrink so it yields space to right icons */}
+                        <Link to="/" className='flex items-center gap-2 min-w-0 flex-1 overflow-hidden mr-2'>
                             {showLogo && (
                                 <img
                                     src={logoSrc}
                                     alt={siteName}
-                                    className='object-contain'
-                                    style={{ height: '38px', width: 'auto', maxWidth: '130px' }}
+                                    className='object-contain flex-shrink-0'
+                                    style={{ height: '36px', width: 'auto', maxWidth: '120px' }}
                                 />
                             )}
                             {showTextName && (
-                                <span className='font-black text-xl tracking-tight' style={{ color: 'var(--primary, #16a34a)' }}>
+                                <span className='font-black text-xl tracking-tight truncate' style={{ color: 'var(--primary, #16a34a)' }}>
                                     {siteName}
                                 </span>
                             )}
@@ -80,13 +80,13 @@ const Header = () => {
                                 <img
                                     src={logoSrc}
                                     alt='Store'
-                                    className='object-contain'
-                                    style={{ height: '38px', width: 'auto', maxWidth: '130px' }}
+                                    className='object-contain flex-shrink-0'
+                                    style={{ height: '36px', width: 'auto', maxWidth: '120px' }}
                                 />
                             )}
                         </Link>
-                        {/* Right icons */}
-                        <div className='flex items-center gap-2'>
+                        {/* Right icons — never shrink, always visible */}
+                        <div className='flex items-center gap-1.5 flex-shrink-0'>
                             {user?._id && (
                                 <div className='flex items-center justify-center'>
                                     <NotificationBell />
