@@ -50,7 +50,7 @@ const orderConfirmationTemplate = ({ orderId, items, totalAmt, payment_status })
             </p>
         </div>
         <div style="background:#f9fafb;padding:16px;text-align:center;border-top:1px solid #e5e5e5;">
-            <p style="margin:0;color:#aaa;font-size:12px;">Thank you for shopping with Binkeyit!</p>
+            <p style="margin:0;color:#aaa;font-size:12px;">Thank you for shopping with Sarees Store!</p>
         </div>
     </div>
     `

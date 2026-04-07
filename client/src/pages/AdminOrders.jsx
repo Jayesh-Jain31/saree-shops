@@ -118,10 +118,10 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
 
   const handlePrint = () => {
     if (!order) return
+    const STORE = 'Sarees Store'
     const items = order.items || []
     const addr = order.delivery_address || {}
-    const w = window.open('', '_blank')
-    w.document.write(`<!DOCTYPE html><html><head><title>Order ${esc(order.orderId)}</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Order ${esc(order.orderId)}</title>
     <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui;padding:32px;color:#333;max-width:800px;margin:0 auto}
     .brand{font-size:22px;font-weight:700;color:#16a34a}.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #16a34a;padding-bottom:16px;margin-bottom:24px}
     h3{font-size:12px;text-transform:uppercase;color:#999;letter-spacing:.5px;margin-bottom:6px}
@@ -129,7 +129,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     td{padding:10px;border-bottom:1px solid #f3f4f6;font-size:13px}.tr{text-align:right}.totals{margin-top:16px}.trow{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}
     .grand{border-top:2px solid #333;padding-top:10px;margin-top:6px;font-size:16px;font-weight:700;color:#16a34a}.badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
     .bg-green{background:#dcfce7;color:#16a34a}.bg-amber{background:#fef3c7;color:#d97706}@media print{body{padding:16px}}</style></head>
-    <body><div class="hdr"><div><div class="brand">Binkeyit</div><p style="font-size:11px;color:#999;margin-top:3px">Admin Order Copy</p></div>
+    <body><div class="hdr"><div><div class="brand">${STORE}</div><p style="font-size:11px;color:#999;margin-top:3px">Admin Order Copy</p></div>
     <div style="text-align:right"><div style="font-size:20px;font-weight:700">ORDER RECEIPT</div>
     <div style="font-size:12px;color:#666;margin-top:4px">#${order.orderId}<br>${fmtFull(order.createdAt)}</div></div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px">
@@ -148,9 +148,16 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     <div class="totals">${order.couponCode && order.couponDiscount > 0 ? `<div class="trow"><span>Coupon (${order.couponCode})</span><span style="color:#16a34a">- ₹${order.couponDiscount}</span></div>` : ''}${order.walletDeduction > 0 ? `<div class="trow"><span>Wallet used</span><span style="color:#2563eb">- ₹${order.walletDeduction}</span></div>` : ''}${!order.couponCode && !order.walletDeduction && order.discountAmt > 0 ? `<div class="trow"><span>Discount</span><span style="color:#16a34a">- ₹${order.discountAmt}</span></div>` : ''}
     <div class="trow grand"><span>Grand Total</span><span>₹${order.totalAmt}</span></div></div>
     <p style="margin-top:32px;text-align:center;font-size:11px;color:#999">Order Status: ${order.orderStatus}</p>
-    </body></html>`)
-    w.document.close()
-    setTimeout(() => w.print(), 300)
+    <script>window.onload=function(){window.print()}<\/script>
+    </body></html>`
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const w = window.open(url, '_blank')
+    if (!w) {
+      const a = document.createElement('a')
+      a.href = url; a.target = '_blank'; document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
   }
 
   if (!orderId) return null

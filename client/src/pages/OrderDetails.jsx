@@ -275,8 +275,8 @@ const OrderDetails = () => {
       <body>
         <div class="header">
           <div>
-            <div class="brand">Binkeyit</div>
-            <p style="font-size:12px;color:#999;margin-top:4px">Quick Commerce</p>
+            <div class="brand">Sarees Store</div>
+            <p style="font-size:12px;color:#999;margin-top:4px">Your Saree Destination</p>
           </div>
           <div>
             <div class="invoice-title">INVOICE</div>
@@ -352,18 +352,22 @@ const OrderDetails = () => {
         </div>
 
         <div class="footer">
-          <p>Thank you for shopping with Binkeyit!</p>
+          <p>Thank you for shopping with Sarees Store!</p>
           <p style="margin-top:4px">This is a computer-generated invoice.</p>
         </div>
       </body>
       </html>
     `
 
-    const printWindow = window.open('', '_blank')
-    printWindow.document.write(invoiceHtml)
-    printWindow.document.close()
-    printWindow.focus()
-    setTimeout(() => { printWindow.print() }, 300)
+    const invoiceWithPrint = invoiceHtml.replace('</body>', '<script>window.onload=function(){window.print()}<\/script></body>')
+    const blob = new Blob([invoiceWithPrint], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const w = window.open(url, '_blank')
+    if (!w) {
+      const a = document.createElement('a')
+      a.href = url; a.target = '_blank'; document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
   }
 
   const copyOrderId = () => {
