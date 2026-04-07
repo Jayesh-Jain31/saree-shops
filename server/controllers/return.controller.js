@@ -134,7 +134,7 @@ export const updateReturnStatus = async (req, res) => {
                     returnReq.refundAmount = finalRefundAmount
                     autoAction = 'wallet_credited'
                 } catch (e) {
-                    console.log('Wallet credit failed:', e.message)
+                    if(process.env.NODE_ENV !== 'production') console.log('Wallet credit failed:', e.message)
                 }
             } else {
                 const paymentId = returnReq.paymentId || order?.paymentId
@@ -146,7 +146,7 @@ export const updateReturnStatus = async (req, res) => {
                         returnReq.status = 'Refund Initiated'
                         autoAction = 'razorpay_refund_initiated'
                     } catch (e) {
-                        console.log('Razorpay refund failed:', e.message)
+                        if(process.env.NODE_ENV !== 'production') console.log('Razorpay refund failed:', e.message)
                         autoAction = 'razorpay_refund_failed'
                     }
                 } else {
@@ -171,7 +171,7 @@ export const updateReturnStatus = async (req, res) => {
                     )
                     autoAction = 'wallet_credited'
                 } catch (e) {
-                    console.log('Wallet credit failed:', e.message)
+                    if(process.env.NODE_ENV !== 'production') console.log('Wallet credit failed:', e.message)
                 }
             }
         }

@@ -22,7 +22,7 @@ export async function createShiprocketOrder(request, response) {
                 pickupLocation = warehouses[0].pickup_location || warehouses[0].name || 'Primary'
             }
         } catch (wErr) {
-            console.log('Could not fetch warehouses, using Primary:', wErr?.response?.data || wErr.message)
+            if(process.env.NODE_ENV !== 'production') console.log('Could not fetch warehouses, using Primary:', wErr?.response?.data || wErr.message)
         }
 
         const addr = order.delivery_address || {}
@@ -68,10 +68,10 @@ export async function createShiprocketOrder(request, response) {
             weight: 0.5
         }
 
-        console.log('Creating Shiprocket order with payload:', JSON.stringify(payload, null, 2))
+        if(process.env.NODE_ENV !== 'production') console.log('Creating Shiprocket order with payload:', JSON.stringify(payload, null, 2))
 
         const data = await shiprocketPost('/orders/create/adhoc', payload)
-        console.log('Shiprocket response:', JSON.stringify(data, null, 2))
+        if(process.env.NODE_ENV !== 'production') console.log('Shiprocket response:', JSON.stringify(data, null, 2))
 
         if (!data.order_id) {
             const errMsg = data.message || (data.errors ? JSON.stringify(data.errors) : 'Shiprocket order creation failed')

@@ -220,9 +220,21 @@ export const updateProductDetails = async(request,response)=>{
             })
         }
 
-        const updateProduct = await ProductModel.updateOne({ _id : _id },{
-            ...request.body
-        })
+        const { name, image, description, category, subCategory, unit, stock, price, discount, publish, variants, moreDetails } = request.body
+        const allowedUpdates = {}
+        if (name !== undefined) allowedUpdates.name = name
+        if (image !== undefined) allowedUpdates.image = image
+        if (description !== undefined) allowedUpdates.description = description
+        if (category !== undefined) allowedUpdates.category = category
+        if (subCategory !== undefined) allowedUpdates.subCategory = subCategory
+        if (unit !== undefined) allowedUpdates.unit = unit
+        if (stock !== undefined) allowedUpdates.stock = stock
+        if (price !== undefined) allowedUpdates.price = price
+        if (discount !== undefined) allowedUpdates.discount = discount
+        if (publish !== undefined) allowedUpdates.publish = publish
+        if (variants !== undefined) allowedUpdates.variants = variants
+        if (moreDetails !== undefined) allowedUpdates.moreDetails = moreDetails
+        const updateProduct = await ProductModel.updateOne({ _id : _id }, allowedUpdates)
 
         return response.json({
             message : "updated successfully",

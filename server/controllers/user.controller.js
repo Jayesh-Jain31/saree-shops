@@ -500,7 +500,7 @@ export async function userDetails(request,response){
     try {
         const userId  = request.userId
 
-        console.log(userId)
+        if(process.env.NODE_ENV !== 'production') console.log(userId)
 
         const user = await UserModel.findById(userId).select('-password -refresh_token')
 

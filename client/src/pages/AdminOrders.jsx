@@ -114,12 +114,14 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     }
   }
 
+  const esc = (str) => String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+
   const handlePrint = () => {
     if (!order) return
     const items = order.items || []
     const addr = order.delivery_address || {}
     const w = window.open('', '_blank')
-    w.document.write(`<!DOCTYPE html><html><head><title>Order ${order.orderId}</title>
+    w.document.write(`<!DOCTYPE html><html><head><title>Order ${esc(order.orderId)}</title>
     <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui;padding:32px;color:#333;max-width:800px;margin:0 auto}
     .brand{font-size:22px;font-weight:700;color:#16a34a}.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #16a34a;padding-bottom:16px;margin-bottom:24px}
     h3{font-size:12px;text-transform:uppercase;color:#999;letter-spacing:.5px;margin-bottom:6px}
@@ -131,14 +133,14 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     <div style="text-align:right"><div style="font-size:20px;font-weight:700">ORDER RECEIPT</div>
     <div style="font-size:12px;color:#666;margin-top:4px">#${order.orderId}<br>${fmtFull(order.createdAt)}</div></div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px">
-    <div><h3>Customer</h3><p style="font-size:13px">${order.userId?.name || 'N/A'}</p>
-    ${order.userId?.email ? `<p style="font-size:12px;color:#666">${order.userId.email}</p>` : ''}
-    ${order.userId?.mobile ? `<p style="font-size:12px;color:#666">${order.userId.mobile}</p>` : ''}</div>
+    <div><h3>Customer</h3><p style="font-size:13px">${esc(order.userId?.name || 'N/A')}</p>
+    ${order.userId?.email ? `<p style="font-size:12px;color:#666">${esc(order.userId.email)}</p>` : ''}
+    ${order.userId?.mobile ? `<p style="font-size:12px;color:#666">${esc(order.userId.mobile)}</p>` : ''}</div>
     <div><h3>Delivery Address</h3><p style="font-size:13px;line-height:1.5">${addr.address_line || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.pincode || ''}</p>
-    ${addr.mobile ? `<p style="font-size:12px;color:#666">📞 ${addr.mobile}</p>` : ''}</div></div>
+    ${addr.mobile ? `<p style="font-size:12px;color:#666">📞 ${esc(addr.mobile)}</p>` : ''}</div></div>
     <div style="margin-bottom:16px"><h3>Payment</h3>
     <span class="badge ${order.payment_status?.toUpperCase() === 'PAID' ? 'bg-green' : 'bg-amber'}">${order.payment_status?.toUpperCase() === 'PAID' ? 'Online Paid' : 'Cash on Delivery'}</span>
-    ${order.paymentId ? `<span style="font-size:11px;color:#999;margin-left:8px;font-family:monospace">${order.paymentId}</span>` : ''}</div>
+    ${order.paymentId ? `<span style="font-size:11px;color:#999;margin-left:8px;font-family:monospace">${esc(order.paymentId)}</span>` : ''}</div>
     <h3>Items</h3>
     <table><thead><tr><th>#</th><th>Product</th><th class="tr">Qty</th><th class="tr">Price</th></tr></thead><tbody>
     ${items.map((item, i) => `<tr><td>${i+1}</td><td>${item.product_details?.name || 'Product'}</td><td class="tr">${item.quantity || 1}</td><td class="tr">₹${item.price || 0}</td></tr>`).join('')}

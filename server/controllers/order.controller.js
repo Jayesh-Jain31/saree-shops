@@ -64,7 +64,7 @@ export async function CashOnDeliveryOrderController(request, response) {
                 })
             }
         } catch (emailErr) {
-            console.log("Order confirmation email failed:", emailErr.message)
+            if(process.env.NODE_ENV !== 'production') console.log("Order confirmation email failed:", emailErr.message)
         }
 
         return response.json({
@@ -119,7 +119,7 @@ export async function razorpayOrderController(request, response) {
         })
 
     } catch (error) {
-        console.log("Razorpay order creation error:", error?.error?.description || error?.message || error)
+        if(process.env.NODE_ENV !== 'production') console.log("Razorpay order creation error:", error?.error?.description || error?.message || error)
         return response.status(500).json({
             message: error?.error?.description || error.message || error,
             error: true,
@@ -198,7 +198,7 @@ export async function razorpayVerifyController(request, response) {
                 })
             }
         } catch (emailErr) {
-            console.log("Order confirmation email failed:", emailErr.message)
+            if(process.env.NODE_ENV !== 'production') console.log("Order confirmation email failed:", emailErr.message)
         }
 
         return response.json({

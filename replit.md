@@ -93,3 +93,12 @@ A full-stack quick-commerce (Blinkit Clone) application built with the MERN stac
 - Build: `cd client && npm install && npm run build`
 - Run: `node server/index.js` (serves both API and built frontend on port 5000 in production)
 - Target: autoscale
+
+## Security Hardening (Applied)
+- **Rate Limiting**: `express-rate-limit` — auth endpoints (login/register/forgot-password/OTP) capped at 10 req/15min per IP; all other endpoints capped at 150 req/min
+- **httpOnly Cookies Only**: JWT access+refresh tokens are exclusively stored in httpOnly cookies. All `localStorage` token storage removed from `Axios.js` and `Login.jsx`
+- **Product Controller Whitelist**: `updateProductDetails` now uses explicit field whitelist instead of `...request.body` spread (prevents arbitrary field injection)
+- **XSS in Print Template**: Admin order print function uses `esc()` HTML-escaping helper before interpolating any user data into `document.write()`
+- **Console.log Gating**: All `console.log()` calls in server controllers gated behind `NODE_ENV !== 'production'` to prevent PII leakage in production logs
+- **Vite CVE-2025-30208**: Upgraded Vite to 5.4.15 (path traversal patch)
+- **Helmet**: Added `contentSecurityPolicy: false` flag to allow normal app operation; `crossOriginResourcePolicy: false` retained for image serving
