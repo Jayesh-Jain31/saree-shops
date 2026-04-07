@@ -185,18 +185,27 @@ const Home = () => {
               to='/categories'
               className='cursor-pointer flex flex-col items-center gap-2 group'
             >
-              <div className='w-full aspect-square rounded-2xl overflow-hidden flex items-center justify-center p-2 group-hover:scale-105 transition-all duration-200'
-                style={{ background: 'linear-gradient(135deg, var(--primary, #ec4899) 0%, #f9a8d4 100%)' }}
-              >
-                <div className='flex flex-col items-center justify-center gap-1.5'>
-                  <div className='grid grid-cols-3 gap-0.5'>
-                    {[...Array(9)].map((_, i) => (
-                      <div key={i} className='w-2.5 h-2.5 bg-white/80 rounded-sm' />
-                    ))}
+              {/* 2×2 collage tile */}
+              <div className='w-full aspect-square rounded-2xl overflow-hidden relative group-hover:scale-105 group-hover:shadow-lg transition-all duration-200'>
+                {/* 4 mini category images */}
+                <div className='w-full h-full grid grid-cols-2 grid-rows-2'>
+                  {visibleCategories.slice(0, 4).map((cat, i) => (
+                    <div key={i} className='overflow-hidden'>
+                      <img src={cat.image} alt={cat.name} className='w-full h-full object-cover' />
+                    </div>
+                  ))}
+                </div>
+                {/* Gradient overlay */}
+                <div className='absolute inset-0' style={{ background: 'linear-gradient(160deg, rgba(236,72,153,0.72) 0%, rgba(168,85,247,0.72) 100%)' }} />
+                {/* Centered text */}
+                <div className='absolute inset-0 flex flex-col items-center justify-center gap-1'>
+                  <div className='w-8 h-8 rounded-full bg-white/25 flex items-center justify-center mb-0.5'>
+                    <svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' fill='none' viewBox='0 0 24 24' stroke='white' strokeWidth={2.5}>
+                      <path strokeLinecap='round' strokeLinejoin='round' d='M4 6h16M4 12h16M4 18h16' />
+                    </svg>
                   </div>
-                  <svg xmlns='http://www.w3.org/2000/svg' className='text-white mt-1' width='16' height='16' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth={2.5}>
-                    <path strokeLinecap='round' strokeLinejoin='round' d='M9 5l7 7-7 7' />
-                  </svg>
+                  <span className='text-white font-bold text-[11px] sm:text-xs leading-tight text-center px-1'>View All</span>
+                  <span className='text-white/80 text-[9px] sm:text-[10px] leading-tight text-center px-1'>Categories</span>
                 </div>
               </div>
               <p className='text-center text-xs sm:text-sm font-bold leading-tight w-full' style={{ color: 'var(--primary, #ec4899)' }}>
