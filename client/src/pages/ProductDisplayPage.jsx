@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import SummaryApi from '../common/SummaryApi'
 import Axios from '../utils/Axios'
 import AxiosToastError from '../utils/AxiosToastError'
-import { FaAngleRight, FaAngleLeft } from "react-icons/fa6"
+import { FaAngleRight, FaAngleLeft, FaXmark } from "react-icons/fa6"
 import {
   FaHeart, FaRegHeart,
   FaWhatsapp, FaLink, FaShareAlt,
@@ -43,6 +43,7 @@ const ProductDisplayPage = () => {
   let productId = params?.product?.split("-")?.slice(-1)[0]
   const [data, setData] = useState({ name: "", image: [] })
   const [image, setImage] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const imageContainer = useRef()
   const user = useSelector(state => state?.user)
@@ -164,8 +165,9 @@ const ProductDisplayPage = () => {
           <img
             key={image}
             src={data.image[image]}
-            className='w-full h-full object-contain'
+            className='w-full h-full object-contain cursor-zoom-in'
             style={{ animation: 'fadeSlideIn 0.35s ease' }}
+            onClick={() => setLightboxOpen(true)}
           />
           <div className='absolute top-3 right-3 flex gap-2'>
             <button onClick={toggleWishlist}
@@ -436,6 +438,74 @@ const ProductDisplayPage = () => {
         </div>
 
       </div>
+
+      {/* ── Full-screen Lightbox ── */}
+      {lightboxOpen && (
+        <div
+          className='fixed inset-0 z-[999] bg-black/95 flex flex-col'
+          onClick={() => setLightboxOpen(false)}
+        >
+          {/* Top bar */}
+          <div className='flex items-center justify-between px-4 py-3 flex-shrink-0' onClick={e => e.stopPropagation()}>
+            <p className='text-white/70 text-sm font-medium'>{image + 1} / {data.image.length}</p>
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className='w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors'
+            >
+              <FaXmark className='text-white' size={18} />
+            </button>
+          </div>
+
+          {/* Main image */}
+          <div className='flex-1 flex items-center justify-center px-4 relative' onClick={e => e.stopPropagation()}>
+            {/* Prev arrow */}
+            {data.image.length > 1 && (
+              <button
+                onClick={() => setImage(prev => (prev - 1 + data.image.length) % data.image.length)}
+                className='absolute left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors z-10'
+              >
+                <FaAngleLeft className='text-white' size={20} />
+              </button>
+            )}
+
+            <img
+              key={'lb-' + image}
+              src={data.image[image]}
+              alt={data.name}
+              className='max-w-full max-h-full object-contain rounded-lg select-none'
+              style={{ animation: 'fadeSlideIn 0.25s ease', maxHeight: 'calc(100vh - 160px)' }}
+            />
+
+            {/* Next arrow */}
+            {data.image.length > 1 && (
+              <button
+                onClick={() => setImage(prev => (prev + 1) % data.image.length)}
+                className='absolute right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors z-10'
+              >
+                <FaAngleRight className='text-white' size={20} />
+              </button>
+            )}
+          </div>
+
+          {/* Bottom thumbnails */}
+          {data.image.length > 1 && (
+            <div className='flex-shrink-0 flex justify-center gap-2 p-4 overflow-x-auto scrollbar-none' onClick={e => e.stopPropagation()}>
+              {data.image.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setImage(i)}
+                  className={`w-14 h-14 min-w-14 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                    i === image ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-90'
+                  }`}
+                >
+                  <img src={img} alt='' className='w-full h-full object-cover' />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
     </section>
   )
 }
