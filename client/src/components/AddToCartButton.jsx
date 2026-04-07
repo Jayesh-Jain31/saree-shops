@@ -9,7 +9,7 @@ import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { FaMinus, FaPlus } from 'react-icons/fa6'
 
-const AddToCartButton = ({ data }) => {
+const AddToCartButton = ({ data, compact = false }) => {
   const { fetchCartItem, updateCartItem, deleteCartItem } = useGlobalContext()
   const [loading, setLoading] = useState(false)
   const cartItem = useSelector(state => state.cartItem.cart)
@@ -89,6 +89,46 @@ const AddToCartButton = ({ data }) => {
     }
   }
 
+  if (compact) {
+    return (
+      <div className="w-full" onClick={e => e.preventDefault()}>
+        {isAvailableCart ? (
+          <div className="flex items-center justify-between w-full border-2 border-primary rounded-xl overflow-hidden">
+            <button
+              onClick={decreaseQty}
+              className="btn-primary w-8 h-8 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform"
+            >
+              <FaMinus size={10} />
+            </button>
+            <span
+              key={qty}
+              className={`flex-1 text-center font-bold text-primary text-sm select-none ${bounce ? 'scale-125' : 'scale-100'}`}
+              style={{ transition: 'transform 0.15s ease' }}
+            >
+              {qty}
+            </span>
+            <button
+              onClick={increaseQty}
+              disabled={atMaxStock}
+              className={`w-8 h-8 flex items-center justify-center flex-shrink-0 transition-all ${
+                atMaxStock ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'btn-primary active:scale-90'
+              }`}
+            >
+              <FaPlus size={10} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleADDTocart}
+            className="border-2 border-primary text-primary bg-white w-full h-8 font-bold rounded-xl text-xs tracking-wide hover:bg-primary hover:text-white active:scale-95 transition-all duration-150"
+          >
+            {loading ? <Loading /> : 'ADD'}
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="w-full" onClick={e => e.preventDefault()}>
       {isAvailableCart ? (
@@ -100,7 +140,6 @@ const AddToCartButton = ({ data }) => {
             >
               <FaMinus size={11} />
             </button>
-
             <span
               key={qty}
               className={`flex-1 text-center font-bold text-primary text-base select-none transition-all ${bounce ? 'scale-125' : 'scale-100'}`}
@@ -108,20 +147,16 @@ const AddToCartButton = ({ data }) => {
             >
               {qty}
             </span>
-
             <button
               onClick={increaseQty}
               disabled={atMaxStock}
               className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow transition-all duration-150 ${
-                atMaxStock
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'btn-primary active:scale-75'
+                atMaxStock ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'btn-primary active:scale-75'
               }`}
             >
               <FaPlus size={11} />
             </button>
           </div>
-
           {atMaxStock && (
             <p className="text-[9px] text-center text-red-500 font-bold uppercase tracking-wide leading-tight">
               Max stock reached
