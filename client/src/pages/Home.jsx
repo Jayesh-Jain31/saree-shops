@@ -162,24 +162,48 @@ const Home = () => {
             </div>
           ))
         ) : (
-          visibleCategories.map((cat) => (
-            <div
-              key={cat._id + 'displayCategory'}
-              className='cursor-pointer flex flex-col items-center gap-2 group'
-              onClick={() => handleRedirectProductListpage(cat._id, cat.name)}
-            >
-              <div className='w-full aspect-square bg-blue-50 rounded-2xl overflow-hidden flex items-center justify-center p-2 group-hover:shadow-lg group-hover:scale-105 transition-all duration-200'>
-                <img
-                  src={cat.image}
-                  className='w-full h-full object-contain'
-                  alt={cat.name}
-                />
+<>
+            {visibleCategories.map((cat) => (
+              <div
+                key={cat._id + 'displayCategory'}
+                className='cursor-pointer flex flex-col items-center gap-2 group'
+                onClick={() => handleRedirectProductListpage(cat._id, cat.name)}
+              >
+                <div className='w-full aspect-square bg-blue-50 rounded-2xl overflow-hidden flex items-center justify-center p-2 group-hover:shadow-lg group-hover:scale-105 transition-all duration-200'>
+                  <img
+                    src={cat.image}
+                    className='w-full h-full object-contain'
+                    alt={cat.name}
+                  />
+                </div>
+                <p className='text-center text-xs sm:text-sm font-semibold text-gray-700 leading-tight line-clamp-2 w-full'>
+                  {cat.name}
+                </p>
               </div>
-              <p className='text-center text-xs sm:text-sm font-semibold text-gray-700 leading-tight line-clamp-2 w-full'>
-                {cat.name}
+            ))}
+            <Link
+              to='/search'
+              className='cursor-pointer flex flex-col items-center gap-2 group'
+            >
+              <div className='w-full aspect-square rounded-2xl overflow-hidden flex items-center justify-center p-2 group-hover:scale-105 transition-all duration-200'
+                style={{ background: 'linear-gradient(135deg, var(--primary, #ec4899) 0%, #f9a8d4 100%)' }}
+              >
+                <div className='flex flex-col items-center justify-center gap-1.5'>
+                  <div className='grid grid-cols-3 gap-0.5'>
+                    {[...Array(9)].map((_, i) => (
+                      <div key={i} className='w-2.5 h-2.5 bg-white/80 rounded-sm' />
+                    ))}
+                  </div>
+                  <svg xmlns='http://www.w3.org/2000/svg' className='text-white mt-1' width='16' height='16' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth={2.5}>
+                    <path strokeLinecap='round' strokeLinejoin='round' d='M9 5l7 7-7 7' />
+                  </svg>
+                </div>
+              </div>
+              <p className='text-center text-xs sm:text-sm font-bold leading-tight w-full' style={{ color: 'var(--primary, #ec4899)' }}>
+                View All
               </p>
-            </div>
-          ))
+            </Link>
+          </>
         )}
       </div>
 
