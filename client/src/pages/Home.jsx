@@ -146,7 +146,14 @@ const Home = () => {
         <BannerCarousel />
       </div>
 
-      <div className='container mx-auto px-4 my-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3'>
+      <div className='container mx-auto px-4 mt-4 mb-1'>
+        <div className='flex items-center gap-3'>
+          <h2 className='font-bold text-gray-800 text-base'>Shop by Category</h2>
+          <div className='flex-1 h-px bg-gray-100'></div>
+        </div>
+      </div>
+
+      <div className='container mx-auto px-4 mt-2 mb-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3'>
         {loadingCategory ? (
           new Array(6).fill(null).map((_, index) => (
             <div key={index + 'loadingcategory'} className='bg-white rounded-2xl p-3 grid gap-2 shadow animate-pulse'>
