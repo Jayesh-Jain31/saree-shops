@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import BackButton from '../components/BackButton'
@@ -9,9 +9,6 @@ import {
   FaSearch, FaFilter, FaChevronRight, FaTimes, FaTruck
 } from 'react-icons/fa'
 import { MdAccessTime, MdDeliveryDining, MdDone, MdInventory, MdPending } from 'react-icons/md'
-import ItemRating from '../components/ItemRating'
-import Axios from '../utils/Axios'
-import SummaryApi from '../common/SummaryApi'
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -68,7 +65,7 @@ const PaymentBadge = ({ status }) => {
   )
 }
 
-const OrderCard = ({ order, onClick, reviewedMap = {} }) => {
+const OrderCard = ({ order, onClick }) => {
   const items = order?.items || []
   const totalItems = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
   const previewImages = items.slice(0, 4).map(item => item.product_details?.image?.[0]).filter(Boolean)
@@ -146,33 +143,6 @@ const OrderCard = ({ order, onClick, reviewedMap = {} }) => {
           </div>
         </div>
       </div>
-      {order?.orderStatus === 'Delivered' && (
-        <div className='border-t border-gray-100 px-4 py-2.5' onClick={e => e.stopPropagation()}>
-          <p className='text-[11px] font-semibold text-gray-400 mb-1.5'>Rate items</p>
-          <div className='space-y-1'>
-            {(() => {
-              const seen = new Set()
-              return items.filter(item => {
-                const pid = String(item.productId?._id || item.productId || '')
-                if (!pid || seen.has(pid)) return false
-                seen.add(pid)
-                return true
-              }).map((item, i) => (
-                <div key={i} className='flex items-center justify-between gap-2'>
-                  <p className='text-xs text-gray-600 truncate flex-1'>{item.product_details?.name}</p>
-                  <ItemRating
-                    orderId={String(order._id)}
-                    productId={String(item.productId?._id || item.productId)}
-                    productName={item.product_details?.name}
-                    compact={true}
-                    reviewedMap={reviewedMap}
-                  />
-                </div>
-              ))
-            })()}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -184,18 +154,6 @@ const MyOrders = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterPayment, setFilterPayment] = useState('all')
-  const [reviewedMap, setReviewedMap] = useState({})
-
-  useEffect(() => {
-    const fetchReviewedMap = async () => {
-      try {
-        const res = await Axios({ ...SummaryApi.getMyReviews })
-        if (res.data.success) setReviewedMap(res.data.data || {})
-      } catch {}
-    }
-    fetchReviewedMap()
-  }, [])
-
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       const matchesSearch = searchQuery === '' ||
@@ -315,7 +273,6 @@ const MyOrders = () => {
             <OrderCard
               key={order._id + index}
               order={order}
-              reviewedMap={reviewedMap}
               onClick={() => navigate(`/dashboard/order/${order._id}`)}
             />
           ))}
