@@ -46,10 +46,7 @@ const DisplayCartItem = ({ close }) => {
               )}
             </div>
           </div>
-          <Link to='/' className='lg:hidden w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition'>
-            <IoClose size={20} className='text-gray-500' />
-          </Link>
-          <button onClick={close} className='hidden lg:flex w-8 h-8 items-center justify-center rounded-full hover:bg-gray-100 transition'>
+          <button onClick={close} className='w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition'>
             <IoClose size={20} className='text-gray-500' />
           </button>
         </div>
