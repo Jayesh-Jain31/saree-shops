@@ -92,18 +92,6 @@ const Header = () => {
                                     <NotificationBell />
                                 </div>
                             )}
-                            {/* Mobile Cart Button */}
-                            <button
-                                onClick={() => setOpenCartSection(true)}
-                                className='relative w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors'
-                            >
-                                <BsCart4 size={20} />
-                                {totalQty > 0 && (
-                                    <span className='absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none'>
-                                        {totalQty > 9 ? '9+' : totalQty}
-                                    </span>
-                                )}
-                            </button>
                             <button
                                 onClick={handleMobileUser}
                                 className='w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors'
