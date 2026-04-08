@@ -4,32 +4,53 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
 
-const ItemRating = ({ orderId, productId, productName, compact = false }) => {
-  const [selected, setSelected] = useState(0)
+const ItemRating = ({ orderId, productId, productName, compact = false, reviewedMap = {} }) => {
+  const pid = String(productId || '')
+  const key = orderId && pid ? `rated_item_${orderId}_${pid}` : null
+
+  const getInitialState = () => {
+    if (reviewedMap[pid]) return { submitted: true, savedRating: reviewedMap[pid] }
+    try {
+      if (key) {
+        const saved = JSON.parse(localStorage.getItem(key) || 'null')
+        if (saved?.rating) return { submitted: true, savedRating: saved.rating }
+      }
+    } catch {}
+    return { submitted: false, savedRating: 0 }
+  }
+
+  const initial = getInitialState()
+  const [submitted, setSubmitted] = useState(initial.submitted)
+  const [savedRating, setSavedRating] = useState(initial.savedRating)
   const [hover, setHover] = useState(0)
-  const [submitted, setSubmitted] = useState(false)
-  const [savedRating, setSavedRating] = useState(0)
+  const [selected, setSelected] = useState(0)
   const [loading, setLoading] = useState(false)
   const submitting = useRef(false)
-  const key = `rated_item_${orderId}_${productId}`
 
   useEffect(() => {
+    if (reviewedMap[pid]) {
+      setSubmitted(true)
+      setSavedRating(reviewedMap[pid])
+      return
+    }
     try {
-      const saved = JSON.parse(localStorage.getItem(key) || 'null')
-      if (saved) { setSubmitted(true); setSavedRating(saved.rating) }
+      if (key) {
+        const saved = JSON.parse(localStorage.getItem(key) || 'null')
+        if (saved?.rating) { setSubmitted(true); setSavedRating(saved.rating) }
+      }
     } catch {}
-  }, [key])
+  }, [pid, key, reviewedMap])
 
   const handleRate = async (star) => {
     if (submitting.current || loading) return
     submitting.current = true
     setLoading(true)
     setSelected(star)
-    localStorage.setItem(key, JSON.stringify({ rating: star }))
+    if (key) localStorage.setItem(key, JSON.stringify({ rating: star }))
     setSubmitted(true)
     setSavedRating(star)
     try {
-      await Axios({ ...SummaryApi.addReview, data: { productId, rating: star, comment: '' } })
+      await Axios({ ...SummaryApi.addReview, data: { productId: pid, rating: star, comment: '' } })
       toast.success(`Rated ${productName || 'item'}!`)
     } catch {
     } finally {

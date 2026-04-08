@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import BackButton from '../components/BackButton'
@@ -10,6 +10,8 @@ import {
 } from 'react-icons/fa'
 import { MdAccessTime, MdDeliveryDining, MdDone, MdInventory, MdPending } from 'react-icons/md'
 import ItemRating from '../components/ItemRating'
+import Axios from '../utils/Axios'
+import SummaryApi from '../common/SummaryApi'
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -66,7 +68,7 @@ const PaymentBadge = ({ status }) => {
   )
 }
 
-const OrderCard = ({ order, onClick }) => {
+const OrderCard = ({ order, onClick, reviewedMap = {} }) => {
   const items = order?.items || []
   const totalItems = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
   const previewImages = items.slice(0, 4).map(item => item.product_details?.image?.[0]).filter(Boolean)
@@ -159,10 +161,11 @@ const OrderCard = ({ order, onClick }) => {
                 <div key={i} className='flex items-center justify-between gap-2'>
                   <p className='text-xs text-gray-600 truncate flex-1'>{item.product_details?.name}</p>
                   <ItemRating
-                    orderId={order._id}
+                    orderId={String(order._id)}
                     productId={String(item.productId?._id || item.productId)}
                     productName={item.product_details?.name}
                     compact={true}
+                    reviewedMap={reviewedMap}
                   />
                 </div>
               ))
@@ -181,6 +184,17 @@ const MyOrders = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterPayment, setFilterPayment] = useState('all')
+  const [reviewedMap, setReviewedMap] = useState({})
+
+  useEffect(() => {
+    const fetchReviewedMap = async () => {
+      try {
+        const res = await Axios({ ...SummaryApi.getMyReviews })
+        if (res.data.success) setReviewedMap(res.data.data || {})
+      } catch {}
+    }
+    fetchReviewedMap()
+  }, [])
 
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
@@ -301,6 +315,7 @@ const MyOrders = () => {
             <OrderCard
               key={order._id + index}
               order={order}
+              reviewedMap={reviewedMap}
               onClick={() => navigate(`/dashboard/order/${order._id}`)}
             />
           ))}

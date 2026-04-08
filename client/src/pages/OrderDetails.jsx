@@ -136,6 +136,14 @@ const OrderDetails = () => {
   const siteSettings = useSelector(state => state.site.settings)
   const returnPeriodDays = parseInt(siteSettings?.return_period_days || 7) || 7
   const [selectedReturnItems, setSelectedReturnItems] = useState([])
+  const [reviewedMap, setReviewedMap] = useState({})
+
+  const fetchReviewedMap = async () => {
+    try {
+      const res = await Axios({ ...SummaryApi.getMyReviews })
+      if (res.data.success) setReviewedMap(res.data.data || {})
+    } catch {}
+  }
 
   const fetchOrderDetails = async () => {
     try {
@@ -170,7 +178,7 @@ const OrderDetails = () => {
   }
 
   useEffect(() => {
-    if (id) fetchOrderDetails()
+    if (id) { fetchOrderDetails(); fetchReviewedMap() }
   }, [id])
 
   const handleSubmitReturn = async () => {
@@ -471,9 +479,10 @@ const OrderDetails = () => {
                     )}
                     {order?.orderStatus === 'Delivered' && (
                       <ItemRating
-                        orderId={order._id}
+                        orderId={String(order._id)}
                         productId={String(item.productId?._id || item.productId)}
                         productName={item.product_details?.name}
+                        reviewedMap={reviewedMap}
                       />
                     )}
                   </div>
