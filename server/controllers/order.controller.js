@@ -9,6 +9,7 @@ import sendEmail from "../config/sendEmail.js";
 import orderConfirmationTemplate from "../utils/orderConfirmationTemplate.js";
 import FraudFlagModel from "../models/fraudFlag.model.js";
 import { assessOrderRisk } from "../utils/fraudDetection.js";
+import WalletModel from "../models/wallet.model.js";
 
 // Helper: decrement stock for each ordered item
 async function decrementStock(items) {
@@ -360,8 +361,33 @@ export async function cancelOrderController(request, response) {
         order.orderStatus = 'Cancelled'
         await order.save()
 
+        // Instant wallet refund if wallet was used for this order
+        let walletRefunded = 0
+        if (order.walletDeduction && order.walletDeduction > 0) {
+            try {
+                let wallet = await WalletModel.findOne({ userId: order.userId })
+                if (!wallet) wallet = await WalletModel.create({ userId: order.userId, balance: 0, transactions: [] })
+
+                wallet.balance += order.walletDeduction
+                wallet.transactions.unshift({
+                    type: 'credit',
+                    amount: order.walletDeduction,
+                    description: `Refund for cancelled order #${order.orderId}`,
+                    reference: order._id.toString(),
+                    balanceAfter: wallet.balance
+                })
+                await wallet.save()
+                walletRefunded = order.walletDeduction
+            } catch (walletErr) {
+                console.error('Wallet refund failed:', walletErr.message)
+            }
+        }
+
         return response.json({
-            message: "Order cancelled successfully",
+            message: walletRefunded > 0
+                ? `Order cancelled. ₹${walletRefunded} refunded to your wallet instantly.`
+                : "Order cancelled successfully",
+            walletRefunded,
             data: order,
             error: false,
             success: true

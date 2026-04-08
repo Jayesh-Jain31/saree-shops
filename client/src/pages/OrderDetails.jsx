@@ -225,7 +225,12 @@ const OrderDetails = () => {
         url: `${SummaryApi.cancelOrder.url}/${id}`
       })
       if (response.data.success) {
-        toast.success('Order cancelled successfully')
+        const { walletRefunded, message } = response.data
+        if (walletRefunded > 0) {
+          toast.success(`✅ ${message}`, { duration: 5000 })
+        } else {
+          toast.success('Order cancelled successfully')
+        }
         setOrder(response.data.data)
         setShowCancelConfirm(false)
         fetchOrder()
