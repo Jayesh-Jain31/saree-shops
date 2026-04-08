@@ -160,7 +160,7 @@ const ProductDisplayPage = () => {
     <div className='container mx-auto px-4 pt-4'>
       <BackButton />
     </div>
-    <section className='container mx-auto p-4 grid lg:grid-cols-2 lg:gap-8'>
+    <section className='container mx-auto p-4 grid lg:grid-cols-2 lg:gap-8 overflow-hidden'>
 
       {/* ── Left: Images ── */}
       <div>
@@ -301,7 +301,7 @@ const ProductDisplayPage = () => {
 
         {/* ── Price row + AddToCart (inline) ── */}
         <div className='flex items-end justify-between gap-3 mb-3'>
-          <div>
+          <div className='min-w-0 flex-1'>
             <p className='text-xs text-gray-500 uppercase tracking-wider mb-1'>Price</p>
             <div className='flex items-center gap-2 flex-wrap'>
               <span className='text-2xl font-bold text-gray-900'>
