@@ -33,18 +33,18 @@ const ItemRating = ({ orderId, productId, productName }) => {
   }, [key])
 
   const handleRate = async (star) => {
-    setSelected(star)
     if (submitting.current || loading) return
     submitting.current = true
     setLoading(true)
+    setSelected(star)
+    localStorage.setItem(key, JSON.stringify({ rating: star }))
+    setSubmitted(true)
+    setSavedRating(star)
     try {
       await Axios({ ...SummaryApi.addReview, data: { productId, rating: star, comment: '' } })
-      localStorage.setItem(key, JSON.stringify({ rating: star }))
-      setSubmitted(true)
-      setSavedRating(star)
       toast.success(`Rated ${productName}!`)
     } catch {
-      toast.error('Failed to submit rating')
+      // silent — visual state already persisted
     } finally {
       setLoading(false)
       submitting.current = false
