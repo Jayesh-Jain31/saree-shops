@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
 import { useParams, useNavigate } from 'react-router-dom'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
@@ -131,7 +132,8 @@ const OrderDetails = () => {
   const [returnReason, setReturnReason] = useState('')
   const [returnDesc, setReturnDesc] = useState('')
   const [submittingReturn, setSubmittingReturn] = useState(false)
-  const [returnPeriodDays, setReturnPeriodDays] = useState(7)
+  const siteSettings = useSelector(state => state.site.settings)
+  const returnPeriodDays = parseInt(siteSettings?.return_period_days || 7) || 7
   const [selectedReturnItems, setSelectedReturnItems] = useState([])
 
   const fetchOrderDetails = async () => {
@@ -168,12 +170,6 @@ const OrderDetails = () => {
 
   useEffect(() => {
     if (id) fetchOrderDetails()
-    Axios({ ...SummaryApi.getSettings }).then(res => {
-      if (res.data.success) {
-        const days = parseInt(res.data.data?.return_period_days || 7)
-        setReturnPeriodDays(days || 7)
-      }
-    }).catch(() => {})
   }, [id])
 
   const handleSubmitReturn = async () => {

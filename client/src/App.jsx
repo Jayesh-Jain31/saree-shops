@@ -16,7 +16,7 @@ import { FaWhatsapp, FaTools } from "react-icons/fa";
 import CartMobileLink from './components/CartMobile';
 import ScrollToTop from './components/ScrollToTop';
 import { applyTheme } from './utils/themeColors';
-import { setSiteName, setLogoUrl, setAnnouncement, setAnnouncementEnabled } from './store/siteSlice';
+import { setSiteName, setLogoUrl, setAnnouncement, setAnnouncementEnabled, setSiteSettings } from './store/siteSlice';
 
 function App() {
   const dispatch = useDispatch()
@@ -80,6 +80,7 @@ function App() {
 
         dispatch(setAnnouncement(s.announcement_text || ''))
         dispatch(setAnnouncementEnabled(s.announcement_enabled === 'true'))
+        dispatch(setSiteSettings(s))
 
         setMaintenanceMode(s.maintenance_mode === 'true')
         setMaintenanceMessage(s.maintenance_message || 'We are currently under maintenance. Please check back soon.')

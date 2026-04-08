@@ -48,7 +48,8 @@ const CheckoutPage = () => {
   const [walletBalance, setWalletBalance] = useState(0)
   const [useWallet, setUseWallet] = useState(false)
   const [walletLoading, setWalletLoading] = useState(false)
-  const [codEnabled, setCodEnabled] = useState(true)
+  const siteSettings = useSelector(state => state.site.settings)
+  const codEnabled = siteSettings?.cod_enabled !== 'false'
 
   const deliveryCharge = (() => {
     if (!deliveryInfo || !deliveryInfo.available || !deliveryInfo.deliveryCharge) return 0
@@ -74,15 +75,6 @@ const CheckoutPage = () => {
     fetchWallet()
   }, [user?._id])
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await Axios({ ...SummaryApi.getSettings })
-        if (res.data.success) setCodEnabled(res.data.data.cod_enabled !== 'false')
-      } catch {}
-    }
-    fetchSettings()
-  }, [])
 
   const checkDeliveryPincode = async (pincode) => {
     if (!pincode) return

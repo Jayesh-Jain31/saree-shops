@@ -1,9 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FaFacebook, FaInstagram, FaLinkedin, FaYoutube } from 'react-icons/fa'
 import { useSelector } from 'react-redux'
-import Axios from '../utils/Axios'
-import SummaryApi from '../common/SummaryApi'
 
 const policyLinks = [
   { label: 'Privacy Policy',   to: '/page/privacy-policy' },
@@ -17,26 +15,14 @@ const Footer = () => {
   const siteName = useSelector(state => state.site.name)
   const logoUrl = useSelector(state => state.site.logoUrl)
   const allCategory = useSelector(state => state.product.allCategory)
-  const [social, setSocial] = useState({ facebook: '', instagram: '', linkedin: '', youtube: '' })
+  const siteSettings = useSelector(state => state.site.settings)
+  const social = {
+    facebook:  siteSettings?.social_facebook  || '',
+    instagram: siteSettings?.social_instagram || '',
+    linkedin:  siteSettings?.social_linkedin  || '',
+    youtube:   siteSettings?.social_youtube   || '',
+  }
   const navigate = useNavigate()
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await Axios({ ...SummaryApi.getSettings })
-        if (res.data.success) {
-          const s = res.data.data
-          setSocial({
-            facebook:  s.social_facebook  || '',
-            instagram: s.social_instagram || '',
-            linkedin:  s.social_linkedin  || '',
-            youtube:   s.social_youtube   || '',
-          })
-        }
-      } catch (e) {}
-    }
-    fetchSettings()
-  }, [])
 
   const handleCategoryClick = (categoryName) => {
     navigate(`/search?q=${encodeURIComponent(categoryName)}`)

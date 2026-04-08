@@ -7,6 +7,7 @@ const siteSlice = createSlice({
     logoUrl: '',
     announcement: '',
     announcementEnabled: false,
+    settings: {},
   },
   reducers: {
     setSiteName: (state, action) => {
@@ -21,8 +22,11 @@ const siteSlice = createSlice({
     setAnnouncementEnabled: (state, action) => {
       state.announcementEnabled = action.payload
     },
+    setSiteSettings: (state, action) => {
+      state.settings = action.payload
+    },
   }
 })
 
-export const { setSiteName, setLogoUrl, setAnnouncement, setAnnouncementEnabled } = siteSlice.actions
+export const { setSiteName, setLogoUrl, setAnnouncement, setAnnouncementEnabled, setSiteSettings } = siteSlice.actions
 export default siteSlice.reducer

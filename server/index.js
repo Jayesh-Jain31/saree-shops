@@ -35,6 +35,8 @@ const __dirname = path.dirname(__filename)
 
 const app = express()
 
+app.set('trust proxy', 1)
+
 // ── Rate limiters (defined before use) ───────────────────────────────
 const generalLimiter = rateLimit({
     windowMs: 60 * 1000,

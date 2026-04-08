@@ -60,7 +60,8 @@ const ProductDisplayPage = () => {
   const [pincode, setPincode] = useState('')
   const [pincodeResult, setPincodeResult] = useState(null)
   const [checkingPincode, setCheckingPincode] = useState(false)
-  const [outsideDeliveryTime, setOutsideDeliveryTime] = useState('3-4 days')
+  const siteSettings = useSelector(state => state.site.settings)
+  const outsideDeliveryTime = siteSettings?.outside_delivery_time || '3-4 days'
 
   const fetchProductDetails = async () => {
     try {
@@ -98,9 +99,6 @@ const ProductDisplayPage = () => {
     setSelectedVariant(null)
     fetchProductDetails()
     if (user?._id) checkWishlist()
-    Axios({ ...SummaryApi.getSettings }).then(res => {
-      if (res.data.success) setOutsideDeliveryTime(res.data.data?.outside_delivery_time || '3-4 days')
-    }).catch(() => {})
   }, [params])
 
   useEffect(() => {

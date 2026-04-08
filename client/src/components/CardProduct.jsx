@@ -36,6 +36,7 @@ const CardProduct = ({ data, grid = false }) => {
             src={images[imgIdx] || images[0]}
             alt={data.name}
             className='w-full h-full object-cover'
+            loading='lazy'
             style={{ animation: 'fadeSlideIn 0.4s ease' }}
           />
 
@@ -122,6 +123,7 @@ const CardProduct = ({ data, grid = false }) => {
           src={images[imgIdx] || images[0]}
           alt={data.name}
           className='w-full h-full object-cover'
+          loading='lazy'
           style={{ animation: 'fadeSlideIn 0.4s ease' }}
         />
 

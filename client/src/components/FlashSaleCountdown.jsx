@@ -1,32 +1,25 @@
 import React, { useEffect, useState } from 'react'
-import Axios from '../utils/Axios'
-import SummaryApi from '../common/SummaryApi'
+import { useSelector } from 'react-redux'
 import { FaBolt } from 'react-icons/fa'
 
 const pad = (n) => String(n).padStart(2, '0')
 
 const FlashSaleCountdown = () => {
+  const s = useSelector(state => state.site.settings)
   const [saleData, setSaleData] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await Axios({ ...SummaryApi.getSettings })
-        if (res.data.success) {
-          const s = res.data.data
-          if (s.flash_sale_enabled === 'true' && s.flash_sale_end_time) {
-            setSaleData({
-              title: s.flash_sale_title || '🔥 Flash Sale',
-              endTime: new Date(s.flash_sale_end_time),
-              discount: s.flash_sale_discount || '',
-            })
-          }
-        }
-      } catch {}
+    if (s && s.flash_sale_enabled === 'true' && s.flash_sale_end_time) {
+      setSaleData({
+        title: s.flash_sale_title || '🔥 Flash Sale',
+        endTime: new Date(s.flash_sale_end_time),
+        discount: s.flash_sale_discount || '',
+      })
+    } else {
+      setSaleData(null)
     }
-    fetchSettings()
-  }, [])
+  }, [s])
 
   useEffect(() => {
     if (!saleData) return

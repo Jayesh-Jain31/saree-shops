@@ -19,5 +19,7 @@ const walletSchema = new mongoose.Schema({
     transactions: [transactionSchema]
 }, { timestamps: true })
 
+walletSchema.index({ userId: 1 })
+
 const WalletModel = mongoose.model('Wallet', walletSchema)
 export default WalletModel
