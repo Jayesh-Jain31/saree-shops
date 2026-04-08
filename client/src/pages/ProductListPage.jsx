@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import { Link, useParams } from 'react-router-dom'
+import BackButton from '../components/BackButton'
 import AxiosToastError from '../utils/AxiosToastError'
 import Loading from '../components/Loading'
 import CardProduct from '../components/CardProduct'
@@ -118,6 +119,10 @@ const ProductListPage = () => {
   }
 
   return (
+    <>
+    <div className='container mx-auto px-4 pt-3'>
+      <BackButton />
+    </div>
     <section className='sticky top-24 lg:top-20'>
       <div className='container sticky top-24 mx-auto grid grid-cols-[90px,1fr] md:grid-cols-[200px,1fr] lg:grid-cols-[280px,1fr]'>
 
@@ -173,6 +178,7 @@ const ProductListPage = () => {
 
       </div>
     </section>
+    </>
   )
 }
 

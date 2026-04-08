@@ -4,6 +4,7 @@ import SummaryApi from '../common/SummaryApi'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
 import { Link } from 'react-router-dom'
+import BackButton from '../components/BackButton'
 import { valideURLConvert } from '../utils/valideURLConvert'
 import { FaHeart, FaHeartBroken } from 'react-icons/fa'
 import toast from 'react-hot-toast'
@@ -53,6 +54,9 @@ const Wishlist = () => {
 
   return (
     <div className='min-h-screen bg-gray-50'>
+      <div className='max-w-5xl mx-auto px-4 pt-4'>
+        <BackButton />
+      </div>
       <div className='bg-white border-b p-4'>
         <div className='max-w-3xl mx-auto flex items-center gap-3'>
           <div className='w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center'>

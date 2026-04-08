@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
+import BackButton from '../components/BackButton'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import toast from 'react-hot-toast'
 import { FiArrowDownLeft, FiArrowUpRight } from 'react-icons/fi'
@@ -46,6 +47,9 @@ const Wallet = () => {
 
     return (
         <div className='min-h-screen bg-gray-50'>
+            <div className='max-w-2xl mx-auto px-6 pt-4'>
+                <BackButton />
+            </div>
             {/* Header */}
             <div className='bg-gradient-to-br from-green-600 to-emerald-700 text-white'>
                 <div className='max-w-2xl mx-auto p-6'>

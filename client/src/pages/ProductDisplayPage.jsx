@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import BackButton from '../components/BackButton'
 import SummaryApi from '../common/SummaryApi'
 import Axios from '../utils/Axios'
 import AxiosToastError from '../utils/AxiosToastError'
@@ -157,6 +158,10 @@ const ProductDisplayPage = () => {
   const variants = data.variants || []
 
   return (
+    <>
+    <div className='container mx-auto px-4 pt-4'>
+      <BackButton />
+    </div>
     <section className='container mx-auto p-4 grid lg:grid-cols-2 lg:gap-8'>
 
       {/* ── Left: Images ── */}
@@ -507,6 +512,7 @@ const ProductDisplayPage = () => {
       )}
 
     </section>
+    </>
   )
 }
 

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
+import BackButton from '../components/BackButton'
 import NoData from '../components/NoData'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import {
@@ -306,6 +307,7 @@ const MyOrders = () => {
       {/* Header */}
       <div className='bg-white border-b sticky top-0 z-10'>
         <div className='p-4 max-w-3xl mx-auto'>
+          <BackButton className='mb-3' />
           <div className='flex items-center gap-3 mb-4'>
             <div className='w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center'>
               <FaBoxOpen className='text-green-600' size={18} />

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import BackButton from '../components/BackButton'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
@@ -292,13 +293,16 @@ const MyReturns = () => {
 
       {/* Header */}
       <div className='bg-white border-b sticky top-0 z-10'>
-        <div className='p-4 max-w-3xl mx-auto flex items-center gap-3'>
-          <div className='w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center'>
-            <FaUndoAlt className='text-orange-600' size={16} />
-          </div>
-          <div>
-            <h1 className='font-bold text-xl text-gray-800'>My Returns</h1>
-            <p className='text-xs text-gray-500'>{returns.length} return request{returns.length !== 1 ? 's' : ''}</p>
+        <div className='p-4 max-w-3xl mx-auto'>
+          <BackButton className='mb-3' />
+          <div className='flex items-center gap-3'>
+            <div className='w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center'>
+              <FaUndoAlt className='text-orange-600' size={16} />
+            </div>
+            <div>
+              <h1 className='font-bold text-xl text-gray-800'>My Returns</h1>
+              <p className='text-xs text-gray-500'>{returns.length} return request{returns.length !== 1 ? 's' : ''}</p>
+            </div>
           </div>
         </div>
       </div>

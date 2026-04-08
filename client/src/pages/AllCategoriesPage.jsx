@@ -4,6 +4,7 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import CardProduct from '../components/CardProduct'
 import { FaBoxOpen } from 'react-icons/fa'
+import BackButton from '../components/BackButton'
 
 const AllCategoriesPage = () => {
   const allCategory = useSelector(state => state.product.allCategory)
@@ -49,7 +50,11 @@ const AllCategoriesPage = () => {
   }, [selectedCat])
 
   return (
-    <div className='flex bg-gray-50' style={{ height: 'calc(100vh - 64px)' }}>
+    <div className='bg-gray-50'>
+      <div className='px-4 pt-3 pb-1'>
+        <BackButton />
+      </div>
+    <div className='flex bg-gray-50' style={{ height: 'calc(100vh - 120px)' }}>
 
       {/* ── Left sidebar ── */}
       <aside className='w-20 sm:w-24 flex-shrink-0 bg-white border-r border-gray-100 overflow-y-auto'>
@@ -122,6 +127,7 @@ const AllCategoriesPage = () => {
           )}
         </div>
       </main>
+    </div>
     </div>
   )
 }

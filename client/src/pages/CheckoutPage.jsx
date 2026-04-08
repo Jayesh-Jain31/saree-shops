@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useGlobalContext } from '../provider/GlobalProvider'
+import BackButton from '../components/BackButton'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import AddAddress from '../components/AddAddress'
 import { useSelector } from 'react-redux'
@@ -217,6 +218,8 @@ const CheckoutPage = () => {
   return (
     <section className='min-h-screen bg-gray-50'>
       <div className='container mx-auto px-4 py-6 max-w-5xl'>
+
+        <BackButton className='mb-4' />
 
         {/* Page Title */}
         <div className='mb-6'>

@@ -14,6 +14,7 @@ import { handleAddItemCart } from './store/cartProduct'
 import GlobalProvider from './provider/GlobalProvider';
 import { FaWhatsapp, FaTools } from "react-icons/fa";
 import CartMobileLink from './components/CartMobile';
+import ScrollToTop from './components/ScrollToTop';
 import { applyTheme } from './utils/themeColors';
 import { setSiteName, setLogoUrl, setAnnouncement, setAnnouncementEnabled } from './store/siteSlice';
 
@@ -102,6 +103,7 @@ function App() {
 
   return (
     <GlobalProvider>
+      <ScrollToTop />
       <Header />
       <main className='min-h-[78vh]'>
         <Outlet />

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
+import BackButton from '../components/BackButton'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import toast from 'react-hot-toast'
 import {
@@ -575,6 +576,9 @@ const AdminOrders = () => {
 
   return (
     <div className='min-h-screen bg-gray-50'>
+      <div className='max-w-5xl mx-auto px-4 pt-4'>
+        <BackButton />
+      </div>
       {/* Drawer */}
       {selectedOrderId && (
         <OrderDetailDrawer

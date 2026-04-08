@@ -8,6 +8,7 @@ import AxiosToastError from '../utils/AxiosToastError';
 import toast from 'react-hot-toast';
 import { setUserDetails } from '../store/userSlice';
 import fetchUserDetails from '../utils/fetchUserDetails';
+import BackButton from '../components/BackButton'
 
 
 const Profile = () => {
@@ -67,6 +68,7 @@ const Profile = () => {
     }
   return (
     <div className='p-4'>
+    <BackButton className='mb-4' />
 
         {/**profile upload and display image */}
         <div className='w-20 h-20 bg-red-500 flex items-center justify-center rounded-full overflow-hidden drop-shadow-sm'>

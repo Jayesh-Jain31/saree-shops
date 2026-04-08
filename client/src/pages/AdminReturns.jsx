@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
+import BackButton from '../components/BackButton'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import toast from 'react-hot-toast'
 import {
@@ -365,6 +366,7 @@ const AdminReturns = () => {
       {/* ── Sticky Header ── */}
       <div className='bg-white border-b sticky top-0 z-10'>
         <div className='p-4 max-w-5xl mx-auto space-y-3'>
+          <BackButton className='mb-1' />
 
           {/* Title row */}
           <div className='flex items-center gap-3'>
