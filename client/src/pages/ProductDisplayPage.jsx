@@ -160,7 +160,7 @@ const ProductDisplayPage = () => {
     <div className='container mx-auto px-4 pt-4'>
       <BackButton />
     </div>
-    <section className='container mx-auto p-4 grid lg:grid-cols-2 lg:gap-8 overflow-hidden'>
+    <section className='container mx-auto p-4 grid lg:grid-cols-2 lg:gap-8'>
 
       {/* ── Left: Images ── */}
       <div>
@@ -303,17 +303,15 @@ const ProductDisplayPage = () => {
         <div className='flex items-end justify-between gap-3 mb-3'>
           <div className='min-w-0 flex-1'>
             <p className='text-xs text-gray-500 uppercase tracking-wider mb-1'>Price</p>
-            <div className='flex items-center gap-2 flex-wrap'>
-              <span className='text-2xl font-bold text-gray-900'>
-                {DisplayPriceInRupees(displayPrice)}
-              </span>
-              {!selectedVariant && data.discount > 0 && (
-                <>
-                  <span className='text-sm text-gray-400 line-through'>{DisplayPriceInRupees(data.price)}</span>
-                  <span className='bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full'>{data.discount}% OFF</span>
-                </>
-              )}
-            </div>
+            <span className='text-2xl font-bold text-gray-900 block leading-tight'>
+              {DisplayPriceInRupees(displayPrice)}
+            </span>
+            {!selectedVariant && data.discount > 0 && (
+              <div className='flex items-center gap-1.5 mt-0.5 flex-wrap'>
+                <span className='text-sm text-gray-400 line-through'>{DisplayPriceInRupees(data.price)}</span>
+                <span className='bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full'>{data.discount}% OFF</span>
+              </div>
+            )}
           </div>
 
           {/* AddToCart on the right of price */}
