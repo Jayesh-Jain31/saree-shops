@@ -54,6 +54,7 @@ const ProductDisplayPage = () => {
   const [notifyRequested, setNotifyRequested] = useState(false)
 
   const [selectedVariant, setSelectedVariant] = useState(null)
+  const [ratingDist, setRatingDist] = useState({})
 
   const [viewingCount, setViewingCount] = useState(0)
 
@@ -72,6 +73,20 @@ const ProductDisplayPage = () => {
       }
     } catch (error) { AxiosToastError(error) }
     finally { setLoading(false) }
+  }
+
+  const fetchReviewDist = async () => {
+    try {
+      const res = await Axios({ ...SummaryApi.getProductReviews, data: { productId } })
+      if (res.data.success) {
+        const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+        ;(res.data.data?.reviews || []).forEach(r => {
+          const star = Math.round(r.rating)
+          if (star >= 1 && star <= 5) dist[star]++
+        })
+        setRatingDist(dist)
+      }
+    } catch {}
   }
 
   const checkWishlist = async () => {
@@ -97,7 +112,9 @@ const ProductDisplayPage = () => {
 
   useEffect(() => {
     setSelectedVariant(null)
+    setRatingDist({})
     fetchProductDetails()
+    fetchReviewDist()
     if (user?._id) checkWishlist()
   }, [params])
 
@@ -245,19 +262,49 @@ const ProductDisplayPage = () => {
 
         {/* Star Rating Display */}
         {data.avgRating > 0 && (
-          <div className='flex items-center gap-2 mt-1.5'>
-            <div className='flex items-center gap-1 bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded-full'>
-              <span>{data.avgRating}</span>
-              <FaStar size={10} />
+          <div className='mt-2 mb-1'>
+            {/* Average row */}
+            <div className='flex items-center gap-2'>
+              <div className='flex items-center gap-1 bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded-full'>
+                <span>{data.avgRating}</span>
+                <FaStar size={10} />
+              </div>
+              <div className='flex gap-0.5'>
+                {[1,2,3,4,5].map(s => (
+                  s <= Math.round(data.avgRating)
+                    ? <FaStar key={s} size={13} className='text-yellow-400' />
+                    : <FaRegStar key={s} size={13} className='text-gray-300' />
+                ))}
+              </div>
+              <span className='text-xs text-gray-500 font-medium'>{data.reviewCount} rating{data.reviewCount !== 1 ? 's' : ''}</span>
             </div>
-            <div className='flex gap-0.5'>
-              {[1,2,3,4,5].map(s => (
-                s <= Math.round(data.avgRating)
-                  ? <FaStar key={s} size={13} className='text-yellow-400' />
-                  : <FaRegStar key={s} size={13} className='text-gray-300' />
-              ))}
-            </div>
-            <span className='text-xs text-gray-500'>{data.reviewCount} rating{data.reviewCount !== 1 ? 's' : ''}</span>
+            {/* Star breakdown bars */}
+            {data.reviewCount > 0 && (
+              <div className='mt-2 space-y-1'>
+                {[5,4,3,2,1].map(star => {
+                  const count = ratingDist[star] || 0
+                  const pct = data.reviewCount > 0 ? Math.round((count / data.reviewCount) * 100) : 0
+                  return (
+                    <div key={star} className='flex items-center gap-2'>
+                      <div className='flex items-center gap-0.5 w-8 shrink-0'>
+                        <span className='text-[11px] text-gray-600 font-medium'>{star}</span>
+                        <FaStar size={9} className='text-yellow-400' />
+                      </div>
+                      <div className='flex-1 h-2 bg-gray-100 rounded-full overflow-hidden'>
+                        <div
+                          className='h-full rounded-full transition-all duration-500'
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: star >= 4 ? '#22c55e' : star === 3 ? '#facc15' : '#f87171'
+                          }}
+                        />
+                      </div>
+                      <span className='text-[11px] text-gray-500 font-semibold w-4 text-right shrink-0'>{count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
