@@ -86,11 +86,16 @@ export async function assessOrderRisk({ userId, totalAmt, items }) {
     }
 
     const riskLevel = getRiskLevel(score)
+
+    // Only block in extreme cases: 3+ cancelled COD orders AND high-value order
+    // A new store should never block legitimate customers just for being new
+    const hardBlock = cancelledCOD.length >= 3 && totalAmt > 3000
+
     return {
         riskScore: Math.min(score, 100),
         riskLevel,
         reasons,
-        shouldBlock: score >= 80
+        shouldBlock: hardBlock
     }
 }
 
