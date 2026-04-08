@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import ItemRating from '../components/ItemRating'
 import { useSelector } from 'react-redux'
 import { useParams, useNavigate } from 'react-router-dom'
 import Axios from '../utils/Axios'
@@ -9,80 +10,12 @@ import toast from 'react-hot-toast'
 import {
   FaArrowLeft, FaCheckCircle, FaMoneyBillWave, FaCreditCard,
   FaReceipt, FaTruck, FaTimes, FaShoppingBag, FaBoxOpen,
-  FaPhoneAlt, FaRegCopy, FaDownload, FaUndoAlt, FaStar
+  FaPhoneAlt, FaRegCopy, FaDownload, FaUndoAlt
 } from 'react-icons/fa'
 import {
   MdAccessTime, MdLocationOn, MdDeliveryDining, MdDone,
   MdInventory, MdPending, MdLocalShipping
 } from 'react-icons/md'
-
-const ItemRating = ({ orderId, productId, productName }) => {
-  const [selected, setSelected] = useState(0)
-  const [hover, setHover] = useState(0)
-  const [submitted, setSubmitted] = useState(false)
-  const [savedRating, setSavedRating] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const submitting = useRef(false)
-  const key = `rated_item_${orderId}_${productId}`
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(key) || 'null')
-      if (saved) { setSubmitted(true); setSavedRating(saved.rating) }
-    } catch {}
-  }, [key])
-
-  const handleRate = async (star) => {
-    if (submitting.current || loading) return
-    submitting.current = true
-    setLoading(true)
-    setSelected(star)
-    localStorage.setItem(key, JSON.stringify({ rating: star }))
-    setSubmitted(true)
-    setSavedRating(star)
-    try {
-      await Axios({ ...SummaryApi.addReview, data: { productId, rating: star, comment: '' } })
-      toast.success(`Rated ${productName}!`)
-    } catch {
-      // silent — visual state already persisted
-    } finally {
-      setLoading(false)
-      submitting.current = false
-    }
-  }
-
-  if (submitted) {
-    return (
-      <div className='flex items-center gap-1.5 mt-2'>
-        <div className='flex gap-0.5'>
-          {[1,2,3,4,5].map(s => (
-            <FaStar key={s} size={13} className={s <= savedRating ? 'text-yellow-400' : 'text-gray-200'} />
-          ))}
-        </div>
-        <span className='text-[11px] text-gray-400 font-medium'>Rated</span>
-      </div>
-    )
-  }
-
-  return (
-    <div className='flex items-center gap-1 mt-2'>
-      <span className='text-[11px] text-gray-400 mr-1'>Rate:</span>
-      {[1,2,3,4,5].map(s => (
-        <button
-          key={s}
-          onMouseEnter={() => setHover(s)}
-          onMouseLeave={() => setHover(0)}
-          onClick={() => handleRate(s)}
-          disabled={loading}
-          className='transition-transform hover:scale-125 active:scale-95 disabled:opacity-50'
-          type='button'
-        >
-          <FaStar size={18} className={(hover || selected) >= s ? 'text-yellow-400' : 'text-gray-200'} />
-        </button>
-      ))}
-    </div>
-  )
-}
 
 const RETURN_REASONS = [
   'Damaged / Defective product',
