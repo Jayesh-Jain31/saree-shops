@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import staticLogo from '../assets/logo.png'
 import Search from './Search'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FaRegCircleUser } from "react-icons/fa6"
@@ -28,10 +27,8 @@ const Header = () => {
     const announcement = useSelector(state => state.site.announcement)
     const announcementEnabled = useSelector(state => state.site.announcementEnabled)
 
-    // Brand: show custom logo, or text name, or fallback static logo
     const showLogo = !!logoUrl
     const showTextName = !logoUrl && !!siteName
-    const logoSrc = logoUrl || staticLogo
 
     const handleMobileUser = () => {
         if (!user._id) { navigate("/login"); return }
@@ -65,7 +62,7 @@ const Header = () => {
                         <Link to="/" className='flex items-center gap-2 min-w-0 flex-1 overflow-hidden mr-2'>
                             {showLogo && (
                                 <img
-                                    src={logoSrc}
+                                    src={logoUrl}
                                     alt={siteName}
                                     className='object-contain flex-shrink-0'
                                     style={{ height: '36px', width: 'auto', maxWidth: '120px' }}
@@ -75,14 +72,6 @@ const Header = () => {
                                 <span className='font-black text-xl tracking-tight truncate' style={{ color: 'var(--primary, #16a34a)' }}>
                                     {siteName}
                                 </span>
-                            )}
-                            {!showLogo && !showTextName && (
-                                <img
-                                    src={logoSrc}
-                                    alt='Store'
-                                    className='object-contain flex-shrink-0'
-                                    style={{ height: '36px', width: 'auto', maxWidth: '120px' }}
-                                />
                             )}
                         </Link>
                         {/* Right icons — never shrink, always visible */}
@@ -113,7 +102,7 @@ const Header = () => {
                 <Link to="/" className='flex-shrink-0 flex items-center gap-2'>
                     {showLogo && (
                         <img
-                            src={logoSrc}
+                            src={logoUrl}
                             alt={siteName}
                             className='object-contain'
                             style={{ height: '48px', width: 'auto', maxWidth: '170px' }}
@@ -123,14 +112,6 @@ const Header = () => {
                         <span className='font-black text-2xl tracking-tight' style={{ color: 'var(--primary, #16a34a)' }}>
                             {siteName}
                         </span>
-                    )}
-                    {!showLogo && !showTextName && (
-                        <img
-                            src={logoSrc}
-                            alt='Store'
-                            className='object-contain'
-                            style={{ height: '48px', width: 'auto', maxWidth: '170px' }}
-                        />
                     )}
                 </Link>
 
