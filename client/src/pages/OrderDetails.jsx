@@ -466,12 +466,27 @@ const OrderDetails = () => {
             {items.map((item, i) => (
               <div key={i} className={`${i < items.length - 1 ? 'pb-3 border-b border-gray-100' : ''}`}>
                 <div className='flex gap-3'>
-                  <div className='w-16 h-16 sm:w-20 sm:h-20 rounded-lg border bg-gray-50 overflow-hidden flex-shrink-0 p-1'>
-                    <img
-                      src={item.product_details?.image?.[0]}
-                      alt={item.product_details?.name}
-                      className='w-full h-full object-contain'
-                    />
+                  <div className='w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 relative'>
+                    <div className='w-full h-full rounded-lg border bg-gray-50 overflow-hidden p-1'>
+                      <img
+                        src={item.product_details?.image?.[0]}
+                        alt={item.product_details?.name}
+                        className='w-full h-full object-contain'
+                      />
+                    </div>
+                    {order?.orderStatus === 'Delivered' && (() => {
+                      const pid = String(item.productId?._id || item.productId)
+                      const rated = orderRatings[pid] || 0
+                      return rated > 0 ? (
+                        <div className='absolute -bottom-2 left-0 right-0 flex justify-center'>
+                          <div className='flex items-center gap-0.5 bg-black/65 rounded-full px-1.5 py-0.5 shadow'>
+                            {[1,2,3,4,5].map(s => (
+                              <FaStar key={s} size={8} className={s <= rated ? 'text-yellow-400' : 'text-gray-500'} />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null
+                    })()}
                   </div>
                   <div className='flex-1 min-w-0'>
                     <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-2'>
