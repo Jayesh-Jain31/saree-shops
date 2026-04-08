@@ -4,42 +4,28 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
 
-const ItemRating = ({ orderId, productId, productName, compact = false, reviewedMap = {} }) => {
+const ItemRating = ({ orderId, productId, productName, compact = false }) => {
   const pid = String(productId || '')
-  const key = orderId && pid ? `rated_item_${orderId}_${pid}` : null
+  const oid = String(orderId || '')
+  const key = oid && pid ? `rated_item_${oid}_${pid}` : null
 
-  const getInitialState = () => {
-    if (reviewedMap[pid]) return { submitted: true, savedRating: reviewedMap[pid] }
-    try {
-      if (key) {
-        const saved = JSON.parse(localStorage.getItem(key) || 'null')
-        if (saved?.rating) return { submitted: true, savedRating: saved.rating }
-      }
-    } catch {}
-    return { submitted: false, savedRating: 0 }
-  }
-
-  const initial = getInitialState()
-  const [submitted, setSubmitted] = useState(initial.submitted)
-  const [savedRating, setSavedRating] = useState(initial.savedRating)
+  const [submitted, setSubmitted] = useState(false)
+  const [savedRating, setSavedRating] = useState(0)
   const [hover, setHover] = useState(0)
   const [selected, setSelected] = useState(0)
   const [loading, setLoading] = useState(false)
   const submitting = useRef(false)
 
   useEffect(() => {
-    if (reviewedMap[pid]) {
-      setSubmitted(true)
-      setSavedRating(reviewedMap[pid])
-      return
-    }
+    if (!key) return
     try {
-      if (key) {
-        const saved = JSON.parse(localStorage.getItem(key) || 'null')
-        if (saved?.rating) { setSubmitted(true); setSavedRating(saved.rating) }
+      const saved = JSON.parse(localStorage.getItem(key) || 'null')
+      if (saved?.rating) {
+        setSubmitted(true)
+        setSavedRating(saved.rating)
       }
     } catch {}
-  }, [pid, key, reviewedMap])
+  }, [key])
 
   const handleRate = async (star) => {
     if (submitting.current || loading) return
