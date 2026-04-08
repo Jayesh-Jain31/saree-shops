@@ -10,7 +10,7 @@ import toast from 'react-hot-toast'
 import {
   FaArrowLeft, FaCheckCircle, FaMoneyBillWave, FaCreditCard,
   FaReceipt, FaTruck, FaTimes, FaShoppingBag, FaBoxOpen,
-  FaPhoneAlt, FaRegCopy, FaDownload, FaUndoAlt
+  FaPhoneAlt, FaRegCopy, FaDownload, FaUndoAlt, FaStar
 } from 'react-icons/fa'
 import {
   MdAccessTime, MdLocationOn, MdDeliveryDining, MdDone,
