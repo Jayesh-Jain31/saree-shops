@@ -10,27 +10,37 @@ const CartMobileLink = () => {
   const { totalPrice, totalQty } = useGlobalContext()
   const cartItem = useSelector(state => state.cartItem.cart)
 
+  if (!cartItem[0]) return null
+
   return (
     <>
-      {cartItem[0] && (
-        <div className="sticky bottom-4 p-2">
-          <div className="bg-primary px-3 py-2 rounded-xl text-white text-sm flex items-center justify-between gap-3 lg:hidden shadow-lg">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--primary-dark)' }}>
-                <FaCartShopping />
-              </div>
-              <div className="text-xs leading-tight">
-                <p className="font-semibold">{totalQty} items</p>
-                <p>{DisplayPriceInRupees(totalPrice)}</p>
-              </div>
+      {/* Spacer so page content isn't hidden behind the fixed bar */}
+      <div className="h-20 lg:hidden" />
+
+      {/* Fixed floating cart bar — mobile only */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-3 lg:hidden"
+        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+      >
+        <Link
+          to="/cart"
+          className="flex items-center justify-between gap-3 w-full bg-primary text-white px-4 py-3 rounded-2xl shadow-xl"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl" style={{ backgroundColor: 'var(--primary-dark)' }}>
+              <FaCartShopping size={16} />
             </div>
-            <Link to="/cart" className="flex items-center gap-1 font-semibold">
-              <span>View Cart</span>
-              <FaCaretRight />
-            </Link>
+            <div className="text-xs leading-tight">
+              <p className="font-bold text-sm">{totalQty} {totalQty === 1 ? 'item' : 'items'}</p>
+              <p className="opacity-90">{DisplayPriceInRupees(totalPrice)}</p>
+            </div>
           </div>
-        </div>
-      )}
+          <div className="flex items-center gap-1 font-bold text-sm">
+            <span>View Cart</span>
+            <FaCaretRight size={14} />
+          </div>
+        </Link>
+      </div>
     </>
   )
 }
