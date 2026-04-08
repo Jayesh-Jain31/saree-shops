@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useParams, useNavigate } from 'react-router-dom'
 import Axios from '../utils/Axios'
@@ -9,12 +9,80 @@ import toast from 'react-hot-toast'
 import {
   FaArrowLeft, FaCheckCircle, FaMoneyBillWave, FaCreditCard,
   FaReceipt, FaTruck, FaTimes, FaShoppingBag, FaBoxOpen,
-  FaPhoneAlt, FaRegCopy, FaDownload, FaUndoAlt
+  FaPhoneAlt, FaRegCopy, FaDownload, FaUndoAlt, FaStar
 } from 'react-icons/fa'
 import {
   MdAccessTime, MdLocationOn, MdDeliveryDining, MdDone,
   MdInventory, MdPending, MdLocalShipping
 } from 'react-icons/md'
+
+const ItemRating = ({ orderId, productId, productName }) => {
+  const [selected, setSelected] = useState(0)
+  const [hover, setHover] = useState(0)
+  const [submitted, setSubmitted] = useState(false)
+  const [savedRating, setSavedRating] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const submitting = useRef(false)
+  const key = `rated_item_${orderId}_${productId}`
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || 'null')
+      if (saved) { setSubmitted(true); setSavedRating(saved.rating) }
+    } catch {}
+  }, [key])
+
+  const handleRate = async (star) => {
+    setSelected(star)
+    if (submitting.current || loading) return
+    submitting.current = true
+    setLoading(true)
+    try {
+      await Axios({ ...SummaryApi.addReview, data: { productId, rating: star, comment: '' } })
+      localStorage.setItem(key, JSON.stringify({ rating: star }))
+      setSubmitted(true)
+      setSavedRating(star)
+      toast.success(`Rated ${productName}!`)
+    } catch {
+      toast.error('Failed to submit rating')
+    } finally {
+      setLoading(false)
+      submitting.current = false
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className='flex items-center gap-1.5 mt-2'>
+        <div className='flex gap-0.5'>
+          {[1,2,3,4,5].map(s => (
+            <FaStar key={s} size={13} className={s <= savedRating ? 'text-yellow-400' : 'text-gray-200'} />
+          ))}
+        </div>
+        <span className='text-[11px] text-gray-400 font-medium'>Rated</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className='flex items-center gap-1 mt-2'>
+      <span className='text-[11px] text-gray-400 mr-1'>Rate:</span>
+      {[1,2,3,4,5].map(s => (
+        <button
+          key={s}
+          onMouseEnter={() => setHover(s)}
+          onMouseLeave={() => setHover(0)}
+          onClick={() => handleRate(s)}
+          disabled={loading}
+          className='transition-transform hover:scale-125 active:scale-95 disabled:opacity-50'
+          type='button'
+        >
+          <FaStar size={18} className={(hover || selected) >= s ? 'text-yellow-400' : 'text-gray-200'} />
+        </button>
+      ))}
+    </div>
+  )
+}
 
 const RETURN_REASONS = [
   'Damaged / Defective product',
@@ -447,26 +515,35 @@ const OrderDetails = () => {
           </h2>
           <div className='space-y-3'>
             {items.map((item, i) => (
-              <div key={i} className={`flex gap-3 ${i < items.length - 1 ? 'pb-3 border-b border-gray-100' : ''}`}>
-                <div className='w-16 h-16 sm:w-20 sm:h-20 rounded-lg border bg-gray-50 overflow-hidden flex-shrink-0 p-1'>
-                  <img
-                    src={item.product_details?.image?.[0]}
-                    alt={item.product_details?.name}
-                    className='w-full h-full object-contain'
-                  />
-                </div>
-                <div className='flex-1 min-w-0'>
-                  <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-2'>
-                    {item.product_details?.name}
-                  </p>
-                  <p className='text-xs text-gray-400 mt-1'>
-                    Qty: {item.quantity || 1}
-                  </p>
-                  {item.price > 0 && (
-                    <p className='text-sm font-semibold text-gray-700 mt-1'>
-                      {DisplayPriceInRupees(item.price)}
+              <div key={i} className={`${i < items.length - 1 ? 'pb-3 border-b border-gray-100' : ''}`}>
+                <div className='flex gap-3'>
+                  <div className='w-16 h-16 sm:w-20 sm:h-20 rounded-lg border bg-gray-50 overflow-hidden flex-shrink-0 p-1'>
+                    <img
+                      src={item.product_details?.image?.[0]}
+                      alt={item.product_details?.name}
+                      className='w-full h-full object-contain'
+                    />
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                    <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-2'>
+                      {item.product_details?.name}
                     </p>
-                  )}
+                    <p className='text-xs text-gray-400 mt-1'>
+                      Qty: {item.quantity || 1}
+                    </p>
+                    {item.price > 0 && (
+                      <p className='text-sm font-semibold text-gray-700 mt-1'>
+                        {DisplayPriceInRupees(item.price)}
+                      </p>
+                    )}
+                    {order?.orderStatus === 'Delivered' && (
+                      <ItemRating
+                        orderId={order._id}
+                        productId={String(item.productId?._id || item.productId)}
+                        productName={item.product_details?.name}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
