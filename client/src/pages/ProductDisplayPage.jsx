@@ -315,7 +315,7 @@ const ProductDisplayPage = () => {
           </div>
 
           {/* AddToCart on the right of price */}
-          <div className='w-28 flex-shrink-0'>
+          <div className='w-28 flex-shrink-0 mr-2'>
             {displayStock !== 0 && <AddToCartButton data={data} />}
           </div>
         </div>
