@@ -300,7 +300,7 @@ const ProductDisplayPage = () => {
         )}
 
         {/* ── Price row + AddToCart (inline) ── */}
-        <div className='flex items-end justify-between gap-3 mb-3'>
+        <div className='flex items-end justify-between gap-3 mb-3 pr-3'>
           <div className='min-w-0 flex-1'>
             <p className='text-xs text-gray-500 uppercase tracking-wider mb-1'>Price</p>
             <span className='text-2xl font-bold text-gray-900 block leading-tight'>
@@ -315,7 +315,7 @@ const ProductDisplayPage = () => {
           </div>
 
           {/* AddToCart on the right of price */}
-          <div className='w-28 flex-shrink-0 mr-2'>
+          <div className='w-28 flex-shrink-0'>
             {displayStock !== 0 && <AddToCartButton data={data} />}
           </div>
         </div>
