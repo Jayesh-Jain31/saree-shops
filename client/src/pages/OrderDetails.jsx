@@ -136,6 +136,7 @@ const OrderDetails = () => {
   const siteSettings = useSelector(state => state.site.settings)
   const returnPeriodDays = parseInt(siteSettings?.return_period_days || 7) || 7
   const [selectedReturnItems, setSelectedReturnItems] = useState([])
+  const [orderRatings, setOrderRatings] = useState({})
 
   const fetchOrderDetails = async () => {
     try {
@@ -149,6 +150,7 @@ const OrderDetails = () => {
         setOrder(orderData)
         if (orderData.orderStatus === 'Delivered') {
           fetchReturnStatus(orderData._id)
+          fetchOrderRatings(orderData._id)
         }
       }
     } catch (error) {
@@ -167,6 +169,20 @@ const OrderDetails = () => {
       })
       if (res.data.success) setExistingReturn(res.data.data)
     } catch {}
+  }
+
+  const fetchOrderRatings = async (oid) => {
+    try {
+      const res = await Axios({
+        ...SummaryApi.getOrderRatings,
+        url: `${SummaryApi.getOrderRatings.url}/${oid}`
+      })
+      if (res.data.success) setOrderRatings(res.data.data || {})
+    } catch {}
+  }
+
+  const handleItemRated = (productId, rating) => {
+    setOrderRatings(prev => ({ ...prev, [String(productId)]: rating }))
   }
 
   useEffect(() => {
@@ -474,6 +490,8 @@ const OrderDetails = () => {
                         orderId={String(order._id)}
                         productId={String(item.productId?._id || item.productId)}
                         productName={item.product_details?.name}
+                        initialRating={orderRatings[String(item.productId?._id || item.productId)] || 0}
+                        onRated={handleItemRated}
                       />
                     )}
                   </div>

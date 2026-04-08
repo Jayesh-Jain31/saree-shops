@@ -83,6 +83,7 @@ const SummaryApi = {
     updateFraudFlag : { url : '/api/fraud/flags', method : 'put' },
     deleteFraudFlag : { url : '/api/fraud/flags', method : 'delete' },
     runFraudScan : { url : '/api/fraud/scan-users', method : 'post' },
+    getOrderRatings : { url : '/api/review/order-ratings', method : 'get' },
 }
 
 export default SummaryApi

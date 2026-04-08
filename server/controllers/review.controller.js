@@ -1,10 +1,11 @@
 import ReviewModel from "../models/review.model.js";
 import ProductModel from "../models/product.model.js";
+import OrderItemRatingModel from "../models/orderItemRating.model.js";
 
 export async function addReviewController(request, response) {
     try {
         const userId = request.userId
-        const { productId, rating, comment } = request.body
+        const { productId, rating, comment, orderId } = request.body
 
         if (!productId || !rating) {
             return response.status(400).json({ message: "Product ID and rating required", error: true, success: false })
@@ -14,14 +15,23 @@ export async function addReviewController(request, response) {
             return response.status(400).json({ message: "Rating must be between 1 and 5", error: true, success: false })
         }
 
+        // Upsert global product review (one per user per product)
         const existing = await ReviewModel.findOne({ userId, productId })
-
         if (existing) {
             existing.rating = rating
             existing.comment = comment || ""
             await existing.save()
         } else {
             await ReviewModel.create({ userId, productId, rating, comment: comment || "" })
+        }
+
+        // Upsert per-order item rating tracking
+        if (orderId) {
+            await OrderItemRatingModel.findOneAndUpdate(
+                { userId, orderId, productId },
+                { rating },
+                { upsert: true, new: true }
+            )
         }
 
         // Recalculate and sync avgRating + reviewCount to product
@@ -70,12 +80,31 @@ export async function getProductReviewsController(request, response) {
     }
 }
 
-// Returns all productIds the current user has reviewed — used to persist rating state across refreshes
+// Returns { [productId]: rating } for a specific order — used to persist rating state across refreshes
+export async function getOrderRatingsController(request, response) {
+    try {
+        const userId = request.userId
+        const { orderId } = request.params
+
+        if (!orderId) {
+            return response.status(400).json({ message: "Order ID required", error: true, success: false })
+        }
+
+        const ratings = await OrderItemRatingModel.find({ userId, orderId }, { productId: 1, rating: 1, _id: 0 }).lean()
+        const map = {}
+        ratings.forEach(r => { map[String(r.productId)] = r.rating })
+
+        return response.json({ message: "Order ratings", data: map, error: false, success: true })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+// Returns all productIds the current user has reviewed
 export async function getMyReviewedProductsController(request, response) {
     try {
         const userId = request.userId
         const reviews = await ReviewModel.find({ userId }, { productId: 1, rating: 1, _id: 0 }).lean()
-        // Build a map: { [productId]: rating }
         const map = {}
         reviews.forEach(r => { map[String(r.productId)] = r.rating })
         return response.json({ message: "My reviews", data: map, error: false, success: true })
