@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { FaStar } from 'react-icons/fa'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
@@ -8,11 +8,18 @@ const ItemRating = ({ orderId, productId, productName, initialRating = 0, onRate
   const pid = String(productId || '')
   const oid = String(orderId || '')
 
-  const [submitted, setSubmitted] = useState(initialRating > 0)
+  const [submitted, setSubmitted] = useState(false)
   const [savedRating, setSavedRating] = useState(initialRating)
   const [hover, setHover] = useState(0)
   const [loading, setLoading] = useState(false)
   const submitting = useRef(false)
+
+  useEffect(() => {
+    if (initialRating > 0) {
+      setSubmitted(true)
+      setSavedRating(initialRating)
+    }
+  }, [initialRating])
 
   const handleRate = async (star) => {
     if (submitting.current || loading || submitted) return
@@ -61,7 +68,7 @@ const ItemRating = ({ orderId, productId, productName, initialRating = 0, onRate
           className='transition-transform hover:scale-125 active:scale-95 disabled:opacity-50'
           type='button'
         >
-          <FaStar size={16} className={hover >= s ? 'text-yellow-400' : 'text-gray-200'} />
+          <FaStar size={16} className={(hover || savedRating) >= s ? 'text-yellow-400' : 'text-gray-200'} />
         </button>
       ))}
     </div>

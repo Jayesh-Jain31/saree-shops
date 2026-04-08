@@ -182,7 +182,13 @@ const OrderDetails = () => {
   }
 
   const handleItemRated = (productId, rating) => {
-    setOrderRatings(prev => ({ ...prev, [String(productId)]: rating }))
+    setOrderRatings(prev => ({
+      ...prev,
+      [String(productId)]: rating
+    }))
+
+    // 🔥 IMPORTANT: re-fetch from backend
+    fetchOrderRatings(order._id)
   }
 
   useEffect(() => {
@@ -474,19 +480,7 @@ const OrderDetails = () => {
                         className='w-full h-full object-contain'
                       />
                     </div>
-                    {order?.orderStatus === 'Delivered' && (() => {
-                      const pid = String(item.productId?._id || item.productId)
-                      const rated = orderRatings[pid] || 0
-                      return rated > 0 ? (
-                        <div className='absolute -bottom-2 left-0 right-0 flex justify-center'>
-                          <div className='flex items-center gap-0.5 bg-black/65 rounded-full px-1.5 py-0.5 shadow'>
-                            {[1,2,3,4,5].map(s => (
-                              <FaStar key={s} size={8} className={s <= rated ? 'text-yellow-400' : 'text-gray-500'} />
-                            ))}
-                          </div>
-                        </div>
-                      ) : null
-                    })()}
+                    
                   </div>
                   <div className='flex-1 min-w-0'>
                     <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-2'>
