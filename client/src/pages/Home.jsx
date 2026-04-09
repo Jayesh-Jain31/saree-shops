@@ -129,6 +129,20 @@ const Home = () => {
   const subCategoryData = useSelector(state => state.product.allSubCategory)
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  useEffect(() => {
+  const fetchCategory = async () => {
+    try {
+      const res = await Axios({ ...SummaryApi.getCategory })
+      if (res.data.success) {
+        dispatch(setAllCategory(res.data.data))
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  fetchCategory()
+}, [])
 
   // Only show categories that have showOnHome !== false (default true for existing ones)
   const visibleCategories = categoryData.filter(c => c.showOnHome !== false)
