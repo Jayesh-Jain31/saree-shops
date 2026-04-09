@@ -128,6 +128,7 @@ const Home = () => {
   const categoryData = useSelector(state => state.product.allCategory)
   const subCategoryData = useSelector(state => state.product.allSubCategory)
   const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   // Only show categories that have showOnHome !== false (default true for existing ones)
   const visibleCategories = categoryData.filter(c => c.showOnHome !== false)
