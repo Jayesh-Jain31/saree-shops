@@ -25,7 +25,13 @@ function processQueue(error) {
 
 // ── Request interceptor ──────────────────────────────────────────────────────
 Axios.interceptors.request.use(
-    (config) => config,
+    (config) => {
+        const token = localStorage.getItem('accesstoken')
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`
+        }
+        return config
+    },
     (error) => Promise.reject(error)
 )
 
@@ -53,7 +59,15 @@ Axios.interceptors.response.use(
             isRefreshing = true
 
             try {
-                await Axios({ ...SummaryApi.refreshToken })
+                const refreshToken = localStorage.getItem('refreshToken')
+                const refreshResponse = await Axios({
+                    ...SummaryApi.refreshToken,
+                    headers: refreshToken ? { Authorization: `Bearer ${refreshToken}` } : {}
+                })
+                const newAccessToken = refreshResponse?.data?.data?.accessToken
+                if (newAccessToken) {
+                    localStorage.setItem('accesstoken', newAccessToken)
+                }
                 processQueue(null)
                 return Axios(originRequest)
             } catch (refreshError) {
