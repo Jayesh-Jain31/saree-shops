@@ -20,8 +20,7 @@ const CategoryWiseProductDisplay = ({ id, name }) => {
         try {
             setLoading(true)
             const response = await Axios({
-  url: SummaryApi.getProductByCategory.url,
-  method: SummaryApi.getProductByCategory.method,
+  ...SummaryApi.getProductByCategory,
   data: { id }
 })
             const { data: responseData } = response
