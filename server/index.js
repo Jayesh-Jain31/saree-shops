@@ -58,8 +58,8 @@ const authLimiter = rateLimit({
 // Gzip compress all responses for faster transfer
 app.use(compression())
 app.use(cors({
-    credentials: true,
-    origin: process.env.FRONTEND_URL,
+    origin: "*",
+    credentials: true
 }))
 app.use(express.json({ limit: '10mb' }))
 app.use(cookieParser())
