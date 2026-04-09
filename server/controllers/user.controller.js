@@ -456,7 +456,7 @@ export async function refreshToken(request,response){
             })
         }
 
-        const verifyToken = await jwt.verify(refreshToken,process.env.SECRET_KEY_REFRESH_TOKEN)
+        const verifyToken = await jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET_KEY || process.env.SECRET_KEY_REFRESH_TOKEN)
 
         if(!verifyToken){
             return response.status(401).json({
