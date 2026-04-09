@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
+import { setAllCategory } from '../store/productSlice'
 import { valideURLConvert } from '../utils/valideURLConvert'
 import { Link, useNavigate } from 'react-router-dom'
 import CategoryWiseProductDisplay from '../components/CategoryWiseProductDisplay'
