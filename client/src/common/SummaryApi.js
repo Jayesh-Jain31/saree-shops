@@ -1,4 +1,4 @@
-export const baseURL = "https://saree-shops.onrender.com";
+export const baseURL = "";
 
 const SummaryApi = {
     register : { url : '/api/user/register', method : 'post' },
