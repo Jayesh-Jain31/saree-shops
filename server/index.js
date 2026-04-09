@@ -104,13 +104,9 @@ app.get('/api/config/razorpay-key', (req, res) => {
 // ── Static serving in production ──────────────────────────────────────
 const PORT = process.env.PORT || 8080
 
-if (process.env.NODE_ENV === 'production') {
-    const clientDistPath = path.join(__dirname, '../client/dist')
-    app.use(express.static(clientDistPath))
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(clientDistPath, 'index.html'))
-    })
-} else {
+app.get('/', (req, res) => {
+    res.json({ message: "API is running 🚀" })
+}) else {
     app.get('/', (request, response) => {
         response.json({ message: 'Server is running ' + PORT })
     })
