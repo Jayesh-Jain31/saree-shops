@@ -106,11 +106,7 @@ const PORT = process.env.PORT || 8080
 
 app.get('/', (req, res) => {
     res.json({ message: "API is running 🚀" })
-}) else {
-    app.get('/', (request, response) => {
-        response.json({ message: 'Server is running ' + PORT })
-    })
-}
+}) 
 
 connectDB().then(() => {
     app.listen(PORT, () => {
