@@ -57,8 +57,22 @@ const authLimiter = rateLimit({
 // ── Core middleware ───────────────────────────────────────────────────
 // Gzip compress all responses for faster transfer
 app.use(compression())
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'https://sareeshops.vercel.app',
+    'http://localhost:5000',
+    'http://localhost:3000',
+].filter(Boolean)
+
 app.use(cors({
-    origin: "*",
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, Postman)
+        if (!origin) return callback(null, true)
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.replit.dev')) {
+            return callback(null, true)
+        }
+        return callback(new Error('Not allowed by CORS'))
+    },
     credentials: true
 }))
 app.use(express.json({ limit: '10mb' }))
