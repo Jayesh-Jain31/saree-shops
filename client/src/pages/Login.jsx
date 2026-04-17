@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import fetchUserDetails from '../utils/fetchUserDetails';
 import { useDispatch } from 'react-redux';
 import { setUserDetails } from '../store/userSlice';
+import { GoogleLogin } from '@react-oauth/google';
 
 const Login = () => {
     const [data, setData] = useState({
@@ -21,21 +22,13 @@ const Login = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target
-
-        setData((preve) => {
-            return {
-                ...preve,
-                [name]: value
-            }
-        })
+        setData((preve) => ({ ...preve, [name]: value }))
     }
 
     const valideValue = Object.values(data).every(el => el)
 
-
     const handleSubmit = async(e)=>{
         e.preventDefault()
-
         try {
             const response = await Axios({
                 ...SummaryApi.login,
@@ -54,20 +47,37 @@ const Login = () => {
                 const userDetails = await fetchUserDetails()
                 dispatch(setUserDetails(userDetails.data))
 
-                setData({
-                    email : "",
-                    password : "",
-                })
+                setData({ email : "", password : "" })
                 navigate("/")
             }
-
         } catch (error) {
             AxiosToastError(error)
         }
-
-
-
     }
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        try {
+            const response = await Axios({
+                ...SummaryApi.googleLogin,
+                data: { credential: credentialResponse.credential }
+            })
+
+            if (response.data.success) {
+                toast.success("Login successful")
+                localStorage.setItem('accesstoken', response.data.data.accesstoken)
+                localStorage.setItem('refreshToken', response.data.data.refreshToken)
+
+                const details = await fetchUserDetails()
+                dispatch(setUserDetails(details.data))
+                navigate("/")
+            } else {
+                toast.error(response.data.message)
+            }
+        } catch (error) {
+            AxiosToastError(error)
+        }
+    }
+
     return (
         <section className='w-full container mx-auto px-2'>
             <div className='bg-white my-4 w-full max-w-lg mx-auto rounded p-7'>
@@ -98,23 +108,33 @@ const Login = () => {
                                 placeholder='Enter your password'
                             />
                             <div onClick={() => setShowPassword(preve => !preve)} className='cursor-pointer'>
-                                {
-                                    showPassword ? (
-                                        <FaRegEye />
-                                    ) : (
-                                        <FaRegEyeSlash />
-                                    )
-                                }
+                                {showPassword ? <FaRegEye /> : <FaRegEyeSlash />}
                             </div>
                         </div>
                         <Link to={"/forgot-password"} className='block ml-auto hover:text-primary-200'>Forgot password ?</Link>
                     </div>
-    
-                    <button disabled={!valideValue} className={` ${valideValue ? "bg-green-800 hover:bg-green-700" : "bg-gray-500" }    text-white py-2 rounded font-semibold my-3 tracking-wide`}>Login</button>
-
+        
+                    <button disabled={!valideValue} className={`${valideValue ? "bg-green-800 hover:bg-green-700" : "bg-gray-500"} text-white py-2 rounded font-semibold my-3 tracking-wide`}>Login</button>
                 </form>
 
-                <p>
+                <div className='flex items-center gap-3 my-2'>
+                    <div className='flex-1 h-px bg-gray-200'></div>
+                    <span className='text-gray-400 text-sm'>OR</span>
+                    <div className='flex-1 h-px bg-gray-200'></div>
+                </div>
+
+                <div className='flex justify-center mt-3'>
+                    <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => toast.error("Google login failed. Please try again.")}
+                        width="380"
+                        text="signin_with"
+                        shape="rectangular"
+                        logo_alignment="center"
+                    />
+                </div>
+
+                <p className='mt-5'>
                     Don't have account? <Link to={"/register"} className='font-semibold text-green-700 hover:text-green-800'>Register</Link>
                 </p>
             </div>
@@ -123,4 +143,3 @@ const Login = () => {
 }
 
 export default Login
-

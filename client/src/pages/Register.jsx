@@ -6,10 +6,13 @@ import Axios from '../utils/Axios';
 import SummaryApi from '../common/SummaryApi';
 import AxiosToastError from '../utils/AxiosToastError';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { GoogleLogin } from '@react-oauth/google';
+import fetchUserDetails from '../utils/fetchUserDetails';
+import { setUserDetails } from '../store/userSlice';
 
 const Register = () => {
-  const siteName = useSelector(state => state.site.name)
+    const siteName = useSelector(state => state.site.name)
     const [data, setData] = useState({
         name: "",
         email: "",
@@ -19,28 +22,20 @@ const Register = () => {
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const navigate = useNavigate()
+    const dispatch = useDispatch()
 
     const handleChange = (e) => {
         const { name, value } = e.target
-
-        setData((preve) => {
-            return {
-                ...preve,
-                [name]: value
-            }
-        })
+        setData((preve) => ({ ...preve, [name]: value }))
     }
 
     const valideValue = Object.values(data).every(el => el)
-
 
     const handleSubmit = async(e)=>{
         e.preventDefault()
 
         if(data.password !== data.confirmPassword){
-            toast.error(
-                "password and confirm password must be same"
-            )
+            toast.error("password and confirm password must be same")
             return
         }
 
@@ -56,22 +51,37 @@ const Register = () => {
 
             if(response.data.success){
                 toast.success(response.data.message)
-                setData({
-                    name : "",
-                    email : "",
-                    password : "",
-                    confirmPassword : ""
-                })
+                setData({ name : "", email : "", password : "", confirmPassword : "" })
                 navigate("/login")
             }
-
         } catch (error) {
             AxiosToastError(error)
         }
-
-
-
     }
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        try {
+            const response = await Axios({
+                ...SummaryApi.googleLogin,
+                data: { credential: credentialResponse.credential }
+            })
+
+            if (response.data.success) {
+                toast.success("Account created & logged in!")
+                localStorage.setItem('accesstoken', response.data.data.accesstoken)
+                localStorage.setItem('refreshToken', response.data.data.refreshToken)
+
+                const details = await fetchUserDetails()
+                dispatch(setUserDetails(details.data))
+                navigate("/")
+            } else {
+                toast.error(response.data.message)
+            }
+        } catch (error) {
+            AxiosToastError(error)
+        }
+    }
+
     return (
         <section className='w-full container mx-auto px-2'>
             <div className='bg-white my-4 w-full max-w-lg mx-auto rounded p-7'>
@@ -116,13 +126,7 @@ const Register = () => {
                                 placeholder='Enter your password'
                             />
                             <div onClick={() => setShowPassword(preve => !preve)} className='cursor-pointer'>
-                                {
-                                    showPassword ? (
-                                        <FaRegEye />
-                                    ) : (
-                                        <FaRegEyeSlash />
-                                    )
-                                }
+                                {showPassword ? <FaRegEye /> : <FaRegEyeSlash />}
                             </div>
                         </div>
                     </div>
@@ -139,22 +143,32 @@ const Register = () => {
                                 placeholder='Enter your confirm password'
                             />
                             <div onClick={() => setShowConfirmPassword(preve => !preve)} className='cursor-pointer'>
-                                {
-                                    showConfirmPassword ? (
-                                        <FaRegEye />
-                                    ) : (
-                                        <FaRegEyeSlash />
-                                    )
-                                }
+                                {showConfirmPassword ? <FaRegEye /> : <FaRegEyeSlash />}
                             </div>
                         </div>
                     </div>
 
-                    <button disabled={!valideValue} className={` ${valideValue ? "bg-green-800 hover:bg-green-700" : "bg-gray-500" }    text-white py-2 rounded font-semibold my-3 tracking-wide`}>Register</button>
-
+                    <button disabled={!valideValue} className={`${valideValue ? "bg-green-800 hover:bg-green-700" : "bg-gray-500"} text-white py-2 rounded font-semibold my-3 tracking-wide`}>Register</button>
                 </form>
 
-                <p>
+                <div className='flex items-center gap-3 my-2'>
+                    <div className='flex-1 h-px bg-gray-200'></div>
+                    <span className='text-gray-400 text-sm'>OR</span>
+                    <div className='flex-1 h-px bg-gray-200'></div>
+                </div>
+
+                <div className='flex justify-center mt-3'>
+                    <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => toast.error("Google sign-up failed. Please try again.")}
+                        width="380"
+                        text="signup_with"
+                        shape="rectangular"
+                        logo_alignment="center"
+                    />
+                </div>
+
+                <p className='mt-5'>
                     Already have account ? <Link to={"/login"} className='font-semibold text-green-700 hover:text-green-800'>Login</Link>
                 </p>
             </div>

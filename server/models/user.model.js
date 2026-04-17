@@ -12,7 +12,11 @@ const userSchema = new mongoose.Schema({
     },
     password : {
         type : String,
-        required : [true, "provide password"]
+        default : null
+    },
+    googleId : {
+        type : String,
+        default : null
     },
     avatar : {
         type : String,
