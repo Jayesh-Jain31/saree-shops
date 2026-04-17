@@ -11,9 +11,18 @@ const formatPhone = (mobile) => {
 }
 
 const sendWhatsApp = async (to, payload) => {
-    if (!ACCESS_TOKEN || !process.env.WHATSAPP_PHONE_NUMBER_ID) return
+    if (!ACCESS_TOKEN || !process.env.WHATSAPP_PHONE_NUMBER_ID) {
+        console.log('[WhatsApp] Missing credentials — WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set')
+        return
+    }
     const phone = formatPhone(to)
-    if (!phone) return
+    if (!phone) {
+        console.log('[WhatsApp] Invalid phone number:', to)
+        return
+    }
+
+    const body = JSON.stringify({ messaging_product: 'whatsapp', to: phone, ...payload })
+    console.log('[WhatsApp] Sending to:', phone, '| Template:', payload?.template?.name || 'free-text')
 
     try {
         const res = await fetch(WHATSAPP_API_URL, {
@@ -22,15 +31,17 @@ const sendWhatsApp = async (to, payload) => {
                 'Authorization': `Bearer ${ACCESS_TOKEN}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ messaging_product: 'whatsapp', to: phone, ...payload })
+            body
         })
         const data = await res.json()
         if (!res.ok) {
-            if (process.env.NODE_ENV !== 'production') console.log('WhatsApp error:', JSON.stringify(data))
+            console.log('[WhatsApp] API error:', JSON.stringify(data?.error || data))
+        } else {
+            console.log('[WhatsApp] Sent successfully to:', phone)
         }
         return data
     } catch (err) {
-        if (process.env.NODE_ENV !== 'production') console.log('WhatsApp send failed:', err.message)
+        console.log('[WhatsApp] Network error:', err.message)
     }
 }
 
