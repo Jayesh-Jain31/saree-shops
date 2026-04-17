@@ -73,6 +73,10 @@ const userSchema = new mongoose.Schema({
         type : String,
         enum : ['ADMIN',"USER"],
         default : "USER"
+    },
+    codRestricted : {
+        type : Boolean,
+        default : false
     }
 },{
     timestamps : true

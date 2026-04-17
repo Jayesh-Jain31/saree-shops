@@ -40,6 +40,15 @@ export async function CashOnDeliveryOrderController(request, response) {
             price: el.productId.price || 0,
         }))
 
+        // Check if COD is restricted for this customer
+        const userCheck = await UserModel.findById(userId).select('codRestricted')
+        if (userCheck?.codRestricted) {
+            return response.status(403).json({
+                message: 'Cash on Delivery is not available for your account. Please use online payment.',
+                error: true, success: false
+            })
+        }
+
         // Fraud detection for COD orders
         const fraud = await assessOrderRisk({ userId, totalAmt, items })
         if (fraud.shouldBlock) {

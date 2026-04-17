@@ -275,16 +275,20 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
             </div>
 
             {/* Customer Info */}
-            <div className='bg-white rounded-2xl border p-4'>
-              <h3 className='font-bold text-gray-700 text-sm mb-3 flex items-center gap-2'>
-                <FaUser className='text-blue-500' size={13} /> Customer Details
+            <Link
+              to={order.userId?._id ? `/dashboard/customer/${order.userId._id}` : '#'}
+              className='block bg-white rounded-2xl border p-4 hover:border-blue-300 hover:shadow-sm transition-all group'
+            >
+              <h3 className='font-bold text-gray-700 text-sm mb-3 flex items-center justify-between'>
+                <span className='flex items-center gap-2'><FaUser className='text-blue-500' size={13} /> Customer Details</span>
+                <span className='text-[11px] text-blue-500 font-normal opacity-0 group-hover:opacity-100 transition-opacity'>View full profile →</span>
               </h3>
               <div className='flex items-start gap-3'>
                 <div className='w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0'>
                   {(order.userId?.name || 'U')[0].toUpperCase()}
                 </div>
                 <div className='space-y-1.5'>
-                  <p className='font-semibold text-gray-800'>{order.userId?.name || 'Unknown'}</p>
+                  <p className='font-semibold text-gray-800 group-hover:text-blue-700 transition-colors'>{order.userId?.name || 'Unknown'}</p>
                   {order.userId?.email && (
                     <p className='text-xs text-gray-500 flex items-center gap-1.5'>
                       <MdEmail size={12} className='text-gray-400' /> {order.userId.email}
@@ -297,7 +301,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                   )}
                 </div>
               </div>
-            </div>
+            </Link>
 
             {/* Delivery Address */}
             {order.delivery_address && (

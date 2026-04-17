@@ -85,6 +85,10 @@ getProduct : { url : '/api/product/get', method : 'get' },
     deleteFraudFlag : { url : '/api/fraud/flags', method : 'delete' },
     runFraudScan : { url : '/api/fraud/scan-users', method : 'post' },
     getOrderRatings : { url : '/api/review/order-ratings', method : 'get' },
+    getAdminCustomerDetail : { url : '/api/analytics/customer', method : 'get' },
+    toggleAdminCustomerCOD : { url : '/api/analytics/customer', method : 'put' },
+    updateAdminCustomerStatus : { url : '/api/analytics/customer', method : 'put' },
+    adminWalletAdjust : { url : '/api/analytics/customer', method : 'post' },
 }
 
 export default SummaryApi

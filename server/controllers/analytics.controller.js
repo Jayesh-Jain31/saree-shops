@@ -1,6 +1,7 @@
 import OrderModel from "../models/order.model.js";
 import ProductModel from "../models/product.model.js";
 import UserModel from "../models/user.model.js";
+import WalletModel from "../models/wallet.model.js";
 import sendEmail from "../config/sendEmail.js";
 import orderStatusTemplate from "../utils/orderStatusTemplate.js";
 import { sendOrderStatusWhatsApp } from "../utils/whatsapp.js";
@@ -171,6 +172,90 @@ export async function updateOrderStatusAdminController(request, response) {
         }
 
         return response.json({ message: "Order status updated", data: order, error: false, success: true })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+export async function getCustomerDetailAdmin(request, response) {
+    try {
+        const { userId } = request.params
+        const user = await UserModel.findById(userId).select('-password -refresh_token -forgot_password_otp')
+        if (!user) return response.status(404).json({ message: 'Customer not found', error: true, success: false })
+
+        const [totalOrders, deliveredOrders, cancelledOrders, spentAgg, recentOrders, wallet] = await Promise.all([
+            OrderModel.countDocuments({ userId }),
+            OrderModel.countDocuments({ userId, orderStatus: 'Delivered' }),
+            OrderModel.countDocuments({ userId, orderStatus: 'Cancelled' }),
+            OrderModel.aggregate([
+                { $match: { userId: user._id, orderStatus: { $ne: 'Cancelled' } } },
+                { $group: { _id: null, total: { $sum: '$totalAmt' } } }
+            ]),
+            OrderModel.find({ userId }).sort({ createdAt: -1 }).limit(15).select('orderId orderStatus totalAmt createdAt payment_status items'),
+            WalletModel.findOne({ userId })
+        ])
+
+        return response.json({
+            success: true, error: false,
+            data: {
+                user,
+                stats: { totalOrders, deliveredOrders, cancelledOrders, totalSpent: spentAgg[0]?.total || 0 },
+                recentOrders,
+                wallet: wallet || { balance: 0, transactions: [] }
+            }
+        })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+export async function toggleCustomerCOD(request, response) {
+    try {
+        const { userId } = request.params
+        const user = await UserModel.findById(userId)
+        if (!user) return response.status(404).json({ message: 'Customer not found', error: true, success: false })
+        user.codRestricted = !user.codRestricted
+        await user.save()
+        return response.json({
+            success: true, error: false,
+            message: user.codRestricted ? 'COD disabled for this customer' : 'COD enabled for this customer',
+            data: { codRestricted: user.codRestricted }
+        })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+export async function updateCustomerStatus(request, response) {
+    try {
+        const { userId } = request.params
+        const { status } = request.body
+        const validStatuses = ['Active', 'Inactive', 'Suspended']
+        if (!validStatuses.includes(status)) return response.status(400).json({ message: 'Invalid status', error: true, success: false })
+        const user = await UserModel.findByIdAndUpdate(userId, { status }, { new: true }).select('-password -refresh_token')
+        if (!user) return response.status(404).json({ message: 'Customer not found', error: true, success: false })
+        return response.json({ success: true, error: false, message: `Account status set to ${status}`, data: user })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+export async function adminWalletAdjust(request, response) {
+    try {
+        const { userId } = request.params
+        const { type, amount, description } = request.body
+        if (!['credit', 'debit'].includes(type) || !amount || amount <= 0) {
+            return response.status(400).json({ message: 'Invalid wallet adjustment', error: true, success: false })
+        }
+        let wallet = await WalletModel.findOne({ userId })
+        if (!wallet) wallet = await WalletModel.create({ userId, balance: 0, transactions: [] })
+        if (type === 'debit' && wallet.balance < amount) {
+            return response.status(400).json({ message: 'Insufficient wallet balance', error: true, success: false })
+        }
+        wallet.balance = type === 'credit' ? wallet.balance + amount : wallet.balance - amount
+        wallet.transactions.unshift({ type, amount, description: description || `Admin ${type}`, reference: 'ADMIN', balanceAfter: wallet.balance })
+        await wallet.save()
+        return response.json({ success: true, error: false, message: `Wallet ${type}ed ₹${amount}`, data: wallet })
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false })
     }
