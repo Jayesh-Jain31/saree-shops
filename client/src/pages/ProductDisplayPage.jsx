@@ -181,7 +181,7 @@ const ProductDisplayPage = () => {
 
       {/* ── Left: Images ── */}
       <div>
-        <div className='bg-white rounded-2xl min-h-72 max-h-80 lg:min-h-[60vh] lg:max-h-[60vh] relative overflow-hidden flex items-center justify-center p-4 border'>
+        <div className='bg-white rounded-2xl min-h-72 max-h-[70vw] lg:min-h-[60vh] lg:max-h-[60vh] relative overflow-hidden flex items-center justify-center p-4 border'>
           <img
             key={image}
             src={data.image[image]}
@@ -295,7 +295,7 @@ const ProductDisplayPage = () => {
                           className='h-full rounded-full transition-all duration-500'
                           style={{
                             width: `${pct}%`,
-                            backgroundColor: star >= 4 ? '#22c55e' : star === 3 ? '#facc15' : '#f87171'
+                            backgroundColor: '#22c55e'
                           }}
                         />
                       </div>
