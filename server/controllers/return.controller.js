@@ -2,6 +2,8 @@ import ReturnModel from "../models/return.model.js"
 import OrderModel from "../models/order.model.js"
 import WalletModel from "../models/wallet.model.js"
 import Razorpay from "../config/razorpay.js"
+import UserModel from "../models/user.model.js"
+import { sendReturnStatusWhatsApp } from "../utils/whatsapp.js"
 
 const creditWalletInternal = async (userId, amount, description, reference) => {
     let wallet = await WalletModel.findOne({ userId })
@@ -194,6 +196,21 @@ export const updateReturnStatus = async (req, res) => {
         }
 
         await returnReq.save()
+
+        // WhatsApp notification for return status update
+        try {
+            const retUser = await UserModel.findById(returnReq.userId).select('name mobile')
+            if (retUser?.mobile && returnReq.status !== prevStatus) {
+                sendReturnStatusWhatsApp({
+                    mobile: retUser.mobile,
+                    name: retUser.name,
+                    orderId: returnReq.orderDisplayId,
+                    status: returnReq.status,
+                    refundAmount: returnReq.refundAmount,
+                    paymentMethod: returnReq.paymentMethod,
+                }).catch(() => {})
+            }
+        } catch {}
 
         return res.json({
             message: autoAction === 'wallet_credited'

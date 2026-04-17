@@ -3,6 +3,7 @@ import ProductModel from "../models/product.model.js";
 import UserModel from "../models/user.model.js";
 import sendEmail from "../config/sendEmail.js";
 import orderStatusTemplate from "../utils/orderStatusTemplate.js";
+import { sendOrderStatusWhatsApp } from "../utils/whatsapp.js";
 
 export async function getAnalyticsController(request, response) {
     try {
@@ -141,9 +142,9 @@ export async function updateOrderStatusAdminController(request, response) {
             return response.status(404).json({ message: "Order not found", error: true, success: false })
         }
 
-        // Send email notification to customer
+        // Send email + WhatsApp notification to customer
         try {
-            const user = await UserModel.findById(order.userId).select('name email')
+            const user = await UserModel.findById(order.userId).select('name email mobile')
             if (user?.email) {
                 await sendEmail({
                     sendTo: user.email,
@@ -155,6 +156,15 @@ export async function updateOrderStatusAdminController(request, response) {
                         totalAmt: order.totalAmt
                     })
                 })
+            }
+            if (user?.mobile) {
+                sendOrderStatusWhatsApp({
+                    mobile: user.mobile,
+                    name: user.name,
+                    orderId: order.orderId,
+                    status,
+                    totalAmt: order.totalAmt,
+                }).catch(() => {})
             }
         } catch (emailErr) {
             console.log('Order status email failed:', emailErr.message)

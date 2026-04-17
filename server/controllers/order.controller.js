@@ -10,6 +10,11 @@ import orderConfirmationTemplate from "../utils/orderConfirmationTemplate.js";
 import FraudFlagModel from "../models/fraudFlag.model.js";
 import { assessOrderRisk } from "../utils/fraudDetection.js";
 import WalletModel from "../models/wallet.model.js";
+import {
+    sendOrderConfirmationWhatsApp,
+    sendCODVerificationWhatsApp,
+    sendOrderStatusWhatsApp
+} from "../utils/whatsapp.js";
 
 // Helper: decrement stock for each ordered item
 async function decrementStock(items) {
@@ -94,6 +99,22 @@ export async function CashOnDeliveryOrderController(request, response) {
                         payment_status: order.payment_status,
                     })
                 })
+            }
+            if (user?.mobile) {
+                sendOrderConfirmationWhatsApp({
+                    mobile: user.mobile,
+                    name: user.name,
+                    orderId: order.orderId,
+                    totalAmt: order.totalAmt,
+                    paymentMethod: order.payment_status,
+                    items: order.items,
+                }).catch(() => {})
+                sendCODVerificationWhatsApp({
+                    mobile: user.mobile,
+                    name: user.name,
+                    orderId: order.orderId,
+                    totalAmt: order.totalAmt,
+                }).catch(() => {})
             }
         } catch (emailErr) {
             if(process.env.NODE_ENV !== 'production') console.log("Order confirmation email failed:", emailErr.message)
@@ -235,6 +256,16 @@ export async function razorpayVerifyController(request, response) {
                     })
                 })
             }
+            if (user?.mobile) {
+                sendOrderConfirmationWhatsApp({
+                    mobile: user.mobile,
+                    name: user.name,
+                    orderId: order.orderId,
+                    totalAmt: order.totalAmt,
+                    paymentMethod: order.payment_status,
+                    items: order.items,
+                }).catch(() => {})
+            }
         } catch (emailErr) {
             if(process.env.NODE_ENV !== 'production') console.log("Order confirmation email failed:", emailErr.message)
         }
@@ -360,6 +391,20 @@ export async function cancelOrderController(request, response) {
 
         order.orderStatus = 'Cancelled'
         await order.save()
+
+        // WhatsApp notification for cancellation
+        try {
+            const cancelUser = await UserModel.findById(order.userId).select('name mobile')
+            if (cancelUser?.mobile) {
+                sendOrderStatusWhatsApp({
+                    mobile: cancelUser.mobile,
+                    name: cancelUser.name,
+                    orderId: order.orderId,
+                    status: 'Cancelled',
+                    totalAmt: order.totalAmt,
+                }).catch(() => {})
+            }
+        } catch {}
 
         // Instant wallet refund if wallet was used for this order
         let walletRefunded = 0
