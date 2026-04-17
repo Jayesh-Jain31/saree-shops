@@ -188,15 +188,16 @@ const ProductDisplayPage = () => {
 
       {/* ── Left: Images ── */}
       <div>
-        <div className='bg-white rounded-2xl relative overflow-hidden border flex items-start justify-center' style={{maxHeight:'75vw', minHeight:'220px'}}>
+        <div className='bg-white rounded-2xl relative border overflow-hidden'>
           <img
             key={image}
             src={data.image[image]}
-            className='w-auto h-auto max-w-full max-h-full object-contain cursor-zoom-in lg:max-h-[60vh]'
+            className='w-full h-auto block cursor-zoom-in'
             style={{ animation: 'fadeSlideIn 0.35s ease' }}
             onClick={() => setLightboxOpen(true)}
           />
-          <div className='absolute top-3 right-3 flex gap-2'>
+          {/* Wishlist + Share — float over top-right of image */}
+          <div className='absolute top-3 right-3 flex gap-2 z-10'>
             <button onClick={toggleWishlist}
               className='w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 transition-transform border'>
               {wishlisted ? <FaHeart className='text-red-500' size={16} /> : <FaRegHeart className='text-gray-400' size={16} />}
@@ -218,6 +219,11 @@ const ProductDisplayPage = () => {
               )}
             </div>
           </div>
+          {/* Tap-to-zoom hint */}
+          <div className='absolute bottom-10 right-3 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-full pointer-events-none'>
+            Tap to zoom
+          </div>
+          {/* Dot indicators */}
           {data.image.length > 1 && (
             <div className='absolute bottom-2 left-0 right-0 flex justify-center gap-1.5'>
               {data.image.map((_, i) => (
