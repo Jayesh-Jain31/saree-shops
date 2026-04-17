@@ -186,6 +186,30 @@ const DetailDrawer = ({ ret, onClose, onUpdated }) => {
             </div>
           </div>
 
+          {/* Customer Photos */}
+          {ret.images?.length > 0 && (
+            <div className='border border-gray-100 rounded-2xl overflow-hidden'>
+              <div className='bg-gray-50 px-4 py-2 border-b'>
+                <p className='text-[11px] font-bold text-gray-500 uppercase tracking-wide'>Customer Photos ({ret.images.length})</p>
+              </div>
+              <div className='px-4 py-3'>
+                <div className='flex flex-wrap gap-2'>
+                  {ret.images.map((url, idx) => (
+                    <a key={idx} href={url} target='_blank' rel='noopener noreferrer' className='block w-20 h-20 rounded-xl overflow-hidden border border-gray-200 flex-shrink-0 hover:opacity-90 transition-opacity'>
+                      <img
+                        src={url}
+                        alt={`Return photo ${idx + 1}`}
+                        className='w-full h-full object-cover'
+                        onError={e => { e.target.style.display = 'none' }}
+                      />
+                    </a>
+                  ))}
+                </div>
+                <p className='text-[10px] text-gray-400 mt-1.5'>Click to view full size</p>
+              </div>
+            </div>
+          )}
+
           {/* Payment */}
           <div className='border border-gray-100 rounded-2xl overflow-hidden'>
             <div className='bg-gray-50 px-4 py-2 border-b flex items-center gap-2'>

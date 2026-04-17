@@ -38,6 +38,10 @@ const returnSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    images: {
+        type: [String],
+        default: []
+    },
     status: {
         type: String,
         enum: ['Pending', 'Approved', 'Pick Up Scheduled', 'Rejected', 'Refund Initiated', 'Refunded'],

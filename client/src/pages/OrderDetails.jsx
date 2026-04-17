@@ -132,6 +132,8 @@ const OrderDetails = () => {
   const [showReturnForm, setShowReturnForm] = useState(false)
   const [returnReason, setReturnReason] = useState('')
   const [returnDesc, setReturnDesc] = useState('')
+  const [returnImages, setReturnImages] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [submittingReturn, setSubmittingReturn] = useState(false)
   const siteSettings = useSelector(state => state.site.settings)
   const returnPeriodDays = parseInt(siteSettings?.return_period_days || 7) || 7
@@ -195,6 +197,32 @@ const OrderDetails = () => {
     if (id) fetchOrderDetails()
   }, [id])
 
+  const handleReturnImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (returnImages.length >= 5) { toast.error('Maximum 5 images allowed'); return }
+    try {
+      setUploadingImage(true)
+      const formData = new FormData()
+      formData.append('image', file)
+      const res = await Axios({ ...SummaryApi.uploadImage, data: formData })
+      if (res.data.success && res.data.data?.url) {
+        setReturnImages(prev => [...prev, res.data.data.url])
+      } else {
+        toast.error('Image upload failed')
+      }
+    } catch {
+      toast.error('Failed to upload image')
+    } finally {
+      setUploadingImage(false)
+      e.target.value = ''
+    }
+  }
+
+  const removeReturnImage = (idx) => {
+    setReturnImages(prev => prev.filter((_, i) => i !== idx))
+  }
+
   const handleSubmitReturn = async () => {
     if (!returnReason) { toast.error('Please select a reason'); return }
     const isMultiItem = (order?.items?.length || 0) > 1
@@ -208,6 +236,7 @@ const OrderDetails = () => {
         orderId: order._id,
         reason: returnReason,
         description: returnDesc,
+        images: returnImages,
       }
       if (isMultiItem && selectedReturnItems.length > 0) {
         payload.selectedItems = selectedReturnItems
@@ -219,6 +248,7 @@ const OrderDetails = () => {
         setShowReturnForm(false)
         setReturnReason('')
         setReturnDesc('')
+        setReturnImages([])
         setSelectedReturnItems([])
       }
     } catch (err) {
@@ -811,9 +841,86 @@ const OrderDetails = () => {
                       className='w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:border-orange-400 resize-none bg-gray-50'
                     />
                   </div>
+
+                  {/* Image Upload */}
+                  <div>
+                    <label className='text-xs font-semibold text-gray-600 mb-1.5 block'>
+                      Upload photos <span className='font-normal text-gray-400'>(optional, max 5)</span>
+                    </label>
+                    <div className='flex flex-wrap gap-2'>
+                      {returnImages.map((url, idx) => (
+                        <div key={idx} className='relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 flex-shrink-0'>
+                          <img src={url} alt='' className='w-full h-full object-cover' />
+                          <button
+                            type='button'
+                            onClick={() => removeReturnImage(idx)}
+                            className='absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center'
+                          >
+                            <FaTimes size={8} />
+                          </button>
+                        </div>
+                      ))}
+                      {returnImages.length < 5 && (
+                        <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer flex-shrink-0 transition-colors ${uploadingImage ? 'border-gray-200 bg-gray-50' : 'border-orange-200 bg-orange-50 hover:bg-orange-100'}`}>
+                          {uploadingImage
+                            ? <div className='w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin' />
+                            : <>
+                                <svg className='w-5 h-5 text-orange-400 mb-0.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v16m8-8H4' />
+                                </svg>
+                                <span className='text-[9px] text-orange-400 font-semibold'>Add Photo</span>
+                              </>
+                          }
+                          <input
+                            type='file'
+                            accept='image/*'
+                            className='hidden'
+                            onChange={handleReturnImageUpload}
+                            disabled={uploadingImage}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <p className='text-[10px] text-gray-400 mt-1'>Photos help us process your return faster</p>
+                  </div>
+
+                  {/* Refund Info Message */}
+                  {(() => {
+                    const isCOD = order?.payment_status?.toUpperCase().includes('CASH') || order?.payment_status?.toUpperCase() === 'COD'
+                    return (
+                      <div className={`rounded-xl p-3 flex items-start gap-2.5 border ${isCOD ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isCOD ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                          {isCOD
+                            ? <FaMoneyBillWave className='text-amber-600' size={13} />
+                            : <FaCreditCard className='text-blue-600' size={13} />
+                          }
+                        </div>
+                        <div>
+                          <p className={`text-xs font-bold mb-0.5 ${isCOD ? 'text-amber-800' : 'text-blue-800'}`}>
+                            {isCOD ? 'Refund to Wallet' : 'Refund to Original Payment Method'}
+                          </p>
+                          {isCOD
+                            ? <>
+                                <p className='text-[11px] text-amber-700 leading-snug'>Your refund will be credited to your <strong>wallet instantly</strong> once the return pickup is completed.</p>
+                                <p className='text-[10px] text-amber-600 mt-1 flex items-center gap-1'>
+                                  <MdDone size={11} /> No waiting period — instant wallet credit
+                                </p>
+                              </>
+                            : <>
+                                <p className='text-[11px] text-blue-700 leading-snug'>Your refund will be credited back to your <strong>original payment method</strong> (card / UPI / net banking) after the return is processed.</p>
+                                <p className='text-[10px] text-blue-600 mt-1 flex items-center gap-1'>
+                                  <MdAccessTime size={11} /> Typically takes <strong className='mx-0.5'>5–7 business days</strong> to reflect
+                                </p>
+                              </>
+                          }
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   <div className='flex gap-2'>
                     <button
-                      onClick={() => { setShowReturnForm(false); setReturnReason(''); setReturnDesc(''); setSelectedReturnItems([]) }}
+                      onClick={() => { setShowReturnForm(false); setReturnReason(''); setReturnDesc(''); setReturnImages([]); setSelectedReturnItems([]) }}
                       className='flex-1 py-2.5 border rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50'
                       disabled={submittingReturn}
                     >

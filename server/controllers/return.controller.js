@@ -21,7 +21,7 @@ const creditWalletInternal = async (userId, amount, description, reference) => {
 export const createReturnRequest = async (req, res) => {
     try {
         const userId = req.userId
-        const { orderId, reason, description, selectedItems } = req.body
+        const { orderId, reason, description, selectedItems, images } = req.body
 
         if (!orderId || !reason) {
             return res.status(400).json({ message: "orderId and reason are required", error: true, success: false })
@@ -59,6 +59,7 @@ export const createReturnRequest = async (req, res) => {
             items: returnItems,
             reason,
             description: description || '',
+            images: Array.isArray(images) ? images.filter(Boolean) : [],
             totalAmt: returnItems.length === order.items.length ? order.totalAmt : returnTotalAmt,
             paymentMethod: isCOD ? 'COD' : 'ONLINE',
             paymentId: order.paymentId || ''
