@@ -278,33 +278,6 @@ const ProductDisplayPage = () => {
               </div>
               <span className='text-xs text-gray-500 font-medium'>{data.reviewCount} rating{data.reviewCount !== 1 ? 's' : ''}</span>
             </div>
-            {/* Star breakdown bars */}
-            {data.reviewCount > 0 && (
-              <div className='mt-2 space-y-1'>
-                {[5,4,3,2,1].map(star => {
-                  const count = ratingDist[star] || 0
-                  const pct = data.reviewCount > 0 ? Math.round((count / data.reviewCount) * 100) : 0
-                  return (
-                    <div key={star} className='flex items-center gap-2'>
-                      <div className='flex items-center gap-0.5 w-8 shrink-0'>
-                        <span className='text-[11px] text-gray-600 font-medium'>{star}</span>
-                        <FaStar size={9} className='text-yellow-400' />
-                      </div>
-                      <div className='flex-1 h-2 bg-gray-100 rounded-full overflow-hidden'>
-                        <div
-                          className='h-full rounded-full transition-all duration-500'
-                          style={{
-                            width: `${pct}%`,
-                            backgroundColor: '#22c55e'
-                          }}
-                        />
-                      </div>
-                      <span className='text-[11px] text-gray-500 font-semibold w-4 text-right shrink-0'>{count}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
         )}
 
