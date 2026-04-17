@@ -3,6 +3,7 @@ import auth from '../middleware/auth.js'
 import { admin } from '../middleware/Admin.js'
 import {
     validateCouponController,
+    getActiveCouponsPublic,
     getAllCouponsController,
     createCouponController,
     updateCouponController,
@@ -10,6 +11,9 @@ import {
 } from '../controllers/coupon.controller.js'
 
 const couponRouter = Router()
+
+// Public (no auth needed)
+couponRouter.get('/active', getActiveCouponsPublic)
 
 // User
 couponRouter.post('/validate', auth, validateCouponController)

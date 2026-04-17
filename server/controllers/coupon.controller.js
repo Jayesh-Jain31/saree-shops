@@ -90,6 +90,24 @@ export async function incrementCouponUsageController(request, response) {
     }
 }
 
+// ─── Public: list browseable coupons ─────────────────────────────────────────
+
+export async function getActiveCouponsPublic(request, response) {
+    try {
+        const now = new Date()
+        const coupons = await CouponModel.find({
+            isActive: true,
+            $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+        }).select('code discountType discountValue minOrderAmount maxDiscount expiresAt usageLimit usageCount').sort({ createdAt: -1 })
+
+        const available = coupons.filter(c => c.usageLimit === null || c.usageCount < c.usageLimit)
+
+        return response.json({ message: 'Active coupons', error: false, success: true, data: available })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
 export async function getAllCouponsController(request, response) {

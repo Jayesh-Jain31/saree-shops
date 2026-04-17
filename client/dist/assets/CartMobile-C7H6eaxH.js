@@ -1,0 +1,1 @@
+import{j as a,a0 as o}from"./index-CrufdL3y.js";import{u as r}from"./react-vendor-CyCy6wxS.js";import"./redux-vendor-CsaMfXa5.js";import"./axios-vendor-DsPaXkF5.js";import"./ui-vendor-B4i_83wd.js";const n=()=>{const t=r();return a.jsx(o,{close:()=>t(-1)})};export{n as default};
