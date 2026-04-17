@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { FaWhatsapp, FaUndoAlt, FaTools, FaBan, FaBullhorn, FaBolt, FaStore } from 'react-icons/fa'
+import { FaWhatsapp, FaUndoAlt, FaTools, FaBan, FaBullhorn, FaBolt, FaStore, FaPlus, FaTrash } from 'react-icons/fa'
 import { MdSettings, MdSave, MdPalette, MdBrandingWatermark } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { colorPresets, applyTheme } from '../utils/themeColors'
@@ -58,6 +58,11 @@ const SiteSettings = () => {
   const [savingTheme, setSavingTheme] = useState(false)
   const [savingPolicy, setSavingPolicy] = useState(false)
   const [savingSocial, setSavingSocial] = useState(false)
+  const [customPolicies, setCustomPolicies] = useState([])
+  const [showAddPage, setShowAddPage] = useState(false)
+  const [newPageLabel, setNewPageLabel] = useState('')
+  const [newPageSlug, setNewPageSlug] = useState('')
+  const [savingCustomPages, setSavingCustomPages] = useState(false)
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -84,6 +89,13 @@ const SiteSettings = () => {
 
           const policies = {}
           POLICIES.forEach(p => { policies[p.key] = s[p.key] || '' })
+          if (s.custom_policy_pages) {
+            try {
+              const custom = JSON.parse(s.custom_policy_pages)
+              setCustomPolicies(custom)
+              custom.forEach(p => { policies[p.key] = s[p.key] || '' })
+            } catch {}
+          }
           setPolicyContent(policies)
 
           const socialData = {}
@@ -150,10 +162,12 @@ const SiteSettings = () => {
     }
   }
 
+  const allPolicies = [...POLICIES, ...customPolicies]
+
   const handleSavePolicy = async () => {
     setSavingPolicy(true)
     try {
-      const currentPolicy = POLICIES.find(p => p.key === activePolicyTab)
+      const currentPolicy = allPolicies.find(p => p.key === activePolicyTab)
       await saveSetting(activePolicyTab, policyContent[activePolicyTab] || '')
       toast.success(`${currentPolicy?.label} saved!`)
     } catch {
@@ -161,6 +175,42 @@ const SiteSettings = () => {
     } finally {
       setSavingPolicy(false)
     }
+  }
+
+  const handleAddPage = async () => {
+    if (!newPageLabel.trim() || !newPageSlug.trim()) return toast.error('Enter both a page name and URL slug')
+    const slug = newPageSlug.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const key = `page_${slug.replace(/-/g, '_')}`
+    if (allPolicies.find(p => p.key === key || p.slug === slug)) return toast.error('A page with this slug already exists')
+    const newPage = { key, label: newPageLabel.trim(), slug, custom: true }
+    const updated = [...customPolicies, newPage]
+    setSavingCustomPages(true)
+    try {
+      await saveSetting('custom_policy_pages', JSON.stringify(updated))
+      setCustomPolicies(updated)
+      setPolicyContent(prev => ({ ...prev, [key]: '' }))
+      setActivePolicyTab(key)
+      setNewPageLabel('')
+      setNewPageSlug('')
+      setShowAddPage(false)
+      toast.success(`"${newPage.label}" page created!`)
+    } catch { toast.error('Failed to create page') }
+    finally { setSavingCustomPages(false) }
+  }
+
+  const handleDeletePage = async (pageKey) => {
+    if (!window.confirm('Delete this page? This cannot be undone.')) return
+    const updated = customPolicies.filter(p => p.key !== pageKey)
+    setSavingCustomPages(true)
+    try {
+      await saveSetting('custom_policy_pages', JSON.stringify(updated))
+      await saveSetting(pageKey, '')
+      setCustomPolicies(updated)
+      setPolicyContent(prev => { const n = { ...prev }; delete n[pageKey]; return n })
+      setActivePolicyTab(POLICIES[0].key)
+      toast.success('Page deleted!')
+    } catch { toast.error('Failed to delete page') }
+    finally { setSavingCustomPages(false) }
   }
 
   const handleLogoUpload = async (e) => {
@@ -303,7 +353,7 @@ const SiteSettings = () => {
     }
   }
 
-  const activePolicy = POLICIES.find(p => p.key === activePolicyTab)
+  const activePolicy = allPolicies.find(p => p.key === activePolicyTab)
 
   if (loading) {
     return (
@@ -459,30 +509,92 @@ const SiteSettings = () => {
 
         {/* ── Policy Pages Card ── */}
         <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
-          <div className='flex items-center gap-3 p-5 border-b'>
-            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-primary-light'>
-              <HiDocumentText className='text-primary-text' size={20} />
+          <div className='flex items-center justify-between gap-3 p-5 border-b'>
+            <div className='flex items-center gap-3'>
+              <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-primary-light'>
+                <HiDocumentText className='text-primary-text' size={20} />
+              </div>
+              <div>
+                <h2 className='font-bold text-gray-800'>Policy Pages</h2>
+                <p className='text-xs text-gray-500'>Edit and manage all your policy pages</p>
+              </div>
             </div>
-            <div>
-              <h2 className='font-bold text-gray-800'>Policy Pages</h2>
-              <p className='text-xs text-gray-500'>Edit Privacy, Refund, Terms, Shipping & About Us pages</p>
-            </div>
+            <button
+              onClick={() => setShowAddPage(v => !v)}
+              className='flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-primary/90 transition'
+            >
+              <FaPlus size={10} /> Add Page
+            </button>
           </div>
+
+          {/* Add new page form */}
+          {showAddPage && (
+            <div className='border-b bg-blue-50 p-4 space-y-3'>
+              <p className='text-xs font-bold text-blue-700'>New Policy Page</p>
+              <div className='grid grid-cols-2 gap-2'>
+                <div>
+                  <label className='text-[11px] text-gray-500 font-medium'>Page Name</label>
+                  <input
+                    value={newPageLabel}
+                    onChange={e => setNewPageLabel(e.target.value)}
+                    placeholder='e.g. FAQ'
+                    className='w-full mt-1 px-3 py-2 border rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white'
+                  />
+                </div>
+                <div>
+                  <label className='text-[11px] text-gray-500 font-medium'>URL Slug</label>
+                  <input
+                    value={newPageSlug}
+                    onChange={e => setNewPageSlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))}
+                    placeholder='e.g. faq'
+                    className='w-full mt-1 px-3 py-2 border rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white font-mono'
+                  />
+                  {newPageSlug && <p className='text-[10px] text-gray-400 mt-0.5'>/page/{newPageSlug}</p>}
+                </div>
+              </div>
+              <div className='flex gap-2'>
+                <button
+                  onClick={handleAddPage}
+                  disabled={savingCustomPages}
+                  className='flex-1 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50'
+                >
+                  {savingCustomPages ? 'Creating...' : 'Create Page'}
+                </button>
+                <button
+                  onClick={() => { setShowAddPage(false); setNewPageLabel(''); setNewPageSlug('') }}
+                  className='px-4 py-2 border rounded-xl text-sm text-gray-500 hover:bg-gray-50'
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Tab bar - horizontally scrollable on mobile */}
           <div className='flex overflow-x-auto border-b scrollbar-none'>
-            {POLICIES.map(p => (
-              <button
-                key={p.key}
-                onClick={() => setActivePolicyTab(p.key)}
-                className={`flex-shrink-0 px-3 py-2.5 text-[11px] sm:text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                  activePolicyTab === p.key
-                    ? 'border-primary text-primary-text bg-primary-light'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {p.label}
-              </button>
+            {allPolicies.map(p => (
+              <div key={p.key} className='relative flex-shrink-0'>
+                <button
+                  onClick={() => setActivePolicyTab(p.key)}
+                  className={`flex-shrink-0 px-3 py-2.5 text-[11px] sm:text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                    activePolicyTab === p.key
+                      ? 'border-primary text-primary-text bg-primary-light'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  } ${p.custom ? 'pr-7' : ''}`}
+                >
+                  {p.label}
+                </button>
+                {p.custom && (
+                  <button
+                    onClick={() => handleDeletePage(p.key)}
+                    disabled={savingCustomPages}
+                    title='Delete page'
+                    className='absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition'
+                  >
+                    <FaTrash size={8} />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
 

@@ -225,6 +225,7 @@ const OrderDetails = () => {
 
   const handleSubmitReturn = async () => {
     if (!returnReason) { toast.error('Please select a reason'); return }
+    if (returnImages.length === 0) { toast.error('Please upload at least 1 photo of the item'); return }
     const isMultiItem = (order?.items?.length || 0) > 1
     if (isMultiItem && selectedReturnItems.length === 0) {
       toast.error('Please select at least one item to return')
@@ -845,7 +846,8 @@ const OrderDetails = () => {
                   {/* Image Upload */}
                   <div>
                     <label className='text-xs font-semibold text-gray-600 mb-1.5 block'>
-                      Upload photos <span className='font-normal text-gray-400'>(optional, max 5)</span>
+                      Upload photos <span className='text-red-500'>*</span>
+                      <span className='font-normal text-gray-400 ml-1'>(required, max 5)</span>
                     </label>
                     <div className='flex flex-wrap gap-2'>
                       {returnImages.map((url, idx) => (
@@ -881,7 +883,11 @@ const OrderDetails = () => {
                         </label>
                       )}
                     </div>
-                    <p className='text-[10px] text-gray-400 mt-1'>Photos help us process your return faster</p>
+                    <p className='text-[10px] mt-1'>
+                      {returnImages.length === 0
+                        ? <span className='text-red-400 font-semibold'>At least 1 photo is required to submit a return request</span>
+                        : <span className='text-gray-400'>Photos help us process your return faster</span>}
+                    </p>
                   </div>
 
                   {/* Refund Info Message */}
