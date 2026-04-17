@@ -181,11 +181,11 @@ const ProductDisplayPage = () => {
 
       {/* ── Left: Images ── */}
       <div>
-        <div className='bg-white rounded-2xl min-h-72 max-h-[70vw] lg:min-h-[60vh] lg:max-h-[60vh] relative overflow-hidden flex items-center justify-center p-4 border'>
+        <div className='bg-white rounded-2xl relative overflow-hidden border lg:max-h-[60vh] lg:flex lg:items-center lg:justify-center'>
           <img
             key={image}
             src={data.image[image]}
-            className='w-full h-full object-contain cursor-zoom-in'
+            className='w-full h-auto block cursor-zoom-in lg:max-h-[60vh] lg:w-auto lg:mx-auto'
             style={{ animation: 'fadeSlideIn 0.35s ease' }}
             onClick={() => setLightboxOpen(true)}
           />
