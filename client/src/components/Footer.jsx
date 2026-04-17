@@ -112,19 +112,6 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* Bottom policy strip */}
-      <div className='border-t bg-gray-50'>
-        <div className='container mx-auto px-4 py-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1'>
-          {policyLinks.map((link, i) => (
-            <React.Fragment key={link.to}>
-              <Link to={link.to} className='text-[11px] text-gray-400 hover:text-primary transition-colors'>
-                {link.label}
-              </Link>
-              {i < policyLinks.length - 1 && <span className='text-gray-300 text-[11px]'>·</span>}
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
     </footer>
   )
 }
