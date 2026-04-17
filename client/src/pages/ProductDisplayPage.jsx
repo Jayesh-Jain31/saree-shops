@@ -181,7 +181,7 @@ const ProductDisplayPage = () => {
 
       {/* ── Left: Images ── */}
       <div>
-        <div className='bg-white rounded-2xl relative overflow-hidden border flex items-center justify-center' style={{maxHeight:'55vw', minHeight:'220px'}}>
+        <div className='bg-white rounded-2xl relative overflow-hidden border flex items-start justify-center' style={{maxHeight:'75vw', minHeight:'220px'}}>
           <img
             key={image}
             src={data.image[image]}
