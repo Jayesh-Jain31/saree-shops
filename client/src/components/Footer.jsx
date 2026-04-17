@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FaFacebook, FaInstagram, FaLinkedin, FaYoutube } from 'react-icons/fa'
 import { useSelector } from 'react-redux'
 
-const policyLinks = [
+const STATIC_POLICY_LINKS = [
   { label: 'Privacy Policy',   to: '/page/privacy-policy' },
   { label: 'Refund Policy',    to: '/page/refund-policy' },
   { label: 'Terms of Service', to: '/page/terms' },
@@ -22,6 +22,17 @@ const Footer = () => {
     linkedin:  siteSettings?.social_linkedin  || '',
     youtube:   siteSettings?.social_youtube   || '',
   }
+
+  const customPolicyLinks = React.useMemo(() => {
+    if (!siteSettings?.custom_policy_pages) return []
+    try {
+      const pages = JSON.parse(siteSettings.custom_policy_pages)
+      return pages.map(p => ({ label: p.label, to: `/page/${p.slug}` }))
+    } catch { return [] }
+  }, [siteSettings?.custom_policy_pages])
+
+  const policyLinks = [...STATIC_POLICY_LINKS, ...customPolicyLinks]
+
   const navigate = useNavigate()
 
   const handleCategoryClick = (categoryName) => {
