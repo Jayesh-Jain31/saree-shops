@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import BackButton from '../components/BackButton'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
+import { valideURLConvert } from '../utils/valideURLConvert'
 import toast from 'react-hot-toast'
 import {
   FaBoxOpen, FaSearch, FaChevronLeft, FaChevronRight, FaFilter,
@@ -331,20 +333,32 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                 </span>
               </h3>
               <div className='space-y-2'>
-                {(order.items || []).map((item, idx) => (
-                  <div key={idx} className='flex items-center gap-3 bg-gray-50 rounded-xl p-2.5'>
-                    <div className='w-12 h-12 rounded-lg border bg-white flex-shrink-0 p-0.5 overflow-hidden'>
-                      <img src={item.product_details?.image?.[0]} alt='' className='w-full h-full object-contain' />
-                    </div>
-                    <div className='flex-1 min-w-0'>
-                      <p className='text-xs font-semibold text-gray-700 line-clamp-1'>{item.product_details?.name}</p>
-                      <p className='text-[10px] text-gray-400 mt-0.5'>Qty: {item.quantity || 1}</p>
-                    </div>
-                    <p className='text-sm font-bold text-gray-700 flex-shrink-0'>
-                      {DisplayPriceInRupees((item.price || 0) * (item.quantity || 1))}
-                    </p>
-                  </div>
-                ))}
+                {(order.items || []).map((item, idx) => {
+                  const productUrl = item.productId && item.product_details?.name
+                    ? `/product/${valideURLConvert(item.product_details.name)}-${item.productId}`
+                    : null
+                  const Wrapper = productUrl ? Link : 'div'
+                  return (
+                    <Wrapper
+                      key={idx}
+                      to={productUrl || undefined}
+                      target={productUrl ? '_blank' : undefined}
+                      rel={productUrl ? 'noopener noreferrer' : undefined}
+                      className={`flex items-center gap-3 bg-gray-50 rounded-xl p-2.5 transition-colors ${productUrl ? 'hover:bg-green-50 cursor-pointer' : ''}`}
+                    >
+                      <div className='w-12 h-12 rounded-lg border bg-white flex-shrink-0 p-0.5 overflow-hidden'>
+                        <img src={item.product_details?.image?.[0]} alt='' className='w-full h-full object-contain' />
+                      </div>
+                      <div className='flex-1 min-w-0'>
+                        <p className={`text-xs font-semibold line-clamp-1 ${productUrl ? 'text-green-700' : 'text-gray-700'}`}>{item.product_details?.name}</p>
+                        <p className='text-[10px] text-gray-400 mt-0.5'>Qty: {item.quantity || 1}</p>
+                      </div>
+                      <p className='text-sm font-bold text-gray-700 flex-shrink-0'>
+                        {DisplayPriceInRupees((item.price || 0) * (item.quantity || 1))}
+                      </p>
+                    </Wrapper>
+                  )
+                })}
               </div>
             </div>
 
