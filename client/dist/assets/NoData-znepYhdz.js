@@ -1,1 +1,0 @@
-import{j as a}from"./index-CMyYzLO8.js";import"./react-vendor-CyCy6wxS.js";import{n as t}from"./nothing here yet-C540yS7h.js";const o=()=>a.jsxs("div",{className:"flex flex-col items-center justify-center p-4 gap-2",children:[a.jsx("img",{src:t,alt:"no data",className:"w-36"}),a.jsx("p",{className:"text-neutral-500",children:"No Data"})]});export{o as N};

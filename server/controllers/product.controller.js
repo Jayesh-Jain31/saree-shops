@@ -1,4 +1,6 @@
 import ProductModel from "../models/product.model.js";
+import CategoryModel from "../models/category.model.js";
+import SubCategoryModel from "../models/subCategory.model.js";
 
 export const createProductController = async(request,response)=>{
     try {
@@ -325,5 +327,80 @@ export const searchProduct = async(request,response)=>{
             error : true,
             success : false
         })
+    }
+}
+
+export const bulkImportProductController = async (request, response) => {
+    try {
+        const { products } = request.body
+        if (!products || !Array.isArray(products) || products.length === 0) {
+            return response.status(400).json({ message: 'No products provided', error: true, success: false })
+        }
+        if (products.length > 500) {
+            return response.status(400).json({ message: 'Max 500 products per import', error: true, success: false })
+        }
+
+        const [allCategories, allSubCategories] = await Promise.all([
+            CategoryModel.find({}, 'name _id').lean(),
+            SubCategoryModel.find({}, 'name _id').lean()
+        ])
+
+        const catMap = {}
+        allCategories.forEach(c => { catMap[c.name.toLowerCase().trim()] = c._id })
+        const subCatMap = {}
+        allSubCategories.forEach(s => { subCatMap[s.name.toLowerCase().trim()] = s._id })
+
+        const succeeded = []
+        const failed = []
+
+        for (let i = 0; i < products.length; i++) {
+            const row = products[i]
+            const rowNum = i + 2
+            try {
+                if (!row.name || !row.price || !row.unit || !row.description) {
+                    failed.push({ row: rowNum, name: row.name || '(empty)', reason: 'Missing required fields: name, price, unit, description' })
+                    continue
+                }
+                const price = parseFloat(row.price)
+                if (isNaN(price) || price <= 0) {
+                    failed.push({ row: rowNum, name: row.name, reason: 'Invalid price' })
+                    continue
+                }
+                const categoryIds = []
+                if (row.category) {
+                    row.category.split('|').map(n => n.trim().toLowerCase()).forEach(n => { if (catMap[n]) categoryIds.push(catMap[n]) })
+                }
+                const subCategoryIds = []
+                if (row.subCategory) {
+                    row.subCategory.split('|').map(n => n.trim().toLowerCase()).forEach(n => { if (subCatMap[n]) subCategoryIds.push(subCatMap[n]) })
+                }
+                const images = row.image ? row.image.split('|').map(u => u.trim()).filter(Boolean) : []
+
+                const product = await ProductModel.create({
+                    name: row.name.trim(),
+                    price,
+                    discount: row.discount ? parseFloat(row.discount) || 0 : 0,
+                    stock: row.stock ? parseInt(row.stock) || null : null,
+                    unit: row.unit.trim(),
+                    description: row.description.trim(),
+                    category: categoryIds,
+                    subCategory: subCategoryIds,
+                    image: images,
+                    publish: row.publish === 'false' ? false : true,
+                })
+                succeeded.push({ row: rowNum, name: row.name, id: product._id })
+            } catch (err) {
+                failed.push({ row: rowNum, name: row.name || '(empty)', reason: err.message })
+            }
+        }
+
+        return response.json({
+            message: `Import complete: ${succeeded.length} created, ${failed.length} failed`,
+            data: { succeeded: succeeded.length, failed: failed.length, failedRows: failed },
+            error: false,
+            success: true
+        })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
     }
 }
