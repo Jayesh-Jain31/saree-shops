@@ -8,8 +8,9 @@ export const sendOtpFast2SMS = async (mobile, otp) => {
     const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
         params: {
             authorization: API_KEY,
-            route: 'otp',
-            variables_values: otp,
+            route: 'q',
+            message: `Your OTP for order verification is ${otp}. Valid for 5 minutes. Do not share with anyone.`,
+            language: 'english',
             flash: 0,
             numbers: cleanMobile
         },
