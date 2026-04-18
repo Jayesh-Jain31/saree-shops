@@ -11,6 +11,10 @@ channel = "stable-25_05"
 VITE_BACKEND_URL = ""
 FRONTEND_URL = "https://24f38671-74ca-4b63-ae8e-f4f594005ead-00-26qswtsu902ku.pike.replit.dev"
 PORT = "8080"
+VITE_FIREBASE_API_KEY = "AIzaSyDFpMae0EQDWDcCCVgBk-EgRzNRk6Tv_Hw"
+VITE_FIREBASE_AUTH_DOMAIN = "saree-shop-42090.firebaseapp.com"
+VITE_FIREBASE_PROJECT_ID = "saree-shop-42090"
+VITE_FIREBASE_APP_ID = "1:974494570354:web:286b352edf2c1b4cc62feb"
 
 [workflows]
 runButton = "Project"
