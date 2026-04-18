@@ -48,6 +48,7 @@ const CheckoutPage = () => {
   const [walletBalance, setWalletBalance] = useState(0)
   const [useWallet, setUseWallet] = useState(false)
   const [walletLoading, setWalletLoading] = useState(false)
+  const [codLoading, setCodLoading] = useState(false)
   const [activeCoupons, setActiveCoupons] = useState([])
   const [showCoupons, setShowCoupons] = useState(false)
   const siteSettings = useSelector(state => state.site.settings)
@@ -171,6 +172,7 @@ const CheckoutPage = () => {
     if (!selectedAddr?._id || !selectedAddr?.status) { setShowAddressPopup(true); return }
     const walletOk = await debitWalletIfNeeded()
     if (!walletOk) return
+    setCodLoading(true)
     try {
       const response = await Axios({
         ...SummaryApi.CashOnDeliveryOrder,
@@ -186,6 +188,7 @@ const CheckoutPage = () => {
         navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
       }
     } catch (error) { AxiosToastError(error) }
+    finally { setCodLoading(false) }
   }
 
   const handleRazorpayPayment = async () => {
@@ -550,11 +553,22 @@ const CheckoutPage = () => {
                 {codEnabled ? (
                   <button
                     onClick={handleCashOnDelivery}
-                    className='w-full border-2 border-primary text-primary hover:bg-primary hover:text-white active:scale-95 rounded-xl font-bold transition-all py-4 text-sm'
+                    disabled={codLoading}
+                    className='w-full border-2 border-primary text-primary hover:bg-primary hover:text-white active:scale-95 rounded-xl font-bold transition-all py-4 text-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2'
                   >
-                    {useWallet && walletDeduction > 0 && payableAmount > 0
-                      ? `Pay ${DisplayPriceInRupees(payableAmount)} via COD + Wallet`
-                      : '🚚 Cash on Delivery'}
+                    {codLoading ? (
+                      <>
+                        <svg className='animate-spin h-5 w-5' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'>
+                          <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'/>
+                          <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v8z'/>
+                        </svg>
+                        Placing Order...
+                      </>
+                    ) : (
+                      useWallet && walletDeduction > 0 && payableAmount > 0
+                        ? `Pay ${DisplayPriceInRupees(payableAmount)} via COD + Wallet`
+                        : '🚚 Cash on Delivery'
+                    )}
                   </button>
                 ) : (
                   <div className='w-full border-2 border-gray-200 rounded-xl py-3 text-center text-xs text-gray-400 bg-gray-50'>
