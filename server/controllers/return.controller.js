@@ -3,7 +3,8 @@ import OrderModel from "../models/order.model.js"
 import WalletModel from "../models/wallet.model.js"
 import Razorpay from "../config/razorpay.js"
 import UserModel from "../models/user.model.js"
-import { sendReturnStatusWhatsApp } from "../utils/whatsapp.js"
+import SettingModel from "../models/settings.model.js"
+import { sendReturnStatusWhatsApp, sendAdminNewReturnAlert } from "../utils/whatsapp.js"
 
 const creditWalletInternal = async (userId, amount, description, reference) => {
     let wallet = await WalletModel.findOne({ userId })
@@ -66,6 +67,21 @@ export const createReturnRequest = async (req, res) => {
             paymentMethod: isCOD ? 'COD' : 'ONLINE',
             paymentId: order.paymentId || ''
         })
+
+        try {
+            const user = await UserModel.findById(userId).select('name mobile')
+            SettingModel.findOne({ key: 'admin_whatsapp_number' }).then(setting => {
+                if (setting?.value) {
+                    sendAdminNewReturnAlert(setting.value, {
+                        orderId: order.orderId,
+                        customerName: user?.name,
+                        customerMobile: user?.mobile,
+                        reason,
+                        totalAmt: returnReq.totalAmt
+                    }).catch(() => {})
+                }
+            }).catch(() => {})
+        } catch {}
 
         return res.status(201).json({ message: "Return request submitted successfully", data: returnReq, error: false, success: true })
     } catch (err) {

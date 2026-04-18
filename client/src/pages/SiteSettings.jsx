@@ -28,6 +28,8 @@ const SOCIAL_FIELDS = [
 const SiteSettings = () => {
   const dispatch = useDispatch()
   const [whatsapp, setWhatsapp] = useState('')
+  const [adminWhatsapp, setAdminWhatsapp] = useState('')
+  const [savingAdminWa, setSavingAdminWa] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [themeColor, setThemeColor] = useState('green')
   const [policyContent, setPolicyContent] = useState({})
@@ -71,6 +73,7 @@ const SiteSettings = () => {
         if (res.data.success) {
           const s = res.data.data
           setWhatsapp(s.whatsapp_number || '')
+          setAdminWhatsapp(s.admin_whatsapp_number || '')
           setEnabled(s.whatsapp_enabled !== 'false')
           if (s.theme_color) setThemeColor(s.theme_color)
           setStoreName(s.store_name || '')
@@ -711,6 +714,53 @@ const SiteSettings = () => {
             <button onClick={handleSave} disabled={saving} className='w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold rounded-xl py-3 transition-colors'>
               {saving ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
               {saving ? 'Saving...' : 'Save Number'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Admin Order Notifications Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-green-100'>
+              <FaWhatsapp className='text-green-600' size={20} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Admin Order Alerts</h2>
+              <p className='text-xs text-gray-500'>Get WhatsApp notifications on your number for new orders & returns</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div className='bg-green-50 border border-green-200 rounded-xl p-3 text-xs text-green-700 space-y-1'>
+              <p className='font-semibold'>📲 How it works:</p>
+              <p>When a customer places an order or submits a return, you'll instantly get a WhatsApp message on the number you enter below.</p>
+              <p className='text-green-600 font-medium'>⚠️ For this to work, first send any message from your number to your business WhatsApp number to open a 24-hour session.</p>
+            </div>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Your WhatsApp Number (receives alerts)</label>
+              <input
+                type='tel'
+                value={adminWhatsapp}
+                onChange={e => setAdminWhatsapp(e.target.value.replace(/\D/g, ''))}
+                placeholder='919876543210'
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition'
+              />
+              <p className='text-[11px] text-gray-400 mt-1'>Enter with country code, no + or spaces. E.g. 919876543210</p>
+            </div>
+            <button
+              onClick={async () => {
+                if (!adminWhatsapp.trim()) return toast.error('Please enter your WhatsApp number')
+                setSavingAdminWa(true)
+                try {
+                  await saveSetting('admin_whatsapp_number', adminWhatsapp.trim())
+                  toast.success('Admin alert number saved!')
+                } catch { toast.error('Failed to save') }
+                finally { setSavingAdminWa(false) }
+              }}
+              disabled={savingAdminWa}
+              className='w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold rounded-xl py-3 transition-colors'
+            >
+              {savingAdminWa ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
+              {savingAdminWa ? 'Saving...' : 'Save Alert Number'}
             </button>
           </div>
         </div>

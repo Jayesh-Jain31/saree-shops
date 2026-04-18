@@ -13,8 +13,10 @@ import WalletModel from "../models/wallet.model.js";
 import {
     sendOrderConfirmationWhatsApp,
     sendCODVerificationWhatsApp,
-    sendOrderStatusWhatsApp
+    sendOrderStatusWhatsApp,
+    sendAdminNewOrderAlert
 } from "../utils/whatsapp.js";
+import SettingModel from "../models/settings.model.js";
 
 // Helper: decrement stock for each ordered item
 async function decrementStock(items) {
@@ -125,6 +127,18 @@ export async function CashOnDeliveryOrderController(request, response) {
                     totalAmt: order.totalAmt,
                 }).catch(() => {})
             }
+            SettingModel.findOne({ key: 'admin_whatsapp_number' }).then(setting => {
+                if (setting?.value) {
+                    sendAdminNewOrderAlert(setting.value, {
+                        orderId: order.orderId,
+                        customerName: user?.name,
+                        customerMobile: user?.mobile,
+                        totalAmt: order.totalAmt,
+                        paymentMethod: order.payment_status,
+                        itemCount: order.items?.length
+                    }).catch(() => {})
+                }
+            }).catch(() => {})
         } catch (emailErr) {
             if(process.env.NODE_ENV !== 'production') console.log("Order confirmation email failed:", emailErr.message)
         }
@@ -275,6 +289,18 @@ export async function razorpayVerifyController(request, response) {
                     items: order.items,
                 }).catch(() => {})
             }
+            SettingModel.findOne({ key: 'admin_whatsapp_number' }).then(setting => {
+                if (setting?.value) {
+                    sendAdminNewOrderAlert(setting.value, {
+                        orderId: order.orderId,
+                        customerName: user?.name,
+                        customerMobile: user?.mobile,
+                        totalAmt: order.totalAmt,
+                        paymentMethod: order.payment_status,
+                        itemCount: order.items?.length
+                    }).catch(() => {})
+                }
+            }).catch(() => {})
         } catch (emailErr) {
             if(process.env.NODE_ENV !== 'production') console.log("Order confirmation email failed:", emailErr.message)
         }

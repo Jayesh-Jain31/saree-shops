@@ -62,6 +62,28 @@ const sendTemplate = (to, templateName, langCode = 'en', bodyParams = []) => {
 
 const rupees = (amt) => `Rs. ${Number(amt).toLocaleString('en-IN')}`
 
+// ─── Admin Alert helpers ─────────────────────────────────────────────────────
+export const sendAdminNewOrderAlert = async (adminPhone, { orderId, customerName, customerMobile, totalAmt, paymentMethod, itemCount }) => {
+    if (!adminPhone) return
+    const isCOD = String(paymentMethod).toUpperCase().includes('CASH') || String(paymentMethod).toUpperCase().includes('COD')
+    return sendWhatsApp(formatPhone(adminPhone), {
+        type: 'text',
+        text: {
+            body: `🛍️ *NEW ORDER RECEIVED!*\n\nOrder ID: *${orderId}*\nCustomer: ${customerName || 'Unknown'}\nPhone: ${customerMobile || 'N/A'}\nItems: ${itemCount || 1}\nTotal: *${rupees(totalAmt)}*\nPayment: ${isCOD ? '💵 Cash on Delivery' : '✅ Online (Paid)'}\n\nCheck admin dashboard for details.`
+        }
+    })
+}
+
+export const sendAdminNewReturnAlert = async (adminPhone, { orderId, customerName, customerMobile, reason, totalAmt }) => {
+    if (!adminPhone) return
+    return sendWhatsApp(formatPhone(adminPhone), {
+        type: 'text',
+        text: {
+            body: `🔄 *NEW RETURN REQUEST!*\n\nOrder ID: *${orderId}*\nCustomer: ${customerName || 'Unknown'}\nPhone: ${customerMobile || 'N/A'}\nReason: ${reason || 'Not specified'}\nAmount: *${rupees(totalAmt)}*\n\nPlease review in admin dashboard.`
+        }
+    })
+}
+
 // ─── Order Confirmation ──────────────────────────────────────────────────────
 // Template: order_confirmation
 // Body: Hello {{1}}, your order {{2}} has been confirmed!
