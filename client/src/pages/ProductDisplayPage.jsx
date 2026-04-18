@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import BackButton from '../components/BackButton'
+import ProductQA from '../components/ProductQA'
 import SummaryApi from '../common/SummaryApi'
 import Axios from '../utils/Axios'
 import AxiosToastError from '../utils/AxiosToastError'
@@ -588,6 +589,13 @@ const ProductDisplayPage = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Q&A Section */}
+      {data?._id && (
+        <div className='mt-6 px-2'>
+          <ProductQA productId={data._id} />
         </div>
       )}
 

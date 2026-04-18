@@ -3,7 +3,7 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import {
-  FaShoppingBag, FaUsers, FaBoxOpen, FaChartLine, FaCrown, FaExclamationTriangle
+  FaShoppingBag, FaUsers, FaBoxOpen, FaChartLine, FaCrown, FaExclamationTriangle, FaUndoAlt
 } from 'react-icons/fa'
 import { MdInventory, MdTrendingUp } from 'react-icons/md'
 
@@ -13,6 +13,7 @@ const AdminDashboard = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [lowStockProducts, setLowStockProducts] = useState([])
+  const [returnData, setReturnData] = useState(null)
 
   const fetchAnalytics = async () => {
     try {
@@ -38,9 +39,17 @@ const AdminDashboard = () => {
     } catch {}
   }
 
+  const fetchReturnAnalytics = async () => {
+    try {
+      const res = await Axios({ ...SummaryApi.getReturnAnalytics })
+      if (res.data.success) setReturnData(res.data.data)
+    } catch {}
+  }
+
   useEffect(() => {
     fetchAnalytics()
     fetchLowStock()
+    fetchReturnAnalytics()
   }, [])
 
   if (loading) {
@@ -301,6 +310,45 @@ const AdminDashboard = () => {
             ))}
           </div>
         </div>
+        {/* Return Analytics */}
+        {returnData && (returnData.totalReturns > 0 || returnData.reasons?.length > 0) && (
+          <div className='bg-white rounded-xl border p-4 mt-6'>
+            <div className='flex items-center gap-2 mb-4'>
+              <FaUndoAlt className='text-orange-500' size={16} />
+              <h2 className='font-bold text-sm text-gray-800'>Return Analytics</h2>
+              <span className='ml-auto text-xs text-gray-400'>{returnData.totalReturns} total returns</span>
+            </div>
+            {/* Top reasons bar chart */}
+            {returnData.reasons?.length > 0 && (
+              <div className='space-y-2'>
+                <p className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3'>Top Return Reasons</p>
+                {returnData.reasons.slice(0, 6).map((r) => {
+                  const pct = returnData.totalReturns > 0 ? Math.round((r.count / returnData.totalReturns) * 100) : 0
+                  return (
+                    <div key={r._id} className='flex items-center gap-3'>
+                      <span className='text-xs text-gray-600 w-40 truncate flex-shrink-0'>{r._id || 'Not specified'}</span>
+                      <div className='flex-1 h-2 bg-gray-100 rounded-full overflow-hidden'>
+                        <div className='h-full bg-orange-400 rounded-full transition-all' style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className='text-xs text-gray-500 w-12 text-right flex-shrink-0'>{r.count} ({pct}%)</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {/* Return statuses */}
+            {returnData.statuses?.length > 0 && (
+              <div className='mt-4 pt-4 border-t flex flex-wrap gap-2'>
+                {returnData.statuses.map(s => (
+                  <span key={s._id} className='text-xs bg-gray-50 border rounded-full px-3 py-1'>
+                    <span className='font-semibold text-gray-700'>{s.count}</span> <span className='text-gray-400'>{s._id}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )

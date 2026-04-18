@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { FaWhatsapp, FaUndoAlt, FaTools, FaBan, FaBullhorn, FaBolt, FaStore, FaPlus, FaTrash } from 'react-icons/fa'
+import { FaWhatsapp, FaUndoAlt, FaTools, FaBan, FaBullhorn, FaBolt, FaStore, FaPlus, FaTrash, FaExclamationTriangle } from 'react-icons/fa'
 import { MdSettings, MdSave, MdPalette, MdBrandingWatermark } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { colorPresets, applyTheme } from '../utils/themeColors'
@@ -30,6 +30,10 @@ const SiteSettings = () => {
   const [whatsapp, setWhatsapp] = useState('')
   const [adminWhatsapp, setAdminWhatsapp] = useState('')
   const [savingAdminWa, setSavingAdminWa] = useState(false)
+  const [lowStockThreshold, setLowStockThreshold] = useState('5')
+  const [savingLowStock, setSavingLowStock] = useState(false)
+  const [broadcastMessage, setBroadcastMessage] = useState('')
+  const [broadcastLoading, setBroadcastLoading] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [themeColor, setThemeColor] = useState('green')
   const [policyContent, setPolicyContent] = useState({})
@@ -74,6 +78,7 @@ const SiteSettings = () => {
           const s = res.data.data
           setWhatsapp(s.whatsapp_number || '')
           setAdminWhatsapp(s.admin_whatsapp_number || '')
+          setLowStockThreshold(s.low_stock_threshold || '5')
           setEnabled(s.whatsapp_enabled !== 'false')
           if (s.theme_color) setThemeColor(s.theme_color)
           setStoreName(s.store_name || '')
@@ -761,6 +766,96 @@ const SiteSettings = () => {
             >
               {savingAdminWa ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
               {savingAdminWa ? 'Saving...' : 'Save Alert Number'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── WhatsApp Broadcast Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-100'>
+              <FaWhatsapp className='text-emerald-600' size={20} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>WhatsApp Broadcast</h2>
+              <p className='text-xs text-gray-500'>Send a message to all active customers who have a mobile number</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div className='bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-700'>
+              ⚠️ This sends a free-text message so customers must have messaged your business number first (within 24h) to receive it. Use for promotions, offers, and updates.
+            </div>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Broadcast Message</label>
+              <textarea
+                rows={4}
+                value={broadcastMessage}
+                onChange={e => setBroadcastMessage(e.target.value)}
+                placeholder='Type your message here... e.g. 🎉 Sale! Get 30% off all sarees this weekend only. Shop now at...'
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none'
+                maxLength={1000}
+              />
+              <p className='text-[11px] text-gray-400 mt-1'>{broadcastMessage.length}/1000 characters</p>
+            </div>
+            <button
+              onClick={async () => {
+                if (!broadcastMessage.trim()) return toast.error('Please enter a message')
+                if (!window.confirm(`Send this message to all active customers?`)) return
+                setBroadcastLoading(true)
+                try {
+                  const res = await Axios({ ...SummaryApi.whatsappBroadcast, data: { message: broadcastMessage } })
+                  if (res.data.success) {
+                    toast.success(res.data.message)
+                    setBroadcastMessage('')
+                  }
+                } catch { toast.error('Broadcast failed') }
+                finally { setBroadcastLoading(false) }
+              }}
+              disabled={broadcastLoading || !broadcastMessage.trim()}
+              className='w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-semibold rounded-xl py-3 transition-colors'
+            >
+              {broadcastLoading ? <><div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> Sending...</> : <><FaWhatsapp size={16} /> Send Broadcast</>}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Low Stock Threshold Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-red-50'>
+              <FaExclamationTriangle className='text-red-400' size={18} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Low Stock Alert Threshold</h2>
+              <p className='text-xs text-gray-500'>Get WhatsApp alert when product stock falls to this level</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Alert when stock is ≤ (units)</label>
+              <input
+                type='number'
+                min='0'
+                value={lowStockThreshold}
+                onChange={e => setLowStockThreshold(e.target.value)}
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 transition'
+              />
+              <p className='text-[11px] text-gray-400 mt-1'>Default is 5. Set 0 to disable alerts. Requires Admin WhatsApp number above.</p>
+            </div>
+            <button
+              onClick={async () => {
+                setSavingLowStock(true)
+                try {
+                  await saveSetting('low_stock_threshold', lowStockThreshold)
+                  toast.success('Low stock threshold saved!')
+                } catch { toast.error('Failed to save') }
+                finally { setSavingLowStock(false) }
+              }}
+              disabled={savingLowStock}
+              className='w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white font-semibold rounded-xl py-3 transition-colors'
+            >
+              {savingLowStock ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
+              {savingLowStock ? 'Saving...' : 'Save Threshold'}
             </button>
           </div>
         </div>

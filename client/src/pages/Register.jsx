@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import Axios from '../utils/Axios';
 import SummaryApi from '../common/SummaryApi';
 import AxiosToastError from '../utils/AxiosToastError';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { GoogleLogin } from '@react-oauth/google';
 import fetchUserDetails from '../utils/fetchUserDetails';
@@ -13,6 +13,8 @@ import { setUserDetails } from '../store/userSlice';
 
 const Register = () => {
     const siteName = useSelector(state => state.site.name)
+    const [searchParams] = useSearchParams()
+    const refCode = searchParams.get('ref') || ''
     const [data, setData] = useState({
         name: "",
         email: "",
@@ -42,7 +44,7 @@ const Register = () => {
         try {
             const response = await Axios({
                 ...SummaryApi.register,
-                data : data
+                data : { ...data, referralCode: refCode }
             })
             
             if(response.data.error){

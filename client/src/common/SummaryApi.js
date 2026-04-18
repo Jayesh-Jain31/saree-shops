@@ -91,6 +91,15 @@ getProduct : { url : '/api/product/get', method : 'get' },
     toggleAdminCustomerCOD : { url : '/api/analytics/customer', method : 'put' },
     updateAdminCustomerStatus : { url : '/api/analytics/customer', method : 'put' },
     adminWalletAdjust : { url : '/api/analytics/customer', method : 'post' },
+    getReturnAnalytics : { url : '/api/analytics/return-analytics', method : 'get' },
+    whatsappBroadcast : { url : '/api/analytics/whatsapp-broadcast', method : 'post' },
+    getMyLoyalty : { url : '/api/analytics/my-loyalty', method : 'get' },
+    getMyReferral : { url : '/api/analytics/my-referral', method : 'get' },
+    getProductQA : { url : '/api/qa/product', method : 'get' },
+    askQuestion : { url : '/api/qa/ask', method : 'post' },
+    answerQuestion : { url : '/api/qa', method : 'put' },
+    deleteQA : { url : '/api/qa', method : 'delete' },
+    getPendingQA : { url : '/api/qa/pending', method : 'get' },
 }
 
 export default SummaryApi

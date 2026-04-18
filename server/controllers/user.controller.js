@@ -9,9 +9,15 @@ import generatedOtp from '../utils/generatedOtp.js'
 import forgotPasswordTemplate from '../utils/forgotPasswordTemplate.js'
 import jwt from 'jsonwebtoken'
 
+function generateReferralCode(name) {
+    const base = (name || 'USER').replace(/\s+/g, '').toUpperCase().slice(0, 4)
+    const rand = Math.random().toString(36).toUpperCase().slice(2, 6)
+    return `${base}${rand}`
+}
+
 export async function registerUserController(request,response){
     try {
-        const { name, email , password } = request.body
+        const { name, email , password, referralCode: friendRef } = request.body
 
         if(!name || !email || !password){
             return response.status(400).json({
@@ -34,10 +40,24 @@ export async function registerUserController(request,response){
         const salt = await bcryptjs.genSalt(10)
         const hashPassword = await bcryptjs.hash(password,salt)
 
+        let referrerUser = null
+        if (friendRef) {
+            referrerUser = await UserModel.findOne({ referralCode: friendRef.toUpperCase() }).select('_id')
+        }
+
+        let referralCode = generateReferralCode(name)
+        let attempts = 0
+        while (await UserModel.findOne({ referralCode }) && attempts < 5) {
+            referralCode = generateReferralCode(name)
+            attempts++
+        }
+
         const payload = {
             name,
             email,
-            password : hashPassword
+            password : hashPassword,
+            referralCode,
+            referredBy: referrerUser?._id || null
         }
 
         const newUser = new UserModel(payload)

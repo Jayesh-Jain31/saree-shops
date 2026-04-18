@@ -84,12 +84,26 @@ export const sendAdminNewReturnAlert = async (adminPhone, { orderId, customerNam
     })
 }
 
-// ─── Order Confirmation ──────────────────────────────────────────────────────
-// Template: order_confirmation
-// Body: Hello {{1}}, your order {{2}} has been confirmed!
-//       Total: Rs. {{3}} | Payment: {{4}}
-//       We will notify you when it is shipped. Thank you!
+export const sendAdminLowStockAlert = async (adminPhone, lowStockItems) => {
+    if (!adminPhone || !lowStockItems?.length) return
+    const lines = lowStockItems.map(p => `• ${p.name}: *${p.stock} left*`).join('\n')
+    return sendWhatsApp(formatPhone(adminPhone), {
+        type: 'text',
+        text: {
+            body: `⚠️ *LOW STOCK ALERT!*\n\nThe following products are running low:\n\n${lines}\n\nPlease restock soon.`
+        }
+    })
+}
 
+export const sendFreeTextWhatsApp = async (phone, message) => {
+    if (!phone || !message) return
+    return sendWhatsApp(phone, {
+        type: 'text',
+        text: { body: message }
+    })
+}
+
+// ─── Order Confirmation ──────────────────────────────────────────────────────
 export const sendOrderConfirmationWhatsApp = async ({ mobile, name, orderId, totalAmt, paymentMethod }) => {
     const phone = formatPhone(mobile)
     if (!phone) return
@@ -103,11 +117,6 @@ export const sendOrderConfirmationWhatsApp = async ({ mobile, name, orderId, tot
 }
 
 // ─── COD Verification ───────────────────────────────────────────────────────
-// Template: cod_verification
-// Body: Hi {{1}}, your COD order {{2}} is confirmed.
-//       Please keep Rs. {{3}} ready at the time of delivery.
-//       If you did not place this order, contact us immediately.
-
 export const sendCODVerificationWhatsApp = async ({ mobile, name, orderId, totalAmt }) => {
     const phone = formatPhone(mobile)
     if (!phone) return
@@ -119,11 +128,6 @@ export const sendCODVerificationWhatsApp = async ({ mobile, name, orderId, total
 }
 
 // ─── Order Status Update ─────────────────────────────────────────────────────
-// Template: order_status_update
-// Body: Hi {{1}}, your order {{2}} status has been updated to: {{3}}
-//       Order Total: Rs. {{4}}
-//       Thank you for shopping with us!
-
 export const sendOrderStatusWhatsApp = async ({ mobile, name, orderId, status, totalAmt }) => {
     const phone = formatPhone(mobile)
     if (!phone) return
@@ -138,11 +142,6 @@ export const sendOrderStatusWhatsApp = async ({ mobile, name, orderId, status, t
 }
 
 // ─── Return Status Update ────────────────────────────────────────────────────
-// Template: return_status_update
-// Body: Hi {{1}}, your return request for order {{2}} has been updated to: {{3}}
-//       Refund Amount: Rs. {{4}}
-//       Thank you for your patience!
-
 export const sendReturnStatusWhatsApp = async ({ mobile, name, orderId, status, refundAmount, paymentMethod }) => {
     const phone = formatPhone(mobile)
     if (!phone) return

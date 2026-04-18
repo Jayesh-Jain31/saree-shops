@@ -2,9 +2,10 @@ import OrderModel from "../models/order.model.js";
 import ProductModel from "../models/product.model.js";
 import UserModel from "../models/user.model.js";
 import WalletModel from "../models/wallet.model.js";
+import ReturnModel from "../models/return.model.js";
 import sendEmail from "../config/sendEmail.js";
 import orderStatusTemplate from "../utils/orderStatusTemplate.js";
-import { sendOrderStatusWhatsApp } from "../utils/whatsapp.js";
+import { sendOrderStatusWhatsApp, sendFreeTextWhatsApp } from "../utils/whatsapp.js";
 
 export async function getAnalyticsController(request, response) {
     try {
@@ -256,6 +257,98 @@ export async function adminWalletAdjust(request, response) {
         wallet.transactions.unshift({ type, amount, description: description || `Admin ${type}`, reference: 'ADMIN', balanceAfter: wallet.balance })
         await wallet.save()
         return response.json({ success: true, error: false, message: `Wallet ${type}ed ₹${amount}`, data: wallet })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+// ─── Return reason analytics ─────────────────────────────────────────────────
+export async function getReturnAnalyticsController(request, response) {
+    try {
+        const [reasons, statuses, recent, monthlyReturns] = await Promise.all([
+            ReturnModel.aggregate([
+                { $group: { _id: '$reason', count: { $sum: 1 } } },
+                { $sort: { count: -1 } }
+            ]),
+            ReturnModel.aggregate([
+                { $group: { _id: '$status', count: { $sum: 1 } } }
+            ]),
+            ReturnModel.find()
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .populate('userId', 'name email')
+                .populate('orderId', 'orderId totalAmt')
+                .lean(),
+            ReturnModel.aggregate([
+                {
+                    $group: {
+                        _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+                        count: { $sum: 1 }
+                    }
+                },
+                { $sort: { '_id.year': -1, '_id.month': -1 } },
+                { $limit: 6 }
+            ])
+        ])
+        const totalReturns = reasons.reduce((sum, r) => sum + r.count, 0)
+        return response.json({ data: { reasons, statuses, recent, monthlyReturns, totalReturns }, success: true, error: false })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+// ─── WhatsApp broadcast to all customers ─────────────────────────────────────
+export async function whatsappBroadcastController(request, response) {
+    try {
+        const { message } = request.body
+        if (!message?.trim()) return response.status(400).json({ message: 'Message required', error: true, success: false })
+
+        const users = await UserModel.find({ mobile: { $ne: null }, status: 'Active' }).select('mobile name').lean()
+        let sent = 0, failed = 0
+        for (const user of users) {
+            try {
+                await sendFreeTextWhatsApp(user.mobile, message.trim())
+                sent++
+                await new Promise(r => setTimeout(r, 120))
+            } catch { failed++ }
+        }
+        return response.json({ message: `Broadcast done: ${sent} sent, ${failed} failed`, data: { sent, failed }, success: true, error: false })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+// ─── Loyalty tier helper ──────────────────────────────────────────────────────
+export function getLoyaltyTier(totalSpent) {
+    if (totalSpent >= 15000) return { tier: 'Gold', color: '#f59e0b', next: null, nextAt: null }
+    if (totalSpent >= 5000) return { tier: 'Silver', color: '#94a3b8', next: 'Gold', nextAt: 15000 }
+    return { tier: 'Bronze', color: '#cd7c2f', next: 'Silver', nextAt: 5000 }
+}
+
+// ─── Customer loyalty tier ────────────────────────────────────────────────────
+export async function getCustomerLoyaltyController(request, response) {
+    try {
+        const userId = request.userId
+        const spentAgg = await OrderModel.aggregate([
+            { $match: { userId: (await import('mongoose')).default.Types.ObjectId.createFromHexString(userId), orderStatus: { $ne: 'Cancelled' } } },
+            { $group: { _id: null, total: { $sum: '$totalAmt' } } }
+        ])
+        const totalSpent = spentAgg[0]?.total || 0
+        const loyalty = getLoyaltyTier(totalSpent)
+        return response.json({ data: { totalSpent, ...loyalty }, success: true, error: false })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+// ─── Referral info for current user ──────────────────────────────────────────
+export async function getReferralInfoController(request, response) {
+    try {
+        const userId = request.userId
+        const user = await UserModel.findById(userId).select('referralCode referredBy name').lean()
+        if (!user) return response.status(404).json({ message: 'User not found', error: true, success: false })
+        const referralCount = await UserModel.countDocuments({ referredBy: user._id })
+        return response.json({ data: { referralCode: user.referralCode, referralCount }, success: true, error: false })
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false })
     }

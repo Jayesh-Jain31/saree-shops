@@ -87,6 +87,26 @@ const CheckoutPage = () => {
     fetchActiveCoupons()
   }, [])
 
+  // Auto-apply best eligible coupon
+  useEffect(() => {
+    if (!activeCoupons.length || appliedCoupon || totalPrice <= 0) return
+    const eligible = activeCoupons.filter(c => !c.minOrderAmount || c.minOrderAmount <= totalPrice)
+    if (!eligible.length) return
+    const computeDiscount = (c) => {
+      if (c.discountType === 'flat') return c.discountValue || 0
+      if (c.discountType === 'percentage' || c.discountType === 'first_order') {
+        const raw = (c.discountValue / 100) * totalPrice
+        return c.maxDiscount ? Math.min(raw, c.maxDiscount) : raw
+      }
+      return 0
+    }
+    eligible.sort((a, b) => computeDiscount(b) - computeDiscount(a))
+    const best = eligible[0]
+    if (computeDiscount(best) > 0) {
+      handleQuickApply(best.code)
+    }
+  }, [activeCoupons])
+
 
   const checkDeliveryPincode = async (pincode) => {
     if (!pincode) return

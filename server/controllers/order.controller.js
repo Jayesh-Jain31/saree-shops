@@ -14,17 +14,48 @@ import {
     sendOrderConfirmationWhatsApp,
     sendCODVerificationWhatsApp,
     sendOrderStatusWhatsApp,
-    sendAdminNewOrderAlert
+    sendAdminNewOrderAlert,
+    sendAdminLowStockAlert
 } from "../utils/whatsapp.js";
 import SettingModel from "../models/settings.model.js";
 
-// Helper: decrement stock for each ordered item
+// Helper: decrement stock for each ordered item + low stock alert
 async function decrementStock(items) {
-    await Promise.all(items.map(item =>
+    const updated = await Promise.all(items.map(item =>
         ProductModel.findByIdAndUpdate(item.productId, {
             $inc: { stock: -item.quantity }
-        })
+        }, { new: true, select: 'name stock' })
     ))
+    try {
+        const thresholdSetting = await SettingModel.findOne({ key: 'low_stock_threshold' })
+        const threshold = thresholdSetting ? parseInt(thresholdSetting.value) || 5 : 5
+        const lowStock = updated.filter(p => p && p.stock !== null && p.stock >= 0 && p.stock <= threshold)
+        if (lowStock.length > 0) {
+            const adminSetting = await SettingModel.findOne({ key: 'admin_whatsapp_number' })
+            if (adminSetting?.value) {
+                sendAdminLowStockAlert(adminSetting.value, lowStock).catch(() => {})
+            }
+        }
+    } catch {}
+}
+
+// Helper: credit referral wallet reward on first order
+async function creditReferralReward(userId) {
+    try {
+        const user = await UserModel.findById(userId).select('referredBy referralRewardGiven')
+        if (!user?.referredBy || user?.referralRewardGiven) return
+        const orderCount = await import('../models/order.model.js').then(m => m.default.countDocuments({ userId }))
+        if (orderCount > 1) return
+        const REWARD = 100
+        let referrerWallet = await WalletModel.findOne({ userId: user.referredBy })
+        if (!referrerWallet) referrerWallet = await WalletModel.create({ userId: user.referredBy, balance: 0, transactions: [] })
+        referrerWallet.balance += REWARD
+        referrerWallet.transactions.unshift({ type: 'credit', amount: REWARD, description: 'Referral reward — friend placed first order', reference: 'REFERRAL', balanceAfter: referrerWallet.balance })
+        await referrerWallet.save()
+        await UserModel.findByIdAndUpdate(userId, { referralRewardGiven: true })
+    } catch (err) {
+        console.log('[Referral] Error crediting reward:', err.message)
+    }
 }
 
 export async function CashOnDeliveryOrderController(request, response) {
@@ -96,6 +127,7 @@ export async function CashOnDeliveryOrderController(request, response) {
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
         await decrementStock(order.items)
+        creditReferralReward(userId).catch(() => {})
 
         try {
             const user = await UserModel.findById(userId)
@@ -264,6 +296,7 @@ export async function razorpayVerifyController(request, response) {
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
         await decrementStock(order.items)
+        creditReferralReward(userId).catch(() => {})
 
         try {
             const user = await UserModel.findById(userId)
