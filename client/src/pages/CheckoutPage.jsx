@@ -49,6 +49,12 @@ const CheckoutPage = () => {
   const [useWallet, setUseWallet] = useState(false)
   const [walletLoading, setWalletLoading] = useState(false)
   const [codLoading, setCodLoading] = useState(false)
+  const [showOtpModal, setShowOtpModal] = useState(false)
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
+  const [otpVerifyLoading, setOtpVerifyLoading] = useState(false)
+  const [otpResendTimer, setOtpResendTimer] = useState(0)
+  const [otpMobile, setOtpMobile] = useState('')
+  const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()]
   const [activeCoupons, setActiveCoupons] = useState([])
   const [showCoupons, setShowCoupons] = useState(false)
   const siteSettings = useSelector(state => state.site.settings)
@@ -167,28 +173,95 @@ const CheckoutPage = () => {
     } catch (err) { AxiosToastError(err); return false }
   }
 
+  const startOtpResendTimer = () => {
+    setOtpResendTimer(30)
+    const interval = setInterval(() => {
+      setOtpResendTimer(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  const placeCodOrder = async () => {
+    const itemsSnapshot = [...cartItemsList]
+    const selectedAddrSnapshot = addressList[selectAddress]
+    const response = await Axios({
+      ...SummaryApi.CashOnDeliveryOrder,
+      data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction }
+    })
+    if (response.data.success) {
+      toast.success(response.data.message)
+      addNotification('Your Cash on Delivery order has been placed successfully!', 'success')
+      if (fetchCartItem) fetchCartItem()
+      if (fetchOrder) fetchOrder()
+      navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+    }
+  }
+
   const handleCashOnDelivery = async () => {
     const selectedAddr = addressList[selectAddress]
     if (!selectedAddr?._id || !selectedAddr?.status) { setShowAddressPopup(true); return }
-    const walletOk = await debitWalletIfNeeded()
-    if (!walletOk) return
+    const mobile = user?.mobile || selectedAddr?.mobile
+    if (!mobile) {
+      toast.error('Please add a mobile number to your profile to place a COD order.')
+      return
+    }
     setCodLoading(true)
     try {
-      const response = await Axios({
-        ...SummaryApi.CashOnDeliveryOrder,
-        data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction }
-      })
-      if (response.data.success) {
-        const itemsSnapshot = [...cartItemsList]
-        const selectedAddrSnapshot = addressList[selectAddress]
-        toast.success(response.data.message)
-        addNotification('Your Cash on Delivery order has been placed successfully!', 'success')
-        if (fetchCartItem) fetchCartItem()
-        if (fetchOrder) fetchOrder()
-        navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+      const res = await Axios({ ...SummaryApi.sendCodOtp, data: { mobile } })
+      if (res.data.success) {
+        setOtpMobile(mobile)
+        setOtpDigits(['', '', '', '', '', ''])
+        setShowOtpModal(true)
+        startOtpResendTimer()
+        toast.success(res.data.message)
+      } else {
+        toast.error(res.data.message || 'Failed to send OTP')
       }
     } catch (error) { AxiosToastError(error) }
     finally { setCodLoading(false) }
+  }
+
+  const handleOtpDigitChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return
+    const updated = [...otpDigits]
+    updated[index] = value.slice(-1)
+    setOtpDigits(updated)
+    if (value && index < 5) otpRefs[index + 1]?.current?.focus()
+  }
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpRefs[index - 1]?.current?.focus()
+    }
+  }
+
+  const handleOtpVerify = async () => {
+    const otp = otpDigits.join('')
+    if (otp.length !== 6) { toast.error('Please enter the 6-digit OTP'); return }
+    const walletOk = await debitWalletIfNeeded()
+    if (!walletOk) return
+    setOtpVerifyLoading(true)
+    try {
+      const res = await Axios({ ...SummaryApi.verifyCodOtp, data: { mobile: otpMobile, otp } })
+      if (res.data.success) {
+        setShowOtpModal(false)
+        await placeCodOrder()
+      } else {
+        toast.error(res.data.message || 'Invalid OTP. Please try again.')
+      }
+    } catch (error) { AxiosToastError(error) }
+    finally { setOtpVerifyLoading(false) }
+  }
+
+  const handleOtpResend = async () => {
+    if (otpResendTimer > 0) return
+    try {
+      const res = await Axios({ ...SummaryApi.resendCodOtp, data: { mobile: otpMobile } })
+      if (res.data.success) { toast.success('OTP resent!'); startOtpResendTimer() }
+      else toast.error(res.data.message || 'Failed to resend OTP')
+    } catch (error) { AxiosToastError(error) }
   }
 
   const handleRazorpayPayment = async () => {
@@ -633,6 +706,64 @@ const CheckoutPage = () => {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {showOtpModal && (
+        <div className='fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4'>
+          <div className='bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col items-center gap-4'>
+            <div className='w-14 h-14 bg-green-100 rounded-full flex items-center justify-center'>
+              <FaMobileAlt className='text-green-600 text-2xl' />
+            </div>
+            <h2 className='text-lg font-bold text-gray-800'>Verify Your Mobile</h2>
+            <p className='text-sm text-gray-500 text-center'>
+              We sent a 6-digit OTP to <span className='font-semibold text-gray-700'>+91 {String(otpMobile).replace(/^91/, '')}</span>
+            </p>
+            <div className='flex gap-2 mt-1'>
+              {otpDigits.map((digit, i) => (
+                <input
+                  key={i}
+                  ref={otpRefs[i]}
+                  type='text'
+                  inputMode='numeric'
+                  maxLength={1}
+                  value={digit}
+                  onChange={e => handleOtpDigitChange(i, e.target.value)}
+                  onKeyDown={e => handleOtpKeyDown(i, e)}
+                  className='w-10 h-12 text-center text-xl font-bold border-2 rounded-xl outline-none focus:border-primary transition-colors'
+                />
+              ))}
+            </div>
+            <button
+              onClick={handleOtpVerify}
+              disabled={otpVerifyLoading || otpDigits.join('').length !== 6}
+              className='w-full bg-primary text-white font-bold py-3 rounded-xl mt-1 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-primary/90 transition-all'
+            >
+              {otpVerifyLoading ? (
+                <>
+                  <svg className='animate-spin h-5 w-5' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'>
+                    <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'/>
+                    <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v8z'/>
+                  </svg>
+                  Verifying...
+                </>
+              ) : 'Verify & Place Order'}
+            </button>
+            <div className='text-sm text-gray-500'>
+              {otpResendTimer > 0 ? (
+                <span>Resend OTP in <span className='font-semibold text-primary'>{otpResendTimer}s</span></span>
+              ) : (
+                <button onClick={handleOtpResend} className='text-primary font-semibold hover:underline'>
+                  Resend OTP
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowOtpModal(false)}
+              className='text-xs text-gray-400 hover:text-gray-600 mt-1'
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
