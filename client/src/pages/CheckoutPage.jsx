@@ -188,14 +188,12 @@ const CheckoutPage = () => {
   }
 
   const setupRecaptcha = () => {
-    if (recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current.clear()
-      recaptchaVerifierRef.current = null
+    if (!recaptchaVerifierRef.current) {
+      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {}
+      })
     }
-    recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-      callback: () => {}
-    })
   }
 
   const placeCodOrder = async () => {
@@ -274,7 +272,6 @@ const CheckoutPage = () => {
     if (otpResendTimer > 0) return
     const phoneNumber = `+91${String(otpMobile).replace(/^91/, '').replace(/\D/g, '')}`
     try {
-      setupRecaptcha()
       const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifierRef.current)
       confirmationResultRef.current = result
       toast.success('OTP resent!')
