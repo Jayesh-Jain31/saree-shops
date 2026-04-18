@@ -166,7 +166,7 @@ const Success = () => {
           Go To Home
         </Link>
         <Link
-          to='/my-orders'
+          to='/dashboard/myorders'
           className='block w-full text-center border border-gray-300 text-gray-600 font-semibold py-3.5 rounded-xl hover:bg-gray-50 transition-all mt-3 text-sm'
         >
           View My Orders
