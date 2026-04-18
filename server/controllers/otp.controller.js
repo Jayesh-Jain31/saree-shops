@@ -20,10 +20,12 @@ export const sendCodOtp = async (req, res) => {
         if (result.return === true) {
             return res.json({ success: true, message: 'OTP sent to your mobile number' })
         }
-        return res.status(400).json({ success: false, message: result.message?.[0] || 'Failed to send OTP' })
+        const errMsg = Array.isArray(result.message) ? result.message[0] : result.message
+        return res.status(400).json({ success: false, message: errMsg || 'Failed to send OTP' })
     } catch (err) {
         console.error('[OTP] sendCodOtp error:', err?.response?.data || err.message)
-        const msg = err?.response?.data?.message?.[0] || err.message || 'Error sending OTP'
+        const raw = err?.response?.data?.message
+        const msg = (Array.isArray(raw) ? raw[0] : raw) || err.message || 'Error sending OTP'
         return res.status(500).json({ success: false, message: msg })
     }
 }
@@ -67,10 +69,12 @@ export const resendCodOtp = async (req, res) => {
         if (result.return === true) {
             return res.json({ success: true, message: 'OTP resent successfully' })
         }
-        return res.status(400).json({ success: false, message: result.message?.[0] || 'Failed to resend OTP' })
+        const errMsg = Array.isArray(result.message) ? result.message[0] : result.message
+        return res.status(400).json({ success: false, message: errMsg || 'Failed to resend OTP' })
     } catch (err) {
         console.error('[OTP] resendCodOtp error:', err?.response?.data || err.message)
-        const msg = err?.response?.data?.message?.[0] || err.message || 'Error resending OTP'
+        const raw = err?.response?.data?.message
+        const msg = (Array.isArray(raw) ? raw[0] : raw) || err.message || 'Error resending OTP'
         return res.status(500).json({ success: false, message: msg })
     }
 }
