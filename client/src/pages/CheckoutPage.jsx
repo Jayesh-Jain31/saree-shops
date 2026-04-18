@@ -16,8 +16,6 @@ import {
 import { MdAccountBalanceWallet, MdDeliveryDining } from 'react-icons/md'
 import { SiRazorpay } from 'react-icons/si'
 import { addNotification } from '../components/NotificationBell'
-import { auth } from '../utils/firebase'
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth'
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -57,8 +55,6 @@ const CheckoutPage = () => {
   const [otpResendTimer, setOtpResendTimer] = useState(0)
   const [otpMobile, setOtpMobile] = useState('')
   const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()]
-  const confirmationResultRef = useRef(null)
-  const recaptchaVerifierRef = useRef(null)
   const [activeCoupons, setActiveCoupons] = useState([])
   const [showCoupons, setShowCoupons] = useState(false)
   const siteSettings = useSelector(state => state.site.settings)
@@ -187,15 +183,6 @@ const CheckoutPage = () => {
     }, 1000)
   }
 
-  const setupRecaptcha = () => {
-    if (!recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {}
-      })
-    }
-  }
-
   const placeCodOrder = async () => {
     const itemsSnapshot = [...cartItemsList]
     const selectedAddrSnapshot = addressList[selectAddress]
@@ -220,21 +207,20 @@ const CheckoutPage = () => {
       toast.error('Please add a mobile number to your profile to place a COD order.')
       return
     }
-    const phoneNumber = `+91${String(mobile).replace(/^91/, '').replace(/\D/g, '')}`
     setCodLoading(true)
     try {
-      setupRecaptcha()
-      const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifierRef.current)
-      confirmationResultRef.current = result
-      setOtpMobile(mobile)
-      setOtpDigits(['', '', '', '', '', ''])
-      setShowOtpModal(true)
-      startOtpResendTimer()
-      toast.success('OTP sent to your mobile number')
-    } catch (error) {
-      console.error('Firebase OTP error:', error)
-      toast.error(error?.message || 'Failed to send OTP. Please try again.')
-    } finally { setCodLoading(false) }
+      const res = await Axios({ ...SummaryApi.sendCodOtp, data: { mobile } })
+      if (res.data.success) {
+        setOtpMobile(mobile)
+        setOtpDigits(['', '', '', '', '', ''])
+        setShowOtpModal(true)
+        startOtpResendTimer()
+        toast.success(res.data.message)
+      } else {
+        toast.error(res.data.message || 'Failed to send OTP')
+      }
+    } catch (error) { AxiosToastError(error) }
+    finally { setCodLoading(false) }
   }
 
   const handleOtpDigitChange = (index, value) => {
@@ -254,31 +240,28 @@ const CheckoutPage = () => {
   const handleOtpVerify = async () => {
     const otp = otpDigits.join('')
     if (otp.length !== 6) { toast.error('Please enter the 6-digit OTP'); return }
-    if (!confirmationResultRef.current) { toast.error('Session expired. Please try again.'); setShowOtpModal(false); return }
     const walletOk = await debitWalletIfNeeded()
     if (!walletOk) return
     setOtpVerifyLoading(true)
     try {
-      await confirmationResultRef.current.confirm(otp)
-      setShowOtpModal(false)
-      await placeCodOrder()
-    } catch (error) {
-      console.error('OTP verify error:', error)
-      toast.error('Invalid OTP. Please try again.')
-    } finally { setOtpVerifyLoading(false) }
+      const res = await Axios({ ...SummaryApi.verifyCodOtp, data: { mobile: otpMobile, otp } })
+      if (res.data.success) {
+        setShowOtpModal(false)
+        await placeCodOrder()
+      } else {
+        toast.error(res.data.message || 'Invalid OTP. Please try again.')
+      }
+    } catch (error) { AxiosToastError(error) }
+    finally { setOtpVerifyLoading(false) }
   }
 
   const handleOtpResend = async () => {
     if (otpResendTimer > 0) return
-    const phoneNumber = `+91${String(otpMobile).replace(/^91/, '').replace(/\D/g, '')}`
     try {
-      const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifierRef.current)
-      confirmationResultRef.current = result
-      toast.success('OTP resent!')
-      startOtpResendTimer()
-    } catch (error) {
-      toast.error(error?.message || 'Failed to resend OTP')
-    }
+      const res = await Axios({ ...SummaryApi.resendCodOtp, data: { mobile: otpMobile } })
+      if (res.data.success) { toast.success('OTP resent!'); startOtpResendTimer() }
+      else toast.error(res.data.message || 'Failed to resend OTP')
+    } catch (error) { AxiosToastError(error) }
   }
 
   const handleRazorpayPayment = async () => {
@@ -726,8 +709,6 @@ const CheckoutPage = () => {
           </div>
         </div>
       )}
-      <div id='recaptcha-container'></div>
-
       {showOtpModal && (
         <div className='fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4'>
           <div className='bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col items-center gap-4'>

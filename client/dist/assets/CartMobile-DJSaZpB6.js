@@ -1,1 +1,0 @@
-import{j as a,a5 as o}from"./index-C6ySaE40.js";import{u as r}from"./react-vendor-Dt2ouSKP.js";import"./redux-vendor-BjsoHN6Y.js";import"./axios-vendor-DsPaXkF5.js";import"./ui-vendor-B--rFs1Q.js";const n=()=>{const t=r();return a.jsx(o,{close:()=>t(-1)})};export{n as default};
