@@ -12,7 +12,8 @@ export const sendCodOtp = async (req, res) => {
         }
         return res.status(400).json({ success: false, message: result.message || 'Failed to send OTP' })
     } catch (err) {
-        const msg = err?.response?.data?.message || err.message || 'Error sending OTP'
+        console.error('[OTP] sendCodOtp error:', err?.response?.data || err.message)
+        const msg = err?.response?.data?.message || err?.response?.data?.errors?.[0] || err.message || 'Error sending OTP'
         return res.status(500).json({ success: false, message: msg })
     }
 }
@@ -29,7 +30,8 @@ export const verifyCodOtp = async (req, res) => {
         }
         return res.status(400).json({ success: false, message: result.message || 'Invalid or expired OTP' })
     } catch (err) {
-        const msg = err?.response?.data?.message || err.message || 'Error verifying OTP'
+        console.error('[OTP] verifyCodOtp error:', err?.response?.data || err.message)
+        const msg = err?.response?.data?.message || err?.response?.data?.errors?.[0] || err.message || 'Error verifying OTP'
         return res.status(500).json({ success: false, message: msg })
     }
 }
@@ -46,7 +48,8 @@ export const resendCodOtp = async (req, res) => {
         }
         return res.status(400).json({ success: false, message: result.message || 'Failed to resend OTP' })
     } catch (err) {
-        const msg = err?.response?.data?.message || err.message || 'Error resending OTP'
+        console.error('[OTP] resendCodOtp error:', err?.response?.data || err.message)
+        const msg = err?.response?.data?.message || err?.response?.data?.errors?.[0] || err.message || 'Error resending OTP'
         return res.status(500).json({ success: false, message: msg })
     }
 }
