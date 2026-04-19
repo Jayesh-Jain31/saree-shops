@@ -10,6 +10,8 @@ const STATIC_PAGE_META = {
   'terms':           { key: 'page_terms',    title: 'Terms of Service' },
   'shipping-policy': { key: 'page_shipping', title: 'Shipping Policy' },
   'about-us':        { key: 'page_about',    title: 'About Us' },
+  'return-policy':   { key: 'page_return',   title: 'Return Policy' },
+  'contact-us':      { key: 'page_contact',  title: 'Contact Us' },
 }
 
 const PolicyPage = () => {
