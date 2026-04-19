@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { MdSave, MdPreview, MdAdd, MdDelete } from 'react-icons/md'
+import { MdSave, MdPreview, MdAdd, MdDelete, MdEdit, MdCheck } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 
 const POLICIES = [
@@ -17,16 +17,20 @@ const POLICIES = [
 
 const PolicyAdmin = () => {
   const [policyContent, setPolicyContent] = useState({})
+  const [pageLabels, setPageLabels] = useState({})
   const [activePolicyTab, setActivePolicyTab] = useState(POLICIES[0].key)
   const [customPolicies, setCustomPolicies] = useState([])
   const [allPolicies, setAllPolicies] = useState(POLICIES)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [editingLabel, setEditingLabel] = useState(false)
+  const [labelDraft, setLabelDraft] = useState('')
   const [showAddPage, setShowAddPage] = useState(false)
   const [newPageLabel, setNewPageLabel] = useState('')
   const [newPageSlug, setNewPageSlug] = useState('')
   const [savingCustom, setSavingCustom] = useState(false)
   const textareaRef = useRef(null)
+  const labelInputRef = useRef(null)
 
   const saveSetting = async (key, value) => {
     await Axios({ ...SummaryApi.updateSetting, data: { key, value: String(value) } })
@@ -38,17 +42,25 @@ const PolicyAdmin = () => {
         const res = await Axios({ ...SummaryApi.getSettings })
         if (res.data.success) {
           const s = res.data.data
-          const policies = {}
-          POLICIES.forEach(p => { policies[p.key] = s[p.key] || '' })
+          const contents = {}
+          const labels = {}
+          POLICIES.forEach(p => {
+            contents[p.key] = s[p.key] || ''
+            labels[p.key] = s[`${p.key}_label`] || p.label
+          })
           if (s.custom_policy_pages) {
             try {
               const custom = JSON.parse(s.custom_policy_pages)
               setCustomPolicies(custom)
               setAllPolicies([...POLICIES, ...custom])
-              custom.forEach(p => { policies[p.key] = s[p.key] || '' })
+              custom.forEach(p => {
+                contents[p.key] = s[p.key] || ''
+                labels[p.key] = s[`${p.key}_label`] || p.label
+              })
             } catch {}
           }
-          setPolicyContent(policies)
+          setPolicyContent(contents)
+          setPageLabels(labels)
         }
       } catch {
         toast.error('Failed to load policy pages')
@@ -58,6 +70,35 @@ const PolicyAdmin = () => {
     }
     fetchSettings()
   }, [])
+
+  const getLabel = (key) => pageLabels[key] || allPolicies.find(p => p.key === key)?.label || key
+
+  const startEditLabel = () => {
+    setLabelDraft(getLabel(activePolicyTab))
+    setEditingLabel(true)
+    setTimeout(() => labelInputRef.current?.select(), 0)
+  }
+
+  const saveLabel = async () => {
+    const trimmed = labelDraft.trim()
+    if (!trimmed) { setEditingLabel(false); return }
+    setPageLabels(prev => ({ ...prev, [activePolicyTab]: trimmed }))
+    setEditingLabel(false)
+    try {
+      await saveSetting(`${activePolicyTab}_label`, trimmed)
+      if (customPolicies.some(p => p.key === activePolicyTab)) {
+        const updated = customPolicies.map(p =>
+          p.key === activePolicyTab ? { ...p, label: trimmed } : p
+        )
+        setCustomPolicies(updated)
+        setAllPolicies([...POLICIES, ...updated])
+        await saveSetting('custom_policy_pages', JSON.stringify(updated))
+      }
+      toast.success('Page name updated!')
+    } catch {
+      toast.error('Failed to save name')
+    }
+  }
 
   const wrapSelection = (openTag, closeTag) => {
     const el = textareaRef.current
@@ -77,9 +118,8 @@ const PolicyAdmin = () => {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const current = allPolicies.find(p => p.key === activePolicyTab)
       await saveSetting(activePolicyTab, policyContent[activePolicyTab] || '')
-      toast.success(`${current?.label || 'Page'} saved!`)
+      toast.success(`${getLabel(activePolicyTab)} saved!`)
     } catch {
       toast.error('Failed to save')
     } finally {
@@ -102,6 +142,7 @@ const PolicyAdmin = () => {
       setCustomPolicies(updated)
       setAllPolicies([...POLICIES, ...updated])
       setPolicyContent(prev => ({ ...prev, [key]: '' }))
+      setPageLabels(prev => ({ ...prev, [key]: newPage.label }))
       setActivePolicyTab(key)
       setNewPageLabel('')
       setNewPageSlug('')
@@ -123,6 +164,7 @@ const PolicyAdmin = () => {
       setCustomPolicies(updated)
       setAllPolicies([...POLICIES, ...updated])
       setPolicyContent(prev => { const n = { ...prev }; delete n[pageKey]; return n })
+      setPageLabels(prev => { const n = { ...prev }; delete n[pageKey]; return n })
       setActivePolicyTab(POLICIES[0].key)
       toast.success('Page deleted')
     } catch {
@@ -205,28 +247,62 @@ const PolicyAdmin = () => {
             {allPolicies.map(p => (
               <button
                 key={p.key}
-                onClick={() => setActivePolicyTab(p.key)}
+                onClick={() => { setActivePolicyTab(p.key); setEditingLabel(false) }}
                 className={`flex-shrink-0 px-4 py-3 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
                   activePolicyTab === p.key
                     ? 'border-primary text-primary bg-pink-50'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                {p.label}
+                {getLabel(p.key)}
               </button>
             ))}
           </div>
         </div>
 
         <div className='p-5 space-y-4'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <h2 className='font-bold text-gray-800 text-sm'>{activePolicy?.label}</h2>
-              <p className='text-[11px] text-gray-400 mt-0.5'>
+          <div className='flex items-start justify-between gap-3'>
+            <div className='flex-1'>
+              {editingLabel ? (
+                <div className='flex items-center gap-2'>
+                  <input
+                    ref={labelInputRef}
+                    value={labelDraft}
+                    onChange={e => setLabelDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveLabel(); if (e.key === 'Escape') setEditingLabel(false) }}
+                    className='flex-1 border-2 border-primary rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none'
+                    placeholder='Page name'
+                  />
+                  <button
+                    onClick={saveLabel}
+                    className='flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90'
+                  >
+                    <MdCheck size={14} /> Save Name
+                  </button>
+                  <button
+                    onClick={() => setEditingLabel(false)}
+                    className='px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50'
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className='flex items-center gap-2'>
+                  <h2 className='font-bold text-gray-800'>{getLabel(activePolicyTab)}</h2>
+                  <button
+                    onClick={startEditLabel}
+                    className='flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-primary hover:bg-pink-50 rounded-lg transition'
+                    title='Edit page name'
+                  >
+                    <MdEdit size={13} /> Edit name
+                  </button>
+                </div>
+              )}
+              <p className='text-[11px] text-gray-400 mt-1'>
                 URL: <span className='font-mono text-gray-500'>/page/{activePolicy?.slug}</span>
               </p>
             </div>
-            <div className='flex items-center gap-2'>
+            <div className='flex items-center gap-2 flex-shrink-0'>
               {isCustom && (
                 <button
                   onClick={() => handleDeletePage(activePolicyTab)}
@@ -249,69 +325,24 @@ const PolicyAdmin = () => {
           <div className='border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition'>
             <div className='flex flex-wrap items-center gap-1 px-3 py-2 bg-gray-50 border-b border-gray-200'>
               <span className='text-[10px] text-gray-400 mr-1 font-semibold uppercase'>Format:</span>
-              <button
-                type='button'
-                onMouseDown={e => { e.preventDefault(); wrapSelection('<b>', '</b>') }}
-                className='px-2 py-1 text-xs font-bold rounded hover:bg-gray-200 transition'
-                title='Bold'
-              >B</button>
-              <button
-                type='button'
-                onMouseDown={e => { e.preventDefault(); wrapSelection('<i>', '</i>') }}
-                className='px-2 py-1 text-xs italic rounded hover:bg-gray-200 transition'
-                title='Italic'
-              >I</button>
-              <button
-                type='button'
-                onMouseDown={e => { e.preventDefault(); wrapSelection('<u>', '</u>') }}
-                className='px-2 py-1 text-xs underline rounded hover:bg-gray-200 transition'
-                title='Underline'
-              >U</button>
+              <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<b>', '</b>') }} className='px-2 py-1 text-xs font-bold rounded hover:bg-gray-200 transition' title='Bold'>B</button>
+              <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<i>', '</i>') }} className='px-2 py-1 text-xs italic rounded hover:bg-gray-200 transition' title='Italic'>I</button>
+              <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<u>', '</u>') }} className='px-2 py-1 text-xs underline rounded hover:bg-gray-200 transition' title='Underline'>U</button>
               <div className='w-px h-4 bg-gray-300 mx-1' />
-              <button
-                type='button'
-                onMouseDown={e => { e.preventDefault(); wrapSelection('<h2>', '</h2>') }}
-                className='px-2 py-1 text-xs font-semibold rounded hover:bg-gray-200 transition'
-                title='Heading 2'
-              >H2</button>
-              <button
-                type='button'
-                onMouseDown={e => { e.preventDefault(); wrapSelection('<h3>', '</h3>') }}
-                className='px-2 py-1 text-xs font-semibold rounded hover:bg-gray-200 transition'
-                title='Heading 3'
-              >H3</button>
+              <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<h2>', '</h2>') }} className='px-2 py-1 text-xs font-semibold rounded hover:bg-gray-200 transition' title='Heading 2'>H2</button>
+              <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<h3>', '</h3>') }} className='px-2 py-1 text-xs font-semibold rounded hover:bg-gray-200 transition' title='Heading 3'>H3</button>
               <div className='w-px h-4 bg-gray-300 mx-1' />
-              <button
-                type='button'
-                onMouseDown={e => { e.preventDefault(); wrapSelection('<ul>\n  <li>', '</li>\n</ul>') }}
-                className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition'
-                title='Bullet List'
-              >• List</button>
-              <button
-                type='button'
-                onMouseDown={e => { e.preventDefault(); wrapSelection('<li>', '</li>') }}
-                className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition'
-                title='List Item'
-              >• Item</button>
-              <button
-                type='button'
-                onMouseDown={e => { e.preventDefault(); wrapSelection('<br/>', '') }}
-                className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition'
-                title='Line Break'
-              >↵ BR</button>
-              <button
-                type='button'
-                onMouseDown={e => { e.preventDefault(); wrapSelection('<hr/>', '') }}
-                className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition'
-                title='Divider Line'
-              >— HR</button>
+              <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<ul>\n  <li>', '</li>\n</ul>') }} className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition' title='Bullet List'>• List</button>
+              <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<li>', '</li>') }} className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition' title='List Item'>• Item</button>
+              <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<br/>', '') }} className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition' title='Line Break'>↵ BR</button>
+              <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<hr/>', '') }} className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition' title='Divider'>— HR</button>
             </div>
             <textarea
               ref={textareaRef}
               value={policyContent[activePolicyTab] || ''}
               onChange={e => setPolicyContent(prev => ({ ...prev, [activePolicyTab]: e.target.value }))}
               rows={18}
-              placeholder={`Write your ${activePolicy?.label} content here...\n\nTip: Select text and click a toolbar button to format it.\n\nExample:\n<b>1. Introduction</b>\nWelcome to our store...\n\n<b>2. Refund Terms</b>\nWe accept returns within 7 days...`}
+              placeholder={`Write your ${getLabel(activePolicyTab)} content here...\n\nTip: Select text and click a toolbar button to format it.\n\nExample:\n<b>1. Introduction</b>\nWelcome to our store...\n\n<b>2. Terms</b>\nWe accept returns within 7 days...`}
               className='w-full px-4 py-3 text-sm outline-none font-mono resize-y bg-white'
             />
           </div>
@@ -322,7 +353,7 @@ const PolicyAdmin = () => {
             className='w-full flex items-center justify-center gap-2 btn-primary disabled:opacity-50 font-semibold rounded-xl py-3'
           >
             {saving ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
-            {saving ? 'Saving...' : `Save ${activePolicy?.label}`}
+            {saving ? 'Saving...' : `Save ${getLabel(activePolicyTab)}`}
           </button>
         </div>
       </div>

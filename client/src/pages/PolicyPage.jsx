@@ -35,7 +35,7 @@ const PolicyPage = () => {
 
         const staticMeta = STATIC_PAGE_META[slug]
         if (staticMeta) {
-          setTitle(staticMeta.title)
+          setTitle(s[`${staticMeta.key}_label`] || staticMeta.title)
           setContent(s[staticMeta.key] || '')
           setLoading(false)
           return
@@ -46,7 +46,7 @@ const PolicyPage = () => {
             const customPages = JSON.parse(s.custom_policy_pages)
             const match = customPages.find(p => p.slug === slug)
             if (match) {
-              setTitle(match.label)
+              setTitle(s[`${match.key}_label`] || match.label)
               setContent(s[match.key] || '')
               setLoading(false)
               return
