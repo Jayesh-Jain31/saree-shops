@@ -23,6 +23,7 @@ const Register = () => {
     })
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [agreedToTerms, setAgreedToTerms] = useState(false)
     const navigate = useNavigate()
     const dispatch = useDispatch()
 
@@ -31,7 +32,7 @@ const Register = () => {
         setData((preve) => ({ ...preve, [name]: value }))
     }
 
-    const valideValue = Object.values(data).every(el => el)
+    const valideValue = Object.values(data).every(el => el) && agreedToTerms
 
     const handleSubmit = async(e)=>{
         e.preventDefault()
@@ -150,6 +151,23 @@ const Register = () => {
                         </div>
                     </div>
 
+                    <div className='flex items-start gap-2 mt-1'>
+                        <input
+                            type='checkbox'
+                            id='terms'
+                            checked={agreedToTerms}
+                            onChange={e => setAgreedToTerms(e.target.checked)}
+                            className='mt-1 accent-green-700 cursor-pointer'
+                        />
+                        <label htmlFor='terms' className='text-sm text-gray-600 cursor-pointer'>
+                            I agree to the{' '}
+                            <Link to='/page/terms' target='_blank' className='text-green-700 font-semibold underline hover:text-green-800'>Terms & Conditions</Link>
+                            {', '}
+                            <Link to='/page/privacy-policy' target='_blank' className='text-green-700 font-semibold underline hover:text-green-800'>Privacy Policy</Link>
+                            {' and '}
+                            <Link to='/page/refund-policy' target='_blank' className='text-green-700 font-semibold underline hover:text-green-800'>Refund Policy</Link>
+                        </label>
+                    </div>
                     <button disabled={!valideValue} className={`${valideValue ? "bg-green-800 hover:bg-green-700" : "bg-gray-500"} text-white py-2 rounded font-semibold my-3 tracking-wide`}>Register</button>
                 </form>
 

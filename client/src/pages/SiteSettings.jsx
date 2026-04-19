@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
@@ -69,6 +69,22 @@ const SiteSettings = () => {
   const [newPageLabel, setNewPageLabel] = useState('')
   const [newPageSlug, setNewPageSlug] = useState('')
   const [savingCustomPages, setSavingCustomPages] = useState(false)
+  const policyTextareaRef = useRef(null)
+
+  const wrapSelection = (openTag, closeTag) => {
+    const el = policyTextareaRef.current
+    if (!el) return
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const current = policyContent[activePolicyTab] || ''
+    const selected = current.slice(start, end)
+    const newVal = current.slice(0, start) + openTag + selected + closeTag + current.slice(end)
+    setPolicyContent(prev => ({ ...prev, [activePolicyTab]: newVal }))
+    setTimeout(() => {
+      el.focus()
+      el.setSelectionRange(start + openTag.length, end + openTag.length)
+    }, 0)
+  }
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -618,16 +634,27 @@ const SiteSettings = () => {
                 Preview page ↗
               </a>
             </div>
-            <p className='text-[11px] text-gray-400'>
-              You can use plain text or basic HTML (e.g. &lt;b&gt;bold&lt;/b&gt;, &lt;br/&gt; line break). Each new line is shown as a paragraph break.
-            </p>
-            <textarea
-              value={policyContent[activePolicyTab] || ''}
-              onChange={e => setPolicyContent(prev => ({ ...prev, [activePolicyTab]: e.target.value }))}
-              rows={12}
-              placeholder={`Enter your ${activePolicy?.label} content here...\n\nYou can write plain text or use basic HTML tags.\nExample:\n<b>Section Heading</b>\nYour policy text goes here...`}
-              className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition font-mono resize-y'
-            />
+            <div className='border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition'>
+              <div className='flex flex-wrap items-center gap-1 px-3 py-2 bg-gray-50 border-b border-gray-200'>
+                <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<b>', '</b>') }} className='px-2 py-1 text-xs font-bold rounded hover:bg-gray-200 transition' title='Bold'>B</button>
+                <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<i>', '</i>') }} className='px-2 py-1 text-xs italic rounded hover:bg-gray-200 transition' title='Italic'>I</button>
+                <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<u>', '</u>') }} className='px-2 py-1 text-xs underline rounded hover:bg-gray-200 transition' title='Underline'>U</button>
+                <div className='w-px h-4 bg-gray-300 mx-1' />
+                <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<h2>', '</h2>') }} className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition font-semibold' title='Heading 2'>H2</button>
+                <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<h3>', '</h3>') }} className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition font-semibold' title='Heading 3'>H3</button>
+                <div className='w-px h-4 bg-gray-300 mx-1' />
+                <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<ul>\n  <li>', '</li>\n</ul>') }} className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition' title='Bullet List'>• List</button>
+                <button type='button' onMouseDown={e => { e.preventDefault(); wrapSelection('<br/>', '') }} className='px-2 py-1 text-xs rounded hover:bg-gray-200 transition' title='Line Break'>↵ BR</button>
+              </div>
+              <textarea
+                ref={policyTextareaRef}
+                value={policyContent[activePolicyTab] || ''}
+                onChange={e => setPolicyContent(prev => ({ ...prev, [activePolicyTab]: e.target.value }))}
+                rows={12}
+                placeholder={`Enter your ${activePolicy?.label} content here...\n\nSelect text then click a toolbar button to format it.\nExample:\n<b>Section Heading</b>\nYour policy text goes here...`}
+                className='w-full px-4 py-3 text-sm outline-none font-mono resize-y'
+              />
+            </div>
             <button
               onClick={handleSavePolicy}
               disabled={savingPolicy}
