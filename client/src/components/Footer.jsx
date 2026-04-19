@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FaFacebook, FaInstagram, FaLinkedin, FaYoutube } from 'react-icons/fa'
 import { useSelector } from 'react-redux'
 
-const STATIC_POLICY_LINKS = [
-  { label: 'Privacy Policy',   to: '/page/privacy-policy' },
-  { label: 'Refund Policy',    to: '/page/refund-policy' },
-  { label: 'Terms of Service', to: '/page/terms' },
-  { label: 'Shipping Policy',  to: '/page/shipping-policy' },
-  { label: 'About Us',         to: '/page/about-us' },
+const STATIC_POLICY_PAGES = [
+  { key: 'page_about',    defaultLabel: 'About Us',         to: '/page/about-us'        },
+  { key: 'page_privacy',  defaultLabel: 'Privacy Policy',   to: '/page/privacy-policy'  },
+  { key: 'page_refund',   defaultLabel: 'Refund Policy',    to: '/page/refund-policy'   },
+  { key: 'page_terms',    defaultLabel: 'Terms of Service', to: '/page/terms'           },
+  { key: 'page_shipping', defaultLabel: 'Shipping Policy',  to: '/page/shipping-policy' },
+  { key: 'page_return',   defaultLabel: 'Return Policy',    to: '/page/return-policy'   },
+  { key: 'page_contact',  defaultLabel: 'Contact Us',       to: '/page/contact-us'      },
 ]
 
 const Footer = () => {
@@ -23,15 +25,26 @@ const Footer = () => {
     youtube:   siteSettings?.social_youtube   || '',
   }
 
-  const customPolicyLinks = React.useMemo(() => {
-    if (!siteSettings?.custom_policy_pages) return []
-    try {
-      const pages = JSON.parse(siteSettings.custom_policy_pages)
-      return pages.map(p => ({ label: p.label, to: `/page/${p.slug}` }))
-    } catch { return [] }
-  }, [siteSettings?.custom_policy_pages])
+  const policyLinks = React.useMemo(() => {
+    const staticLinks = STATIC_POLICY_PAGES
+      .map(p => ({
+        label: siteSettings?.[`${p.key}_label`] || p.defaultLabel,
+        to: p.to,
+      }))
 
-  const policyLinks = [...STATIC_POLICY_LINKS, ...customPolicyLinks]
+    const customLinks = (() => {
+      if (!siteSettings?.custom_policy_pages) return []
+      try {
+        const pages = JSON.parse(siteSettings.custom_policy_pages)
+        return pages.map(p => ({
+          label: siteSettings?.[`${p.key}_label`] || p.label,
+          to: `/page/${p.slug}`,
+        }))
+      } catch { return [] }
+    })()
+
+    return [...staticLinks, ...customLinks]
+  }, [siteSettings])
 
   const navigate = useNavigate()
 

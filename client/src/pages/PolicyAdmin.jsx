@@ -4,6 +4,8 @@ import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
 import { MdSave, MdPreview, MdAdd, MdDelete, MdEdit, MdCheck } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
+import { useDispatch, useSelector } from 'react-redux'
+import { setSiteSettings } from '../store/siteSlice'
 
 const POLICIES = [
   { key: 'page_privacy',  label: 'Privacy Policy',    slug: 'privacy-policy'  },
@@ -16,6 +18,8 @@ const POLICIES = [
 ]
 
 const PolicyAdmin = () => {
+  const dispatch = useDispatch()
+  const reduxSettings = useSelector(state => state.site.settings)
   const [policyContent, setPolicyContent] = useState({})
   const [pageLabels, setPageLabels] = useState({})
   const [activePolicyTab, setActivePolicyTab] = useState(POLICIES[0].key)
@@ -86,14 +90,20 @@ const PolicyAdmin = () => {
     setEditingLabel(false)
     try {
       await saveSetting(`${activePolicyTab}_label`, trimmed)
+      let updatedCustom = customPolicies
       if (customPolicies.some(p => p.key === activePolicyTab)) {
-        const updated = customPolicies.map(p =>
+        updatedCustom = customPolicies.map(p =>
           p.key === activePolicyTab ? { ...p, label: trimmed } : p
         )
-        setCustomPolicies(updated)
-        setAllPolicies([...POLICIES, ...updated])
-        await saveSetting('custom_policy_pages', JSON.stringify(updated))
+        setCustomPolicies(updatedCustom)
+        setAllPolicies([...POLICIES, ...updatedCustom])
+        await saveSetting('custom_policy_pages', JSON.stringify(updatedCustom))
       }
+      dispatch(setSiteSettings({
+        ...reduxSettings,
+        [`${activePolicyTab}_label`]: trimmed,
+        ...(updatedCustom !== customPolicies ? { custom_policy_pages: JSON.stringify(updatedCustom) } : {})
+      }))
       toast.success('Page name updated!')
     } catch {
       toast.error('Failed to save name')
