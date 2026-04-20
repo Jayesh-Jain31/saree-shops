@@ -474,26 +474,46 @@ export async function cancelOrderController(request, response) {
             }
         } catch {}
 
-        // Instant wallet refund if wallet was used for this order
+        // Auto wallet refund
         let walletRefunded = 0
-        if (order.walletDeduction && order.walletDeduction > 0) {
-            try {
-                let wallet = await WalletModel.findOne({ userId: order.userId })
-                if (!wallet) wallet = await WalletModel.create({ userId: order.userId, balance: 0, transactions: [] })
+        try {
+            let wallet = await WalletModel.findOne({ userId: order.userId })
+            if (!wallet) wallet = await WalletModel.create({ userId: order.userId, balance: 0, transactions: [] })
 
+            const isCOD = !order.paymentId ||
+                (order.payment_status || '').toUpperCase().includes('CASH') ||
+                (order.payment_status || '').toUpperCase() === 'COD'
+
+            // Refund wallet portion (used for any payment method)
+            if (order.walletDeduction && order.walletDeduction > 0) {
                 wallet.balance += order.walletDeduction
                 wallet.transactions.unshift({
                     type: 'credit',
                     amount: order.walletDeduction,
-                    description: `Refund for cancelled order #${order.orderId}`,
+                    description: `Wallet refund for cancelled order #${order.orderId}`,
                     reference: order._id.toString(),
                     balanceAfter: wallet.balance
                 })
-                await wallet.save()
-                walletRefunded = order.walletDeduction
-            } catch (walletErr) {
-                console.error('Wallet refund failed:', walletErr.message)
+                walletRefunded += order.walletDeduction
             }
+
+            // Refund the online-paid portion as store credit
+            const onlinePaid = isCOD ? 0 : Math.max(0, (order.totalAmt || 0) - (order.walletDeduction || 0))
+            if (!isCOD && onlinePaid > 0) {
+                wallet.balance += onlinePaid
+                wallet.transactions.unshift({
+                    type: 'credit',
+                    amount: onlinePaid,
+                    description: `Refund (store credit) for cancelled order #${order.orderId}`,
+                    reference: order._id.toString(),
+                    balanceAfter: wallet.balance
+                })
+                walletRefunded += onlinePaid
+            }
+
+            if (walletRefunded > 0) await wallet.save()
+        } catch (walletErr) {
+            console.error('Wallet refund failed:', walletErr.message)
         }
 
         return response.json({
