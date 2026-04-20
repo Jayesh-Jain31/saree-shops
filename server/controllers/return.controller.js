@@ -18,7 +18,27 @@ const creditWalletInternal = async (userId, amount, description, reference) => {
         balanceAfter: wallet.balance
     })
     await wallet.save()
-    return wallet
+}
+
+const triggerRazorpayRefund = async (paymentId, amountRupees, label) => {
+    if (!paymentId || !Razorpay) {
+        console.warn(`[Refund] Cannot trigger — paymentId: ${paymentId}, Razorpay configured: ${!!Razorpay}`)
+        return { success: false, error: 'No paymentId or Razorpay not configured' }
+    }
+    try {
+        const rzRefund = await Razorpay.payments.refund(paymentId, {
+            amount: Math.round(amountRupees * 100),
+            speed: "normal",
+            notes: { reason: label }
+        })
+        console.log(`[Refund] Razorpay OK — refundId: ${rzRefund?.id}, label: ${label}, amount: ₹${amountRupees}`)
+        return { success: true, refundId: rzRefund?.id }
+    } catch (e) {
+        const errMsg = e?.error?.description || e?.message || String(e)
+        console.error(`[Refund] Razorpay FAILED — label: ${label}, paymentId: ${paymentId}, amount: ₹${amountRupees}, error: ${errMsg}`)
+        console.error(`[Refund] Full error:`, JSON.stringify(e?.error || e))
+        return { success: false, error: errMsg }
+    }
 }
 
 export const createReturnRequest = async (req, res) => {
@@ -152,7 +172,12 @@ export const updateReturnStatus = async (req, res) => {
 
         let autoAction = null
 
-        if (newStatus === 'Approved' && prevStatus !== 'Approved') {
+        // Trigger refund on Approved (fresh) OR Refund Initiated (admin retrying a stuck return)
+        const shouldTriggerRefund =
+            (newStatus === 'Approved' && prevStatus !== 'Approved') ||
+            (newStatus === 'Refund Initiated' && prevStatus === 'Approved')
+
+        if (shouldTriggerRefund) {
             const order = await OrderModel.findById(returnReq.orderId)
             const isCOD = returnReq.paymentMethod === 'COD' ||
                 (order?.payment_status || '').toUpperCase().includes('CASH') ||
@@ -181,25 +206,12 @@ export const updateReturnStatus = async (req, res) => {
                 returnReq.status = 'Refund Initiated'
                 returnReq.refundAmount = finalRefundAmount
 
-                if (paymentId && Razorpay) {
-                    try {
-                        const rzRefund = await Razorpay.payments.refund(paymentId, {
-                            amount: Math.round(finalRefundAmount * 100),
-                            speed: "normal",
-                            notes: { reason: `Return approved for order ${returnReq.orderDisplayId}` }
-                        })
-                        autoAction = 'razorpay_refund_initiated'
-                        console.log(`[Refund] Razorpay refund OK — refundId: ${rzRefund?.id}, return: ${returnReq._id}, amount: ₹${finalRefundAmount}`)
-                    } catch (e) {
-                        const rzErrMsg = e?.error?.description || e?.message || String(e)
-                        autoAction = 'razorpay_refund_failed'
-                        console.error(`[Refund] Razorpay refund FAILED — return: ${returnReq._id}, paymentId: ${paymentId}, amount: ₹${finalRefundAmount}, error: ${rzErrMsg}`)
-                        console.error(`[Refund] Full error:`, JSON.stringify(e?.error || e))
-                    }
-                } else {
-                    console.warn(`[Refund] No paymentId or Razorpay not configured — return: ${returnReq._id}`)
-                    autoAction = 'razorpay_not_configured'
-                }
+                const rzResult = await triggerRazorpayRefund(
+                    paymentId,
+                    finalRefundAmount,
+                    `Return approved for order ${returnReq.orderDisplayId}`
+                )
+                autoAction = rzResult.success ? 'razorpay_refund_initiated' : 'razorpay_refund_failed'
             }
         }
 
