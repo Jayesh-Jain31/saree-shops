@@ -3,6 +3,7 @@ import CartProductModel from "../models/cartproduct.model.js";
 import OrderModel from "../models/order.model.js";
 import UserModel from "../models/user.model.js";
 import ProductModel from "../models/product.model.js";
+import AddressModel from "../models/address.model.js";
 import mongoose from "mongoose";
 import crypto from "crypto";
 import sendEmail from "../config/sendEmail.js";
@@ -131,6 +132,9 @@ export async function CashOnDeliveryOrderController(request, response) {
 
         try {
             const user = await UserModel.findById(userId)
+            const address = await AddressModel.findById(addressId)
+            const mobile = user?.mobile || address?.mobile
+
             if (user?.email) {
                 await sendEmail({
                     sendTo: user.email,
@@ -143,18 +147,18 @@ export async function CashOnDeliveryOrderController(request, response) {
                     })
                 })
             }
-            if (user?.mobile) {
+            if (mobile) {
                 sendOrderConfirmationWhatsApp({
-                    mobile: user.mobile,
-                    name: user.name,
+                    mobile,
+                    name: user?.name || address?.name,
                     orderId: order.orderId,
                     totalAmt: order.totalAmt,
                     paymentMethod: order.payment_status,
                     items: order.items,
                 }).catch(() => {})
                 sendCODVerificationWhatsApp({
-                    mobile: user.mobile,
-                    name: user.name,
+                    mobile,
+                    name: user?.name || address?.name,
                     orderId: order.orderId,
                     totalAmt: order.totalAmt,
                 }).catch(() => {})
@@ -163,8 +167,8 @@ export async function CashOnDeliveryOrderController(request, response) {
                 if (setting?.value) {
                     sendAdminNewOrderAlert(setting.value, {
                         orderId: order.orderId,
-                        customerName: user?.name,
-                        customerMobile: user?.mobile,
+                        customerName: user?.name || address?.name,
+                        customerMobile: mobile,
                         totalAmt: order.totalAmt,
                         paymentMethod: order.payment_status,
                         itemCount: order.items?.length
@@ -300,6 +304,9 @@ export async function razorpayVerifyController(request, response) {
 
         try {
             const user = await UserModel.findById(userId)
+            const address = await AddressModel.findById(addressId)
+            const mobile = user?.mobile || address?.mobile
+
             if (user?.email) {
                 await sendEmail({
                     sendTo: user.email,
@@ -312,10 +319,10 @@ export async function razorpayVerifyController(request, response) {
                     })
                 })
             }
-            if (user?.mobile) {
+            if (mobile) {
                 sendOrderConfirmationWhatsApp({
-                    mobile: user.mobile,
-                    name: user.name,
+                    mobile,
+                    name: user?.name || address?.name,
                     orderId: order.orderId,
                     totalAmt: order.totalAmt,
                     paymentMethod: order.payment_status,
@@ -326,8 +333,8 @@ export async function razorpayVerifyController(request, response) {
                 if (setting?.value) {
                     sendAdminNewOrderAlert(setting.value, {
                         orderId: order.orderId,
-                        customerName: user?.name,
-                        customerMobile: user?.mobile,
+                        customerName: user?.name || address?.name,
+                        customerMobile: mobile,
                         totalAmt: order.totalAmt,
                         paymentMethod: order.payment_status,
                         itemCount: order.items?.length
