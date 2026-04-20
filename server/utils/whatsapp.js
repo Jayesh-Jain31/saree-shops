@@ -1,6 +1,3 @@
-const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`
-const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN
-
 const formatPhone = (mobile) => {
     if (!mobile) return null
     const cleaned = String(mobile).replace(/\D/g, '')
@@ -11,37 +8,45 @@ const formatPhone = (mobile) => {
 }
 
 const sendWhatsApp = async (to, payload) => {
-    if (!ACCESS_TOKEN || !process.env.WHATSAPP_PHONE_NUMBER_ID) {
+    const token = process.env.WHATSAPP_ACCESS_TOKEN
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+
+    if (!token || !phoneNumberId) {
         console.log('[WhatsApp] Missing credentials — WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set')
         return
     }
+
     const phone = formatPhone(to)
     if (!phone) {
         console.log('[WhatsApp] Invalid phone number:', to)
         return
     }
 
-    const body = JSON.stringify({ messaging_product: 'whatsapp', to: phone, ...payload })
-    console.log('[WhatsApp] Sending to:', phone, '| Template:', payload?.template?.name || 'free-text')
+    const bodyObj = { messaging_product: 'whatsapp', to: phone, ...payload }
+    const bodyStr = JSON.stringify(bodyObj)
+    const apiUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+
+    console.log('[WhatsApp] Sending → phone:', phone, '| template:', payload?.template?.name || 'free-text')
+    console.log('[WhatsApp] Payload:', bodyStr)
 
     try {
-        const res = await fetch(WHATSAPP_API_URL, {
+        const res = await fetch(apiUrl, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body
+            body: bodyStr
         })
         const data = await res.json()
         if (!res.ok) {
-            console.log('[WhatsApp] API error:', JSON.stringify(data?.error || data))
+            console.error('[WhatsApp] API ERROR:', JSON.stringify(data?.error || data))
         } else {
-            console.log('[WhatsApp] Sent successfully to:', phone)
+            console.log('[WhatsApp] SUCCESS → messageId:', data?.messages?.[0]?.id)
         }
         return data
     } catch (err) {
-        console.log('[WhatsApp] Network error:', err.message)
+        console.error('[WhatsApp] Network error:', err.message)
     }
 }
 
