@@ -120,7 +120,7 @@ export const sendOrderConfirmationWhatsApp = async ({ mobile, name, orderId, tot
 export const sendCODVerificationWhatsApp = async ({ mobile, name, orderId, totalAmt }) => {
     const phone = formatPhone(mobile)
     if (!phone) return
-    return sendTemplate(phone, 'cod_verification', 'en', [
+    return sendTemplate(phone, 'cod_verification', 'en_IN', [
         name || 'Customer',
         orderId,
         rupees(totalAmt),
