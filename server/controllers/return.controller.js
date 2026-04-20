@@ -155,58 +155,68 @@ export const updateReturnStatus = async (req, res) => {
         if (newStatus === 'Approved' && prevStatus !== 'Approved') {
             const order = await OrderModel.findById(returnReq.orderId)
             const isCOD = returnReq.paymentMethod === 'COD' ||
-                order?.payment_status?.toUpperCase() === 'CASH ON DELIVERY'
+                (order?.payment_status || '').toUpperCase().includes('CASH') ||
+                (order?.payment_status || '').toUpperCase() === 'COD' ||
+                !order?.paymentId
+
+            if (isCOD) {
+                // COD: auto-credit wallet immediately
+                try {
+                    await creditWalletInternal(
+                        returnReq.userId,
+                        finalRefundAmount,
+                        `Refund for return on order ${returnReq.orderDisplayId}`,
+                        `RET-${returnReq._id}`
+                    )
+                    returnReq.status = 'Refunded'
+                    returnReq.refundAmount = finalRefundAmount
+                    autoAction = 'wallet_credited'
+                    console.log(`[Refund] Wallet credited ₹${finalRefundAmount} for COD return ${returnReq._id}`)
+                } catch (e) {
+                    console.error('[Refund] Wallet credit failed:', e.message)
+                }
+            } else {
+                // Online payment: trigger Razorpay refund automatically
+                const paymentId = returnReq.paymentId || order?.paymentId
+                returnReq.status = 'Refund Initiated'
+                returnReq.refundAmount = finalRefundAmount
+
+                if (paymentId && Razorpay) {
+                    try {
+                        const rzRefund = await Razorpay.payments.refund(paymentId, {
+                            amount: Math.round(finalRefundAmount * 100),
+                            notes: { reason: `Return approved for order ${returnReq.orderDisplayId}` }
+                        })
+                        autoAction = 'razorpay_refund_initiated'
+                        console.log(`[Refund] Razorpay refund initiated: ${rzRefund.id} for return ${returnReq._id}`)
+                    } catch (e) {
+                        console.error(`[Refund] Razorpay refund failed for return ${returnReq._id}:`, e.message)
+                        autoAction = 'razorpay_refund_failed'
+                    }
+                } else {
+                    console.warn(`[Refund] No paymentId or Razorpay not configured for return ${returnReq._id}`)
+                    autoAction = 'razorpay_not_configured'
+                }
+            }
+        }
+
+        if (newStatus === 'Refunded' && prevStatus !== 'Refunded' && autoAction !== 'wallet_credited') {
+            const order = await OrderModel.findById(returnReq.orderId)
+            const isCOD = returnReq.paymentMethod === 'COD' ||
+                (order?.payment_status || '').toUpperCase().includes('CASH') ||
+                !order?.paymentId
 
             if (isCOD) {
                 try {
                     await creditWalletInternal(
                         returnReq.userId,
                         finalRefundAmount,
-                        `Refund for order ${returnReq.orderDisplayId}`,
-                        `RET-${returnReq._id}`
-                    )
-                    returnReq.status = 'Refunded'
-                    returnReq.refundAmount = finalRefundAmount
-                    autoAction = 'wallet_credited'
-                } catch (e) {
-                    if(process.env.NODE_ENV !== 'production') console.log('Wallet credit failed:', e.message)
-                }
-            } else {
-                const paymentId = returnReq.paymentId || order?.paymentId
-                if (paymentId && Razorpay) {
-                    try {
-                        await Razorpay.payments.refund(paymentId, {
-                            amount: Math.round(finalRefundAmount * 100)
-                        })
-                        returnReq.status = 'Refund Initiated'
-                        autoAction = 'razorpay_refund_initiated'
-                    } catch (e) {
-                        if(process.env.NODE_ENV !== 'production') console.log('Razorpay refund failed:', e.message)
-                        autoAction = 'razorpay_refund_failed'
-                    }
-                } else {
-                    returnReq.status = 'Refund Initiated'
-                    autoAction = 'manual_refund_needed'
-                }
-            }
-        }
-
-        if (newStatus === 'Refunded' && prevStatus !== 'Refunded') {
-            const order = await OrderModel.findById(returnReq.orderId)
-            const isCOD = returnReq.paymentMethod === 'COD' ||
-                order?.payment_status?.toUpperCase() === 'CASH ON DELIVERY'
-
-            if (isCOD && autoAction !== 'wallet_credited') {
-                try {
-                    await creditWalletInternal(
-                        returnReq.userId,
-                        finalRefundAmount,
-                        `Refund for order ${returnReq.orderDisplayId}`,
+                        `Refund for return on order ${returnReq.orderDisplayId}`,
                         `RET-${returnReq._id}`
                     )
                     autoAction = 'wallet_credited'
                 } catch (e) {
-                    if(process.env.NODE_ENV !== 'production') console.log('Wallet credit failed:', e.message)
+                    console.error('[Refund] Wallet credit failed:', e.message)
                 }
             }
         }
