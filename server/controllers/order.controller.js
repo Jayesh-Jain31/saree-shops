@@ -502,37 +502,44 @@ export async function cancelOrderController(request, response) {
         }
 
         // Online payment: trigger Razorpay refund for the online-paid portion
+        let refundError = null
+
         if (!isCOD && order.paymentId) {
             const onlinePaid = Math.max(0, (order.totalAmt || 0) - (order.walletDeduction || 0))
-            if (onlinePaid > 0 && Razorpay) {
+            if (onlinePaid > 0) {
                 try {
-                    await Razorpay.payments.refund(order.paymentId, {
+                    const rzRefund = await Razorpay.payments.refund(order.paymentId, {
                         amount: Math.round(onlinePaid * 100),
-                        notes: { reason: `Cancelled order #${order.orderId}` }
+                        speed: "normal",
+                        notes: { reason: `Cancelled order #${order.orderId}`, orderId: order.orderId }
                     })
                     razorpayRefundInitiated = true
-                    console.log(`[Refund] Razorpay refund initiated for order #${order.orderId}, amount: ₹${onlinePaid}`)
+                    console.log(`[Refund] Razorpay refund OK — refundId: ${rzRefund?.id}, order: ${order.orderId}, amount: ₹${onlinePaid}`)
                 } catch (rzErr) {
-                    console.error(`[Refund] Razorpay refund failed for order #${order.orderId}:`, rzErr.message)
+                    const rzErrMsg = rzErr?.error?.description || rzErr?.message || String(rzErr)
+                    refundError = rzErrMsg
+                    console.error(`[Refund] Razorpay refund FAILED — order: ${order.orderId}, paymentId: ${order.paymentId}, amount: ₹${onlinePaid}, error: ${rzErrMsg}`)
+                    console.error(`[Refund] Full error:`, JSON.stringify(rzErr?.error || rzErr))
                 }
             }
         }
 
-        // COD: no monetary refund needed (customer hasn't paid online)
-
         let message = "Order cancelled successfully"
         if (walletRefunded > 0 && razorpayRefundInitiated) {
-            message = `Order cancelled. ₹${walletRefunded} refunded to wallet + Razorpay refund initiated for online payment.`
+            message = `Order cancelled. ₹${walletRefunded} refunded to wallet + Razorpay refund initiated (5-7 business days).`
         } else if (walletRefunded > 0) {
             message = `Order cancelled. ₹${walletRefunded} refunded to your wallet instantly.`
         } else if (razorpayRefundInitiated) {
-            message = "Order cancelled. Razorpay refund has been initiated and will reflect in 5-7 business days."
+            message = "Order cancelled. Razorpay refund initiated — you will receive the amount in 5-7 business days."
+        } else if (!isCOD && order.paymentId && refundError) {
+            message = `Order cancelled. Refund could not be processed automatically — please contact support. (${refundError})`
         }
 
         return response.json({
             message,
             walletRefunded,
             razorpayRefundInitiated,
+            refundError,
             data: order,
             error: false,
             success: true
