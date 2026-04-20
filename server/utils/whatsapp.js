@@ -109,15 +109,12 @@ export const sendFreeTextWhatsApp = async (phone, message) => {
 }
 
 // ─── Order Confirmation ──────────────────────────────────────────────────────
-export const sendOrderConfirmationWhatsApp = async ({ mobile, name, orderId, totalAmt, paymentMethod }) => {
+export const sendOrderConfirmationWhatsApp = async ({ mobile, name, orderId }) => {
     const phone = formatPhone(mobile)
     if (!phone) return
-    const isCOD = String(paymentMethod).toUpperCase().includes('CASH')
-    return sendTemplate(phone, 'order_confirmation', 'en_US', [
+    return sendTemplate(phone, 'order_confirmations', 'en_US', [
         name || 'Customer',
         orderId,
-        rupees(totalAmt),
-        isCOD ? 'Cash on Delivery' : 'Online (Paid)',
     ])
 }
 
