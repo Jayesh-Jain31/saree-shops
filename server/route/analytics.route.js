@@ -13,7 +13,9 @@ import {
     getReturnAnalyticsController,
     whatsappBroadcastController,
     getCustomerLoyaltyController,
-    getReferralInfoController
+    getReferralInfoController,
+    abandonedCartRecoveryController,
+    abandonedCartStatsController
 } from '../controllers/analytics.controller.js'
 
 const analyticsRouter = Router()
@@ -30,5 +32,7 @@ analyticsRouter.get("/return-analytics", auth, admin, getReturnAnalyticsControll
 analyticsRouter.post("/whatsapp-broadcast", auth, admin, whatsappBroadcastController)
 analyticsRouter.get("/my-loyalty", auth, getCustomerLoyaltyController)
 analyticsRouter.get("/my-referral", auth, getReferralInfoController)
+analyticsRouter.post("/abandoned-cart-recovery", auth, admin, abandonedCartRecoveryController)
+analyticsRouter.get("/abandoned-cart-stats", auth, admin, abandonedCartStatsController)
 
 export default analyticsRouter

@@ -30,6 +30,8 @@ const MyReturns          = lazy(() => import("../pages/MyReturns"));
 const Wallet             = lazy(() => import("../pages/Wallet"));
 const LoyaltyPage        = lazy(() => import("../pages/LoyaltyPage"));
 const AdminLoyalty       = lazy(() => import("../pages/AdminLoyalty"));
+const AdminBundles       = lazy(() => import("../pages/AdminBundles"));
+const BundlesPage        = lazy(() => import("../pages/BundlesPage"));
 const PolicyPage         = lazy(() => import("../pages/PolicyPage"));
 const AllCategoriesPage  = lazy(() => import("../pages/AllCategoriesPage"));
 
@@ -93,6 +95,8 @@ const router = createBrowserRouter([
                     { path : "wallet",          element : <Lazy><Wallet/></Lazy> },
                     { path : "loyalty",         element : <Lazy><LoyaltyPage/></Lazy> },
                     { path : "admin-loyalty",   element : <AdminPermision><Lazy><AdminLoyalty/></Lazy></AdminPermision> },
+                    { path : "bundles",         element : <Lazy><BundlesPage/></Lazy> },
+                    { path : "admin-bundles",   element : <AdminPermision><Lazy><AdminBundles/></Lazy></AdminPermision> },
                     { path : "site-settings",    element : <AdminPermision><Lazy><SiteSettings/></Lazy></AdminPermision> },
                     { path : "policy-pages",     element : <AdminPermision><Lazy><PolicyAdmin/></Lazy></AdminPermision> },
                     { path : "fraud-detection", element : <AdminPermision><Lazy><AdminFraud/></Lazy></AdminPermision> },

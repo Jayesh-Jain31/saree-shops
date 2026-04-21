@@ -353,3 +353,78 @@ export async function getReferralInfoController(request, response) {
         return response.status(500).json({ message: error.message || error, error: true, success: false })
     }
 }
+
+// ─── Abandoned Cart Recovery ──────────────────────────────────────────────────
+export async function abandonedCartRecoveryController(request, response) {
+    try {
+        const { hoursThreshold = 2, customMessage = '' } = request.body
+        const cutoff = new Date(Date.now() - hoursThreshold * 60 * 60 * 1000)
+        const recentOrderCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+        const CartProductModel = (await import('../models/cartproduct.model.js')).default
+
+        const abandonedCarts = await CartProductModel.aggregate([
+            { $match: { updatedAt: { $lt: cutoff } } },
+            { $group: { _id: '$userId', itemCount: { $sum: 1 }, lastUpdated: { $max: '$updatedAt' } } }
+        ])
+
+        if (!abandonedCarts.length) {
+            return response.json({ message: 'No abandoned carts found', data: { notified: 0, skipped: 0, failed: 0 }, error: false, success: true })
+        }
+
+        const recentOrderUserIds = (await OrderModel.distinct('userId', { createdAt: { $gt: recentOrderCutoff } })).map(String)
+
+        let notified = 0, skipped = 0, failed = 0
+
+        for (const cart of abandonedCarts) {
+            if (recentOrderUserIds.includes(String(cart._id))) { skipped++; continue }
+
+            const user = await UserModel.findById(cart._id).select('name email mobile').lean()
+            if (!user) { skipped++; continue }
+
+            const msg = customMessage
+                ? customMessage.replace('{{name}}', user.name || 'there').replace('{{items}}', cart.itemCount)
+                : `Hi ${user.name || 'there'}, you left ${cart.itemCount} item${cart.itemCount > 1 ? 's' : ''} in your cart! Complete your order before they sell out. 🛍️`
+
+            let sent = false
+            if (user.mobile) {
+                try { await sendFreeTextWhatsApp(user.mobile, msg); sent = true } catch {}
+            }
+            if (user.email) {
+                try {
+                    await sendEmail({ sendTo: user.email, subject: 'You left something in your cart!', html: `<p>${msg}</p>` })
+                    sent = true
+                } catch {}
+            }
+            sent ? notified++ : failed++
+            await new Promise(r => setTimeout(r, 100))
+        }
+
+        return response.json({
+            message: `Recovery run complete: ${notified} notified, ${skipped} skipped, ${failed} failed`,
+            data: { total: abandonedCarts.length, notified, skipped, failed },
+            error: false, success: true
+        })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+// ─── Abandoned Cart Stats ─────────────────────────────────────────────────────
+export async function abandonedCartStatsController(request, response) {
+    try {
+        const { hoursThreshold = 2 } = request.query
+        const cutoff = new Date(Date.now() - hoursThreshold * 60 * 60 * 1000)
+        const CartProductModel = (await import('../models/cartproduct.model.js')).default
+
+        const agg = await CartProductModel.aggregate([
+            { $match: { updatedAt: { $lt: cutoff } } },
+            { $group: { _id: '$userId', itemCount: { $sum: 1 } } },
+            { $count: 'total' }
+        ])
+        const total = agg[0]?.total || 0
+        return response.json({ data: { total, hoursThreshold }, error: false, success: true })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}

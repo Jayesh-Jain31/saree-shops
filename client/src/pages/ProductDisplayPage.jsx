@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import BackButton from '../components/BackButton'
 import ProductQA from '../components/ProductQA'
+import YouMayAlsoLike from '../components/YouMayAlsoLike'
 import SummaryApi from '../common/SummaryApi'
 import Axios from '../utils/Axios'
 import AxiosToastError from '../utils/AxiosToastError'
@@ -591,6 +592,9 @@ const ProductDisplayPage = () => {
           )}
         </div>
       )}
+
+      {/* You May Also Like */}
+      {data?._id && <YouMayAlsoLike productId={data._id} />}
 
       {/* Q&A Section */}
       {data?._id && (

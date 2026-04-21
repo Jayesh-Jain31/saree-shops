@@ -15,7 +15,7 @@ import {
 } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { FiPackage, FiHeart, FiMapPin, FiLogOut, FiUser, FiRefreshCw } from 'react-icons/fi'
-import { FaShieldAlt } from 'react-icons/fa'
+import { FaShieldAlt, FaBoxOpen } from 'react-icons/fa'
 import { MdAccountBalanceWallet } from 'react-icons/md'
 import { GiDiamondTrophy } from 'react-icons/gi'
 import isAdmin from '../utils/isAdmin'
@@ -90,6 +90,7 @@ const UserMenu = ({ close }) => {
             <MenuItem to="/dashboard/admin-returns" icon={FiRefreshCw} label="Return Requests" color="text-orange-500" />
             <MenuItem to="/dashboard/fraud-detection" icon={FaShieldAlt} label="Fraud Detection" color="text-red-500" />
             <MenuItem to="/dashboard/admin-loyalty" icon={GiDiamondTrophy} label="Loyalty Points" color="text-yellow-500" />
+            <MenuItem to="/dashboard/admin-bundles" icon={FaBoxOpen} label="Bundle Deals" color="text-purple-500" />
             <MenuItem to="/dashboard/policy-pages" icon={HiDocumentText} label="Policy Pages" color="text-indigo-400" />
             <MenuItem to="/dashboard/site-settings" icon={MdSettings} label="Site Settings" color="text-gray-500" />
           </div>
@@ -102,6 +103,7 @@ const UserMenu = ({ close }) => {
       <div className='text-sm grid gap-0.5 px-1'>
         <MenuItem to="/dashboard/myorders" icon={FiPackage} label="My Orders" />
         <MenuItem to="/dashboard/my-returns" icon={FiRefreshCw} label="My Returns" color="text-orange-400" />
+        <MenuItem to="/dashboard/bundles" icon={FaBoxOpen} label="Bundle Deals" color="text-purple-500" />
         <MenuItem to="/dashboard/wallet" icon={MdAccountBalanceWallet} label="My Wallet" color="text-green-500" />
         <MenuItem to="/dashboard/loyalty" icon={GiDiamondTrophy} label="Loyalty Points" color="text-yellow-500" />
         <MenuItem to="/dashboard/wishlist" icon={FiHeart} label="My Wishlist" color="text-red-400" />

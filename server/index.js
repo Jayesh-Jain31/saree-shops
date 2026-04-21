@@ -32,6 +32,7 @@ import fraudRouter from './route/fraud.route.js'
 import qaRouter from './route/qa.route.js'
 import otpRouter from './route/otp.route.js'
 import loyaltyRouter from './route/loyalty.route.js'
+import bundleRouter from './route/bundle.route.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -116,6 +117,7 @@ app.use('/api/fraud', fraudRouter)
 app.use('/api/qa', qaRouter)
 app.use('/api/otp', otpRouter)
 app.use('/api/loyalty', loyaltyRouter)
+app.use('/api/bundle', bundleRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })

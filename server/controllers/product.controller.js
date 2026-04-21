@@ -404,3 +404,41 @@ export const bulkImportProductController = async (request, response) => {
         return response.status(500).json({ message: error.message || error, error: true, success: false })
     }
 }
+
+export const getRecommendations = async (req, res) => {
+    try {
+        const { productId } = req.params
+        const limit = parseInt(req.query.limit) || 8
+
+        const product = await ProductModel.findById(productId).select('category subCategory').lean()
+        if (!product) return res.status(404).json({ message: 'Product not found', error: true, success: false })
+
+        const categoryIds = product.category || []
+        const subCategoryIds = product.subCategory || []
+
+        let products = []
+        if (subCategoryIds.length) {
+            products = await ProductModel.find({
+                _id: { $ne: productId },
+                publish: true,
+                stock: { $gt: 0 },
+                subCategory: { $in: subCategoryIds }
+            }).select('name image price discount category subCategory avgRating reviewCount stock').sort({ avgRating: -1, reviewCount: -1 }).limit(limit).lean()
+        }
+
+        if (products.length < limit && categoryIds.length) {
+            const existingIds = products.map(p => p._id)
+            const more = await ProductModel.find({
+                _id: { $ne: productId, $nin: existingIds },
+                publish: true,
+                stock: { $gt: 0 },
+                category: { $in: categoryIds }
+            }).select('name image price discount category subCategory avgRating reviewCount stock').sort({ avgRating: -1 }).limit(limit - products.length).lean()
+            products = [...products, ...more]
+        }
+
+        return res.json({ data: products, error: false, success: true })
+    } catch (e) {
+        return res.status(500).json({ message: e.message, error: true, success: false })
+    }
+}

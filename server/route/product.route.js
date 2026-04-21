@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import auth from '../middleware/auth.js'
-import { createProductController, deleteProductDetails, getProductByCategory, getProductByCategoryAndSubCategory, getProductController, getProductDetails, searchProduct, updateProductDetails, bulkImportProductController } from '../controllers/product.controller.js'
+import { createProductController, deleteProductDetails, getProductByCategory, getProductByCategoryAndSubCategory, getProductController, getProductDetails, searchProduct, updateProductDetails, bulkImportProductController, getRecommendations } from '../controllers/product.controller.js'
 import { admin } from '../middleware/Admin.js'
 
 const productRouter = Router()
@@ -22,5 +22,8 @@ productRouter.post('/search-product',searchProduct)
 
 //bulk import
 productRouter.post('/bulk-import',auth,admin,bulkImportProductController)
+
+// recommendations
+productRouter.get('/recommendations/:productId', getRecommendations)
 
 export default productRouter
