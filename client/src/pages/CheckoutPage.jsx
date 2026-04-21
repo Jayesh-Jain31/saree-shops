@@ -298,13 +298,47 @@ const CheckoutPage = () => {
       toast.dismiss(toastId)
       if (!response.data.success) { toast.error('Failed to create payment order.'); return }
       const razorpayOrder = response.data.data
+      const selectedAddr = addressList[selectAddress]
+      const customerMobile = user?.mobile || selectedAddr?.mobile || ''
+      const customerName   = user?.name   || selectedAddr?.name   || ''
+      const customerEmail  = user?.email  || ''
+
       const options = {
         key: razorpayKeyId,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
         name: siteName,
         description: 'Order Payment',
+        image: '/logo.png',
         order_id: razorpayOrder.id,
+
+        // ── Magic Checkout (1-click for returning Razorpay users) ──
+        magic: true,
+
+        // ── Pre-fill customer details ──
+        prefill: {
+          name:    customerName,
+          email:   customerEmail,
+          contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
+        },
+
+        // ── Pre-fill shipping address ──
+        ...(selectedAddr && {
+          customer_details: {
+            name:    customerName,
+            contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
+            email:   customerEmail,
+            shipping_address: {
+              line1:   selectedAddr.address_line || '',
+              line2:   selectedAddr.landmark     || '',
+              city:    selectedAddr.city         || '',
+              state:   selectedAddr.state        || '',
+              zipcode: String(selectedAddr.pincode || ''),
+              country: 'IN',
+            }
+          }
+        }),
+
         handler: async (paymentResponse) => {
           try {
             const walletOk = await debitWalletIfNeeded()
@@ -327,7 +361,7 @@ const CheckoutPage = () => {
           } catch (err) { toast.dismiss(); AxiosToastError(err) }
         },
         theme: { color: '#16a34a' },
-        modal: { ondismiss: () => toast.error('Payment cancelled.') }
+        modal: { ondismiss: () => toast.error('Payment cancelled.'), escape: true }
       }
       const razorpay = new window.Razorpay(options)
       razorpay.open()
