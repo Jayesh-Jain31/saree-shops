@@ -19,6 +19,7 @@ import {
     sendAdminLowStockAlert
 } from "../utils/whatsapp.js";
 import SettingModel from "../models/settings.model.js";
+import { earnPointsInternal, redeemPointsInternal, deductPointsInternal } from "./loyalty.controller.js";
 
 // Helper: decrement stock for each ordered item + low stock alert
 async function decrementStock(items) {
@@ -62,7 +63,7 @@ async function creditReferralReward(userId) {
 export async function CashOnDeliveryOrderController(request, response) {
     try {
         const userId = request.userId
-        const { list_items, totalAmt, addressId, subTotalAmt, discountAmt = 0, couponCode = "", couponDiscount = 0, walletDeduction = 0 } = request.body
+        const { list_items, totalAmt, addressId, subTotalAmt, discountAmt = 0, couponCode = "", couponDiscount = 0, walletDeduction = 0, loyaltyPointsUsed = 0, loyaltyDiscount = 0 } = request.body
 
         const items = list_items.map(el => ({
             productId: el.productId._id,
@@ -94,6 +95,10 @@ export async function CashOnDeliveryOrderController(request, response) {
             })
         }
 
+        if (loyaltyPointsUsed > 0) {
+            await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
+        }
+
         const order = await OrderModel.create({
             userId: userId,
             orderId: `ORD-${new mongoose.Types.ObjectId()}`,
@@ -107,10 +112,14 @@ export async function CashOnDeliveryOrderController(request, response) {
             couponCode: couponCode,
             couponDiscount: couponDiscount,
             walletDeduction: walletDeduction,
+            loyaltyPointsUsed: loyaltyPointsUsed,
+            loyaltyDiscount: loyaltyDiscount,
             orderStatus: "Confirmed",
             fraudRiskScore: fraud.riskScore,
             fraudRiskLevel: fraud.riskLevel,
         })
+
+        earnPointsInternal(userId, subTotalAmt, order.orderId).catch(() => {})
 
         // Flag suspicious orders (score >= 30) for admin review
         if (fraud.riskScore >= 30) {
@@ -255,6 +264,8 @@ export async function razorpayVerifyController(request, response) {
             couponCode = "",
             couponDiscount = 0,
             walletDeduction = 0,
+            loyaltyPointsUsed = 0,
+            loyaltyDiscount = 0,
         } = request.body
 
         const body = razorpay_order_id + "|" + razorpay_payment_id
@@ -281,6 +292,10 @@ export async function razorpayVerifyController(request, response) {
             price: el.productId.price || 0,
         }))
 
+        if (loyaltyPointsUsed > 0) {
+            await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
+        }
+
         const order = await OrderModel.create({
             userId: userId,
             orderId: `ORD-${new mongoose.Types.ObjectId()}`,
@@ -294,8 +309,12 @@ export async function razorpayVerifyController(request, response) {
             couponCode: couponCode,
             couponDiscount: couponDiscount,
             walletDeduction: walletDeduction,
+            loyaltyPointsUsed: loyaltyPointsUsed,
+            loyaltyDiscount: loyaltyDiscount,
             orderStatus: "Confirmed",
         })
+
+        earnPointsInternal(userId, subTotalAmt, order.orderId).catch(() => {})
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })

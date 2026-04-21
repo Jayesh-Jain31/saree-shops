@@ -49,6 +49,11 @@ const SiteSettings = () => {
   const [savingMaintenance, setSavingMaintenance] = useState(false)
   const [codEnabled, setCodEnabled] = useState(true)
   const [savingCod, setSavingCod] = useState(false)
+  const [loyaltyEarnPer100, setLoyaltyEarnPer100] = useState('10')
+  const [loyaltyPointValue, setLoyaltyPointValue] = useState('0.25')
+  const [loyaltyMinRedeem, setLoyaltyMinRedeem] = useState('50')
+  const [loyaltyMaxRedeemPct, setLoyaltyMaxRedeemPct] = useState('50')
+  const [savingLoyalty, setSavingLoyalty] = useState(false)
   const [announcementText, setAnnouncementText] = useState('Free delivery above ₹999')
   const [announcementEnabled, setAnnouncementEnabled] = useState(false)
   const [savingAnnouncement, setSavingAnnouncement] = useState(false)
@@ -103,6 +108,10 @@ const SiteSettings = () => {
           setMaintenanceMode(s.maintenance_mode === 'true')
           setMaintenanceMessage(s.maintenance_message || '')
           setCodEnabled(s.cod_enabled !== 'false')
+          if (s.loyalty_earn_per_100) setLoyaltyEarnPer100(s.loyalty_earn_per_100)
+          if (s.loyalty_point_value) setLoyaltyPointValue(s.loyalty_point_value)
+          if (s.loyalty_min_redeem) setLoyaltyMinRedeem(s.loyalty_min_redeem)
+          if (s.loyalty_max_redeem_pct) setLoyaltyMaxRedeemPct(s.loyalty_max_redeem_pct)
           setAnnouncementText(s.announcement_text || 'Free delivery above ₹999')
           setAnnouncementEnabled(s.announcement_enabled === 'true')
           setOutsideDeliveryTime(s.outside_delivery_time || '3-4 days')
@@ -375,6 +384,20 @@ const SiteSettings = () => {
     } finally {
       setSavingCod(false)
     }
+  }
+
+  const handleSaveLoyalty = async () => {
+    setSavingLoyalty(true)
+    try {
+      await Promise.all([
+        saveSetting('loyalty_earn_per_100', String(parseFloat(loyaltyEarnPer100) || 10)),
+        saveSetting('loyalty_point_value', String(parseFloat(loyaltyPointValue) || 0.25)),
+        saveSetting('loyalty_min_redeem', String(parseInt(loyaltyMinRedeem) || 50)),
+        saveSetting('loyalty_max_redeem_pct', String(parseInt(loyaltyMaxRedeemPct) || 50)),
+      ])
+      toast.success('Loyalty settings saved!')
+    } catch { toast.error('Failed to save loyalty settings') }
+    finally { setSavingLoyalty(false) }
   }
 
   const activePolicy = allPolicies.find(p => p.key === activePolicyTab)
@@ -1077,6 +1100,75 @@ const SiteSettings = () => {
           </div>
           <div className={`px-5 py-2 text-xs font-semibold ${codEnabled ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-500'}`}>
             {codEnabled ? '✓ COD is available — customers can pay cash on delivery' : '✕ COD is disabled — only Razorpay / Wallet payments accepted'}
+          </div>
+        </div>
+
+        {/* ── Loyalty Points Settings ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b bg-gradient-to-r from-yellow-50 to-orange-50'>
+            <div className='w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center'>
+              <span className='text-yellow-600 text-xl'>🏆</span>
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Loyalty Points Program</h2>
+              <p className='text-xs text-gray-500'>Configure how customers earn and redeem points</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div className='grid grid-cols-2 gap-4'>
+              <div>
+                <label className='block text-xs font-semibold text-gray-600 mb-1'>Points per ₹100 spent</label>
+                <input
+                  type='number' min='1' max='100' step='1'
+                  value={loyaltyEarnPer100}
+                  onChange={e => setLoyaltyEarnPer100(e.target.value)}
+                  className='w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400'
+                />
+                <p className='text-[10px] text-gray-400 mt-1'>e.g. 10 = earn 10 pts per ₹100</p>
+              </div>
+              <div>
+                <label className='block text-xs font-semibold text-gray-600 mb-1'>₹ value per point</label>
+                <input
+                  type='number' min='0.01' max='10' step='0.01'
+                  value={loyaltyPointValue}
+                  onChange={e => setLoyaltyPointValue(e.target.value)}
+                  className='w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400'
+                />
+                <p className='text-[10px] text-gray-400 mt-1'>e.g. 0.25 = 1 pt = ₹0.25</p>
+              </div>
+              <div>
+                <label className='block text-xs font-semibold text-gray-600 mb-1'>Min points to redeem</label>
+                <input
+                  type='number' min='1' step='1'
+                  value={loyaltyMinRedeem}
+                  onChange={e => setLoyaltyMinRedeem(e.target.value)}
+                  className='w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400'
+                />
+                <p className='text-[10px] text-gray-400 mt-1'>Minimum balance needed to redeem</p>
+              </div>
+              <div>
+                <label className='block text-xs font-semibold text-gray-600 mb-1'>Max redeem % of order</label>
+                <input
+                  type='number' min='1' max='100' step='1'
+                  value={loyaltyMaxRedeemPct}
+                  onChange={e => setLoyaltyMaxRedeemPct(e.target.value)}
+                  className='w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400'
+                />
+                <p className='text-[10px] text-gray-400 mt-1'>e.g. 50 = redeem up to 50% of order</p>
+              </div>
+            </div>
+            <div className='bg-yellow-50 rounded-xl p-3 text-xs text-yellow-700'>
+              <strong>Example:</strong> ₹1000 order → {Math.floor(1000 / 100) * (parseFloat(loyaltyEarnPer100) || 10)} pts earned.
+              Redeem {Math.floor((parseFloat(loyaltyMinRedeem) || 50))} pts → ₹{((parseFloat(loyaltyMinRedeem) || 50) * (parseFloat(loyaltyPointValue) || 0.25)).toFixed(2)} discount.
+            </div>
+            <button
+              onClick={handleSaveLoyalty}
+              disabled={savingLoyalty}
+              className='btn-primary px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-2'
+            >
+              {savingLoyalty && <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />}
+              Save Loyalty Settings
+            </button>
           </div>
         </div>
 

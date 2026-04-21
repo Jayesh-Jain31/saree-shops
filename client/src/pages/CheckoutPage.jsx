@@ -14,6 +14,7 @@ import {
   FaPlus, FaMobileAlt, FaHome, FaBuilding
 } from 'react-icons/fa'
 import { MdAccountBalanceWallet, MdDeliveryDining } from 'react-icons/md'
+import { GiDiamondTrophy } from 'react-icons/gi'
 import { SiRazorpay } from 'react-icons/si'
 import { addNotification } from '../components/NotificationBell'
 
@@ -48,6 +49,9 @@ const CheckoutPage = () => {
   const [walletBalance, setWalletBalance] = useState(0)
   const [useWallet, setUseWallet] = useState(false)
   const [walletLoading, setWalletLoading] = useState(false)
+  const [loyaltyData, setLoyaltyData] = useState(null)
+  const [useLoyalty, setUseLoyalty] = useState(false)
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false)
   const [codLoading, setCodLoading] = useState(false)
   const [showOtpModal, setShowOtpModal] = useState(false)
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
@@ -69,8 +73,15 @@ const CheckoutPage = () => {
   const finalAmount = baseAmount + deliveryCharge
   const couponDiscount = appliedCoupon ? appliedCoupon.discountAmount : 0
   const walletDeduction = useWallet ? Math.min(walletBalance, finalAmount) : 0
-  const payableAmount = finalAmount - walletDeduction
-  const totalSavings = (notDiscountTotalPrice - totalPrice) + couponDiscount + walletDeduction
+  const loyaltyPointsUsed = (() => {
+    if (!useLoyalty || !loyaltyData) return 0
+    const settings = loyaltyData.settings
+    const maxByPct = Math.floor((finalAmount * settings.maxRedeemPct) / 100 / settings.pointValue)
+    return Math.min(loyaltyData.points, maxByPct)
+  })()
+  const loyaltyDiscount = loyaltyPointsUsed > 0 ? parseFloat((loyaltyPointsUsed * (loyaltyData?.settings?.pointValue || 0)).toFixed(2)) : 0
+  const payableAmount = Math.max(0, finalAmount - walletDeduction - loyaltyDiscount)
+  const totalSavings = (notDiscountTotalPrice - totalPrice) + couponDiscount + walletDeduction + loyaltyDiscount
 
   useEffect(() => {
     if (!user?._id) return
@@ -81,7 +92,15 @@ const CheckoutPage = () => {
         if (res.data.success) setWalletBalance(res.data.data.balance || 0)
       } catch {} finally { setWalletLoading(false) }
     }
+    const fetchLoyalty = async () => {
+      setLoyaltyLoading(true)
+      try {
+        const res = await Axios({ ...SummaryApi.getMyLoyalty })
+        if (res.data.success) setLoyaltyData(res.data.data)
+      } catch {} finally { setLoyaltyLoading(false) }
+    }
     fetchWallet()
+    fetchLoyalty()
   }, [user?._id])
 
   useEffect(() => {
@@ -188,7 +207,7 @@ const CheckoutPage = () => {
     const selectedAddrSnapshot = addressList[selectAddress]
     const response = await Axios({
       ...SummaryApi.CashOnDeliveryOrder,
-      data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction }
+      data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
     })
     if (response.data.success) {
       toast.success(response.data.message)
@@ -273,7 +292,7 @@ const CheckoutPage = () => {
       try {
         const response = await Axios({
           ...SummaryApi.CashOnDeliveryOrder,
-          data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: 0, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction }
+          data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: 0, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
         })
         if (response.data.success) {
           const itemsSnapshot = [...cartItemsList]
@@ -346,7 +365,7 @@ const CheckoutPage = () => {
             const verifyToastId = toast.loading('Verifying payment...')
             const verifyRes = await Axios({
               ...SummaryApi.razorpayVerify,
-              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: finalAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction }
+              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: finalAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
             })
             toast.dismiss(verifyToastId)
             if (verifyRes.data.success) {
@@ -508,6 +527,40 @@ const CheckoutPage = () => {
               </div>
             )}
 
+            {/* ── Loyalty Points ── */}
+            {loyaltyData && loyaltyData.points >= (loyaltyData.settings?.minRedeem || 50) && (
+              <div className='bg-white rounded-2xl border shadow-sm p-4'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-3'>
+                    <div className='w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center'>
+                      <GiDiamondTrophy className='text-yellow-600' size={20} />
+                    </div>
+                    <div>
+                      <p className='font-semibold text-gray-800 text-sm'>Loyalty Points</p>
+                      <p className='text-xs text-yellow-600 font-medium'>
+                        {loyaltyData.points} pts = {DisplayPriceInRupees(loyaltyData.rupeeValue)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setUseLoyalty(p => !p)}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${useLoyalty ? 'bg-yellow-500' : 'bg-gray-300'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${useLoyalty ? 'translate-x-6' : ''}`} />
+                  </button>
+                </div>
+                {useLoyalty && loyaltyDiscount > 0 && (
+                  <div className='mt-3 bg-yellow-50 rounded-xl p-2.5 flex items-center justify-between'>
+                    <p className='text-xs text-yellow-700 font-medium'>✓ {loyaltyPointsUsed} pts redeemed</p>
+                    <p className='text-sm font-bold text-yellow-700'>- {DisplayPriceInRupees(loyaltyDiscount)}</p>
+                  </div>
+                )}
+                {useLoyalty && loyaltyDiscount <= 0 && (
+                  <p className='mt-2 text-xs text-gray-400'>Not enough redeemable points for this order amount.</p>
+                )}
+              </div>
+            )}
+
             {/* ── Coupon ── */}
             <div className='bg-white rounded-2xl border shadow-sm p-4'>
               <div className='flex items-center justify-between mb-3'>
@@ -631,6 +684,12 @@ const CheckoutPage = () => {
                     <span>- {DisplayPriceInRupees(walletDeduction)}</span>
                   </div>
                 )}
+                {useLoyalty && loyaltyDiscount > 0 && (
+                  <div className='flex justify-between text-yellow-600 font-medium'>
+                    <span className='flex items-center gap-1'><GiDiamondTrophy size={14} /> Loyalty ({loyaltyPointsUsed} pts)</span>
+                    <span>- {DisplayPriceInRupees(loyaltyDiscount)}</span>
+                  </div>
+                )}
 
                 <div className='border-t border-gray-100 pt-3'>
                   <div className='flex justify-between font-bold text-gray-900 text-base'>
@@ -653,7 +712,7 @@ const CheckoutPage = () => {
                 >
                   <SiRazorpay size={20} />
                   {payableAmount <= 0
-                    ? 'Place Order (Fully from Wallet)'
+                    ? 'Place Order (Fully Discounted)'
                     : `Pay ${DisplayPriceInRupees(payableAmount)} with Razorpay`}
                 </button>
 
@@ -672,8 +731,8 @@ const CheckoutPage = () => {
                         Placing Order...
                       </>
                     ) : (
-                      useWallet && walletDeduction > 0 && payableAmount > 0
-                        ? `Pay ${DisplayPriceInRupees(payableAmount)} via COD + Wallet`
+                      (useWallet && walletDeduction > 0) || (useLoyalty && loyaltyDiscount > 0)
+                        ? `Pay ${DisplayPriceInRupees(payableAmount)} via COD`
                         : '🚚 Cash on Delivery'
                     )}
                   </button>
