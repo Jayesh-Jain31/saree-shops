@@ -358,19 +358,53 @@ const CheckoutPage = () => {
           }
         }),
 
+        // ── Show COD as a payment option inside the popup ──
+        config: {
+          display: {
+            blocks: {
+              cod: {
+                name: 'Cash on Delivery',
+                instruments: [{ method: 'cod' }]
+              }
+            },
+            sequence: ['block.cod'],
+            preferences: { show_default_blocks: true }
+          }
+        },
+
         handler: async (paymentResponse) => {
           try {
+            const itemsSnapshot   = [...cartItemsList]
+            const selectedAddrSnapshot = addressList[selectAddress]
+
+            // ── COD selected inside Magic Checkout popup ──
+            if (paymentResponse.method === 'cod' || !paymentResponse.razorpay_signature) {
+              const codToastId = toast.loading('Placing COD order...')
+              const codRes = await Axios({
+                ...SummaryApi.CashOnDeliveryOrder,
+                data: { list_items: cartItemsList, addressId: selectedAddrSnapshot?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || '', couponDiscount, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
+              })
+              toast.dismiss(codToastId)
+              if (codRes.data.success) {
+                toast.success('COD order placed successfully!')
+                addNotification('Your Cash on Delivery order has been placed!', 'success')
+                if (fetchCartItem) fetchCartItem()
+                if (fetchOrder) fetchOrder()
+                navigate('/success', { state: { text: 'Order', address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+              } else { toast.error('Failed to place COD order.') }
+              return
+            }
+
+            // ── Online payment — verify with Razorpay ──
             const walletOk = await debitWalletIfNeeded()
             if (!walletOk) return
             const verifyToastId = toast.loading('Verifying payment...')
             const verifyRes = await Axios({
               ...SummaryApi.razorpayVerify,
-              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: finalAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
+              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, list_items: cartItemsList, addressId: selectedAddrSnapshot?._id, subTotalAmt: totalPrice, totalAmt: finalAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
             })
             toast.dismiss(verifyToastId)
             if (verifyRes.data.success) {
-              const itemsSnapshot = [...cartItemsList]
-              const selectedAddrSnapshot = addressList[selectAddress]
               toast.success('Payment successful! Order placed.')
               addNotification('Your order has been placed successfully! Payment received via Razorpay.', 'success')
               if (fetchCartItem) fetchCartItem()
