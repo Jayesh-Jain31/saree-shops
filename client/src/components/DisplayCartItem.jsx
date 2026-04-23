@@ -20,7 +20,7 @@ const DisplayCartItem = ({ close }) => {
 
   const redirectToCheckoutPage = () => {
     if (user?._id) {
-      navigate('/checkout')
+      navigate('/checkout?magic=1')
       if (close) close()
       return
     }
