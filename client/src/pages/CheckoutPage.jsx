@@ -313,7 +313,7 @@ const CheckoutPage = () => {
       const razorpayKeyId = configRes.data?.keyId
       if (!razorpayKeyId) { toast.error('Razorpay is not configured. Please contact support.'); return }
       const toastId = toast.loading('Initializing payment...')
-      const response = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: payableAmount } })
+      const response = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: payableAmount, list_items: cartItemsList } })
       toast.dismiss(toastId)
       if (!response.data.success) { toast.error('Failed to create payment order.'); return }
       const razorpayOrder = response.data.data
