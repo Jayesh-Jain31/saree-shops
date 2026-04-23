@@ -331,71 +331,17 @@ const CheckoutPage = () => {
         image: '/logo.png',
         order_id: razorpayOrder.id,
 
-        // ── Magic Checkout (1-click for returning Razorpay users) ──
-        magic: true,
-
-        // ── Pre-fill customer details ──
+        // Pre-fill customer details
         prefill: {
           name:    customerName,
           email:   customerEmail,
           contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
         },
 
-        // ── Pre-fill shipping address ──
-        ...(selectedAddr && {
-          customer_details: {
-            name:    customerName,
-            contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
-            email:   customerEmail,
-            shipping_address: {
-              line1:   selectedAddr.address_line || '',
-              line2:   selectedAddr.landmark     || '',
-              city:    selectedAddr.city         || '',
-              state:   selectedAddr.state        || '',
-              zipcode: String(selectedAddr.pincode || ''),
-              country: 'IN',
-            }
-          }
-        }),
-
-        // ── Show COD as a payment option inside the popup ──
-        config: {
-          display: {
-            blocks: {
-              cod: {
-                name: 'Cash on Delivery',
-                instruments: [{ method: 'cod' }]
-              }
-            },
-            sequence: ['block.cod'],
-            preferences: { show_default_blocks: true }
-          }
-        },
-
         handler: async (paymentResponse) => {
           try {
-            const itemsSnapshot   = [...cartItemsList]
+            const itemsSnapshot        = [...cartItemsList]
             const selectedAddrSnapshot = addressList[selectAddress]
-
-            // ── COD selected inside Magic Checkout popup ──
-            if (paymentResponse.method === 'cod' || !paymentResponse.razorpay_signature) {
-              const codToastId = toast.loading('Placing COD order...')
-              const codRes = await Axios({
-                ...SummaryApi.CashOnDeliveryOrder,
-                data: { list_items: cartItemsList, addressId: selectedAddrSnapshot?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || '', couponDiscount, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
-              })
-              toast.dismiss(codToastId)
-              if (codRes.data.success) {
-                toast.success('COD order placed successfully!')
-                addNotification('Your Cash on Delivery order has been placed!', 'success')
-                if (fetchCartItem) fetchCartItem()
-                if (fetchOrder) fetchOrder()
-                navigate('/success', { state: { text: 'Order', address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
-              } else { toast.error('Failed to place COD order.') }
-              return
-            }
-
-            // ── Online payment — verify with Razorpay ──
             const walletOk = await debitWalletIfNeeded()
             if (!walletOk) return
             const verifyToastId = toast.loading('Verifying payment...')
