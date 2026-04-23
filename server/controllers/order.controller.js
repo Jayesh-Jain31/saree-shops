@@ -241,17 +241,15 @@ export async function razorpayOrderController(request, response) {
             }
         })
 
-        const line_items_total = line_items.reduce(
-            (acc, li) => acc + li.offer_price * li.quantity, 0
-        )
+        const amountPaise = Math.round(totalAmt * 100)
 
         const options = {
-            amount: Math.round(totalAmt * 100),
+            amount: amountPaise,
             currency: "INR",
             receipt: `receipt_${new mongoose.Types.ObjectId()}`,
-            // Magic Checkout mandatory fields
+            // Magic Checkout: line_items_total must equal amount to avoid mismatch in popup
             ...(line_items.length > 0 && {
-                line_items_total,
+                line_items_total: amountPaise,
                 line_items,
             })
         }
