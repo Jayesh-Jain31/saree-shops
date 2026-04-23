@@ -7,6 +7,17 @@ import sendEmail         from '../config/sendEmail.js'
 import { sendFreeTextWhatsApp } from '../utils/whatsapp.js'
 import Razorpay          from '../config/razorpay.js'
 
+// In-memory debug log — stores last 5 requests from Razorpay for diagnosis
+const debugLog = []
+function captureDebug(endpoint, headers, body, responseBody) {
+    debugLog.unshift({ endpoint, ts: new Date().toISOString(), headers, body, responseBody })
+    if (debugLog.length > 5) debugLog.pop()
+}
+
+export function debugController(request, response) {
+    response.json({ log: debugLog })
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1.4  Shipping Info API
 //  Razorpay calls this to decide COD serviceability + shipping fees per address
@@ -62,6 +73,9 @@ export async function shippingInfoController(request, response) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getPromotionsController(request, response) {
     try {
+        console.log('[get-promotions] headers:', JSON.stringify(request.headers))
+        console.log('[get-promotions] body:', JSON.stringify(request.body))
+
         const { order_id, contact, email } = request.body
 
         const now     = new Date()
@@ -86,14 +100,15 @@ export async function getPromotionsController(request, response) {
                     description = 'Free shipping on this order'
                 }
                 return {
-                    reference_id: c.code,
-                    code:         c.code,
+                    code:        c.code,
                     summary,
                     description,
                 }
             })
 
-        return response.status(200).json({ promotions })
+        const result = { promotions }
+        captureDebug('get-promotions', request.headers, request.body, result)
+        return response.status(200).json(result)
 
     } catch (error) {
         console.error('Magic Checkout getPromotions error:', error.message)
@@ -209,7 +224,7 @@ export async function applyPromotionController(request, response) {
         // Razorpay Magic Checkout expects: { promotion: { reference_id, type, code, value, value_type, description } }
         // value_type: "fixed_amount" = flat (value in paise), "percentage" = percent (value 0-100)
         const isPercentage = coupon.discountType === 'percentage' || coupon.discountType === 'first_order'
-        return response.status(200).json({
+        const applyResult = {
             promotion: {
                 reference_id: coupon.code,
                 type:         'offer',
@@ -218,7 +233,9 @@ export async function applyPromotionController(request, response) {
                 value_type:   isPercentage && orderPaise === 0 ? 'percentage' : 'fixed_amount',
                 description,
             }
-        })
+        }
+        captureDebug('apply-promotion', request.headers, request.body, applyResult)
+        return response.status(200).json(applyResult)
 
     } catch (error) {
         console.error('Magic Checkout applyPromotion error:', error.message)
