@@ -42,6 +42,11 @@ const app = express()
 
 app.set('trust proxy', 1)
 
+// ── Magic Checkout — open CORS before global CORS middleware ──────────
+// Razorpay calls these routes from both their servers and browser popup.
+// Must be registered BEFORE app.use(cors(...)) so global CORS never blocks them.
+app.use('/api/magic-checkout', cors({ origin: '*', credentials: false }), express.json({ limit: '10mb' }), magicCheckoutRouter)
+
 // ── Rate limiters (defined before use) ───────────────────────────────
 const generalLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -119,7 +124,6 @@ app.use('/api/qa', qaRouter)
 app.use('/api/otp', otpRouter)
 app.use('/api/loyalty', loyaltyRouter)
 app.use('/api/bundle', bundleRouter)
-app.use('/api/magic-checkout', magicCheckoutRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })
