@@ -8,7 +8,7 @@ import AxiosToastError from '../utils/AxiosToastError'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   FaTag, FaTimes, FaCheckCircle, FaMapMarkerAlt,
   FaPlus, FaMobileAlt, FaHome, FaBuilding
@@ -39,8 +39,6 @@ const CheckoutPage = () => {
   const [selectAddress, setSelectAddress] = useState(0)
   const cartItemsList = useSelector(state => state.cartItem.cart)
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const autoOpenTriggered = useRef(false)
   const user = useSelector(state => state.user)
 
   const [deliveryInfo, setDeliveryInfo] = useState(null)
@@ -421,16 +419,6 @@ const CheckoutPage = () => {
   }
 
   const activeAddresses = addressList.filter(a => a.status)
-
-  // Auto-open Magic Checkout when navigated from cart with ?magic=1
-  useEffect(() => {
-    if (!searchParams.get('magic')) return
-    if (autoOpenTriggered.current) return
-    if (walletLoading || loyaltyLoading) return
-    if (!cartItemsList.length) return
-    autoOpenTriggered.current = true
-    setTimeout(() => handleRazorpayPayment(), 600)
-  }, [searchParams, walletLoading, loyaltyLoading, cartItemsList.length])
 
   return (
     <section className='min-h-screen bg-gray-50'>
