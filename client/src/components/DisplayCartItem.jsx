@@ -3,7 +3,7 @@ import { IoClose } from 'react-icons/io5'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGlobalContext } from '../provider/GlobalProvider'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
-import { FaShoppingBag, FaTag, FaShoppingCart, FaGift, FaTimes, FaCheckCircle } from 'react-icons/fa'
+import { FaShoppingBag, FaTag, FaShoppingCart, FaGift } from 'react-icons/fa'
 import { MdAccountBalanceWallet } from 'react-icons/md'
 import { useSelector } from 'react-redux'
 import AddToCartButton from './AddToCartButton'
@@ -29,40 +29,29 @@ const loadRazorpayScript = () => {
 
 const DisplayCartItem = ({ close }) => {
   const { notDiscountTotalPrice, totalPrice, totalQty, fetchCartItem, fetchOrder } = useGlobalContext()
-  const cartItem = useSelector(state => state.cartItem.cart)
-  const user = useSelector(state => state.user)
+  const cartItem   = useSelector(state => state.cartItem.cart)
+  const user       = useSelector(state => state.user)
   const addressList = useSelector(state => state.addresses.addressList)
-  const siteName = useSelector(state => state.site.name)
-  const navigate = useNavigate()
+  const siteName   = useSelector(state => state.site.name)
+  const navigate   = useNavigate()
 
-  const [payLoading, setPayLoading]     = useState(false)
+  const [payLoading, setPayLoading]       = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
-  const [useWallet, setUseWallet]       = useState(false)
-  const [loyaltyData, setLoyaltyData]   = useState(null)
-  const [useLoyalty, setUseLoyalty]     = useState(false)
-  const [dataLoading, setDataLoading]   = useState(false)
-
-  // Coupon state
-  const [couponCode, setCouponCode]       = useState('')
-  const [couponLoading, setCouponLoading] = useState(false)
-  const [appliedCoupon, setAppliedCoupon] = useState(null)
-  const [activeCoupons, setActiveCoupons] = useState([])
-  const [showCoupons, setShowCoupons]     = useState(false)
+  const [useWallet, setUseWallet]         = useState(false)
+  const [loyaltyData, setLoyaltyData]     = useState(null)
+  const [useLoyalty, setUseLoyalty]       = useState(false)
+  const [dataLoading, setDataLoading]     = useState(false)
 
   const savings = notDiscountTotalPrice - totalPrice
 
-  // Coupon discount
-  const couponDiscount = appliedCoupon ? (appliedCoupon.discountAmount || 0) : 0
-  const afterCoupon    = Math.max(0, totalPrice - couponDiscount)
-
-  // Wallet deduction (applied on after-coupon amount)
-  const walletDeduction = useWallet ? Math.min(walletBalance, afterCoupon) : 0
+  // Wallet deduction
+  const walletDeduction = useWallet ? Math.min(walletBalance, totalPrice) : 0
 
   // Loyalty deduction
   const loyaltyPointsUsed = (() => {
     if (!useLoyalty || !loyaltyData) return 0
     const { pointValue, maxRedeemPct } = loyaltyData.settings
-    const base = afterCoupon - walletDeduction
+    const base     = totalPrice - walletDeduction
     const maxByPct = Math.floor((base * maxRedeemPct) / 100 / pointValue)
     return Math.min(loyaltyData.points, maxByPct)
   })()
@@ -70,18 +59,17 @@ const DisplayCartItem = ({ close }) => {
     ? parseFloat((loyaltyPointsUsed * (loyaltyData?.settings?.pointValue || 0)).toFixed(2))
     : 0
 
-  const payableAmount = Math.max(0, afterCoupon - walletDeduction - loyaltyDiscount)
+  const payableAmount = Math.max(0, totalPrice - walletDeduction - loyaltyDiscount)
 
-  // Fetch wallet, loyalty & active coupons when cart opens
+  // Fetch wallet & loyalty when cart opens
   useEffect(() => {
     if (!user?._id) return
     const fetchData = async () => {
       setDataLoading(true)
       try {
-        const [walletRes, loyaltyRes, couponRes] = await Promise.all([
+        const [walletRes, loyaltyRes] = await Promise.all([
           Axios({ ...SummaryApi.getWallet }),
           Axios({ ...SummaryApi.getMyLoyalty }),
-          Axios({ ...SummaryApi.getActiveCoupons }),
         ])
         if (walletRes.data.success) {
           const bal = walletRes.data.data.balance || 0
@@ -92,40 +80,11 @@ const DisplayCartItem = ({ close }) => {
           setLoyaltyData(loyaltyRes.data.data)
           if ((loyaltyRes.data.data.points || 0) > 0) setUseLoyalty(true)
         }
-        if (couponRes.data.success) {
-          setActiveCoupons(couponRes.data.data || [])
-        }
       } catch {}
       finally { setDataLoading(false) }
     }
     fetchData()
   }, [user?._id])
-
-  const handleApplyCoupon = async (code) => {
-    const c = (code || couponCode).trim().toUpperCase()
-    if (!c) { toast.error('Enter a coupon code'); return }
-    setCouponLoading(true)
-    try {
-      const res = await Axios({ ...SummaryApi.validateCoupon, data: { code: c, orderAmount: totalPrice } })
-      if (res.data.success) {
-        setAppliedCoupon(res.data.data)
-        setCouponCode(c)
-        setShowCoupons(false)
-        toast.success(res.data.message || 'Coupon applied!')
-      }
-    } catch (err) { AxiosToastError(err) }
-    finally { setCouponLoading(false) }
-  }
-
-  const handleRemoveCoupon = () => { setAppliedCoupon(null); setCouponCode('') }
-
-  const describeCoupon = (c) => {
-    if (c.discountType === 'percentage' || c.discountType === 'first_order')
-      return `${c.discountValue}% off${c.maxDiscount ? ` (max ₹${c.maxDiscount})` : ''}`
-    if (c.discountType === 'flat') return `₹${c.discountValue} off`
-    if (c.discountType === 'free_shipping') return 'Free shipping'
-    return ''
-  }
 
   const handleCheckout = async () => {
     if (!user?._id) { toast('Please Login'); return }
@@ -137,13 +96,22 @@ const DisplayCartItem = ({ close }) => {
       return
     }
 
+    // Fully covered by wallet/points — place free order directly
     if (payableAmount <= 0) {
       setPayLoading(true)
       try {
         const defaultAddr = activeAddresses[0]
         const res = await Axios({
           ...SummaryApi.CashOnDeliveryOrder,
-          data: { list_items: cartItem, addressId: defaultAddr._id, subTotalAmt: totalPrice, totalAmt: 0, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || '', couponDiscount, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
+          data: {
+            list_items: cartItem,
+            addressId: defaultAddr._id,
+            subTotalAmt: totalPrice,
+            totalAmt: 0,
+            walletDeduction,
+            loyaltyPointsUsed,
+            loyaltyDiscount,
+          }
         })
         if (res.data.success) {
           toast.success('Order placed using wallet/points!')
@@ -170,8 +138,8 @@ const DisplayCartItem = ({ close }) => {
       const orderRes = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: payableAmount, list_items: cartItem } })
       if (!orderRes.data.success) { toast.error('Failed to create payment order.'); setPayLoading(false); return }
 
-      const razorpayOrder = orderRes.data.data
-      const defaultAddr   = activeAddresses[0]
+      const razorpayOrder  = orderRes.data.data
+      const defaultAddr    = activeAddresses[0]
       const customerMobile = user?.mobile || defaultAddr?.mobile || ''
       const customerName   = user?.name   || defaultAddr?.name   || ''
       const customerEmail  = user?.email  || ''
@@ -214,7 +182,15 @@ const DisplayCartItem = ({ close }) => {
           try {
             const itemsSnapshot = [...cartItem]
             const addrSnapshot  = defaultAddr
-            const orderData = { list_items: itemsSnapshot, addressId: addrSnapshot._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || '', couponDiscount, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
+            const orderData = {
+              list_items: itemsSnapshot,
+              addressId: addrSnapshot._id,
+              subTotalAmt: totalPrice,
+              totalAmt: payableAmount,
+              walletDeduction,
+              loyaltyPointsUsed,
+              loyaltyDiscount,
+            }
 
             if (paymentResponse.method === 'cod' || !paymentResponse.razorpay_signature) {
               const codToastId = toast.loading('Placing COD order...')
@@ -234,7 +210,12 @@ const DisplayCartItem = ({ close }) => {
             const verifyToastId = toast.loading('Verifying payment...')
             const verifyRes = await Axios({
               ...SummaryApi.razorpayVerify,
-              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, ...orderData }
+              data: {
+                razorpay_order_id:  paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature,
+                ...orderData,
+              }
             })
             toast.dismiss(verifyToastId)
             if (verifyRes.data.success) {
@@ -318,77 +299,6 @@ const DisplayCartItem = ({ close }) => {
                 })}
               </div>
 
-              {/* ── Coupon Section ── */}
-              {user?._id && (
-                <div className='rounded-2xl border border-dashed border-primary/40 bg-primary/5 overflow-hidden'>
-                  {appliedCoupon ? (
-                    <div className='flex items-center justify-between px-4 py-3'>
-                      <div className='flex items-center gap-2'>
-                        <FaCheckCircle className='text-green-600' size={15} />
-                        <div>
-                          <p className='text-sm font-bold text-green-700'>{appliedCoupon.code}</p>
-                          <p className='text-xs text-green-600'>Saving {DisplayPriceInRupees(couponDiscount)}</p>
-                        </div>
-                      </div>
-                      <button onClick={handleRemoveCoupon} className='text-gray-400 hover:text-red-500 transition'>
-                        <FaTimes size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className='p-3 space-y-2'>
-                      <div className='flex gap-2'>
-                        <input
-                          value={couponCode}
-                          onChange={e => setCouponCode(e.target.value.toUpperCase())}
-                          onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
-                          placeholder='Enter coupon code'
-                          className='flex-1 text-sm border rounded-xl px-3 py-2 outline-none focus:border-primary font-mono tracking-wider uppercase'
-                        />
-                        <button
-                          onClick={() => handleApplyCoupon()}
-                          disabled={couponLoading || !couponCode.trim()}
-                          className='btn-primary px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50'
-                        >
-                          {couponLoading ? '...' : 'Apply'}
-                        </button>
-                      </div>
-
-                      {/* Available coupons list */}
-                      {activeCoupons.length > 0 && (
-                        <div>
-                          <button
-                            onClick={() => setShowCoupons(v => !v)}
-                            className='text-xs text-primary font-semibold flex items-center gap-1'
-                          >
-                            <FaTag size={10} />
-                            {showCoupons ? 'Hide' : 'View'} {activeCoupons.length} available coupon{activeCoupons.length !== 1 ? 's' : ''}
-                          </button>
-                          {showCoupons && (
-                            <div className='mt-2 space-y-1.5'>
-                              {activeCoupons.map(c => (
-                                <div key={c._id} className='flex items-center justify-between bg-white rounded-xl px-3 py-2 border'>
-                                  <div>
-                                    <span className='text-xs font-bold tracking-widest text-primary font-mono bg-primary/10 px-2 py-0.5 rounded'>{c.code}</span>
-                                    <p className='text-xs text-gray-500 mt-0.5'>{describeCoupon(c)}{c.minOrderAmount ? ` · Min ₹${c.minOrderAmount}` : ''}</p>
-                                  </div>
-                                  <button
-                                    onClick={() => handleApplyCoupon(c.code)}
-                                    disabled={couponLoading}
-                                    className='text-xs text-primary font-bold border border-primary px-3 py-1 rounded-lg'
-                                  >
-                                    Apply
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* ── Wallet & Loyalty ── */}
               {user?._id && !dataLoading && (walletBalance > 0 || (loyaltyData?.points > 0)) && (
                 <div className='space-y-2'>
@@ -441,12 +351,6 @@ const DisplayCartItem = ({ close }) => {
                     <div className='flex justify-between text-green-600'>
                       <span>Product Discount</span>
                       <span>- {DisplayPriceInRupees(savings)}</span>
-                    </div>
-                  )}
-                  {couponDiscount > 0 && (
-                    <div className='flex justify-between text-primary'>
-                      <span>Coupon ({appliedCoupon?.code})</span>
-                      <span>- {DisplayPriceInRupees(couponDiscount)}</span>
                     </div>
                   )}
                   {walletDeduction > 0 && (
