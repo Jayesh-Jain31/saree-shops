@@ -1,5 +1,109 @@
 import { shiprocketPost, shiprocketGet } from '../config/shiprocket.js'
 import OrderModel from '../models/order.model.js'
+import sendEmail from '../config/sendEmail.js'
+import { sendFreeTextWhatsApp } from '../utils/whatsapp.js'
+
+// Map Shiprocket status strings → our order status enum
+const STATUS_MAP = {
+    'SHIPPED':              'Shipped',
+    'PICKED UP':            'Shipped',
+    'IN TRANSIT':           'Shipped',
+    'OUT FOR DELIVERY':     'Out for Delivery',
+    'DELIVERED':            'Delivered',
+    'UNDELIVERED':          'Shipped',
+    'CANCELLED':            'Cancelled',
+    'RTO INITIATED':        'Cancelled',
+    'RTO DELIVERED':        'Cancelled',
+    'RETURN INITIATED':     'Cancelled',
+}
+
+// POST /api/shiprocket/webhook  (no auth — called by Shiprocket servers)
+export async function shiprocketWebhookController(request, response) {
+    try {
+        // Shiprocket sends different payload shapes; normalise them
+        const body = request.body || {}
+        const rawStatus  = (body.current_status || body.status || '').toString().toUpperCase().trim()
+        const orderId    = body.order_id || body.awb_assign_status?.order_id || ''
+        const awb        = body.awb_code  || body.awb || ''
+        const shipmentId = body.shipment_id || ''
+
+        if (!orderId) return response.status(200).json({ success: true, message: 'No order_id, ignored' })
+
+        const mappedStatus = STATUS_MAP[rawStatus]
+        if (!mappedStatus) return response.status(200).json({ success: true, message: `Status "${rawStatus}" not mapped, ignored` })
+
+        // Find order — Shiprocket sends our orderId string (e.g. "ORD-xxxx")
+        const order = await OrderModel.findOne({ orderId: String(orderId) })
+            .populate('userId', 'name email mobile')
+            .populate('delivery_address')
+
+        if (!order) {
+            // Try by shiprocketOrderId as fallback
+            const byShiprocket = await OrderModel.findOne({ shiprocketOrderId: String(orderId) })
+                .populate('userId', 'name email mobile')
+                .populate('delivery_address')
+            if (!byShiprocket) return response.status(200).json({ success: true, message: 'Order not found, ignored' })
+            return handleStatusUpdate(byShiprocket, mappedStatus, rawStatus, awb, shipmentId, response)
+        }
+
+        return handleStatusUpdate(order, mappedStatus, rawStatus, awb, shipmentId, response)
+
+    } catch (error) {
+        console.error('Shiprocket webhook error:', error.message)
+        return response.status(200).json({ success: true }) // always 200 so Shiprocket doesn't retry infinitely
+    }
+}
+
+async function handleStatusUpdate(order, mappedStatus, rawStatus, awb, shipmentId, response) {
+    const prevStatus = order.orderStatus
+
+    // Update order
+    order.orderStatus = mappedStatus
+    if (awb && !order.awbCode)          order.awbCode    = awb
+    if (shipmentId && !order.shipmentId) order.shipmentId = String(shipmentId)
+    await order.save()
+
+    // Notify customer (only on meaningful status changes)
+    const notifyStatuses = ['Shipped', 'Out for Delivery', 'Delivered', 'Cancelled']
+    if (notifyStatuses.includes(mappedStatus) && mappedStatus !== prevStatus) {
+        const user = order.userId || {}
+        const name = user.name || 'Customer'
+        const statusLabel = mappedStatus
+        const trackingMsg = order.awbCode
+            ? `\nTracking AWB: ${order.awbCode}`
+            : ''
+
+        // WhatsApp
+        if (user.mobile) {
+            const mobile = String(user.mobile).replace(/\D/g, '').slice(-10)
+            const msg = `Hi ${name}, your order ${order.orderId} status has been updated to *${statusLabel}*.${trackingMsg}\n\nThank you for shopping with us! 🛍️`
+            sendFreeTextWhatsApp(mobile, msg).catch(() => {})
+        }
+
+        // Email
+        if (user.email) {
+            const subjectMap = {
+                'Shipped':          `Your order ${order.orderId} has been shipped! 🚚`,
+                'Out for Delivery': `Your order ${order.orderId} is out for delivery! 📦`,
+                'Delivered':        `Your order ${order.orderId} has been delivered! ✅`,
+                'Cancelled':        `Order ${order.orderId} update`,
+            }
+            sendEmail({
+                sendTo: user.email,
+                subject: subjectMap[mappedStatus] || `Order ${order.orderId} update`,
+                html: `<div style="font-family:sans-serif;max-width:480px;margin:auto">
+                    <h2 style="color:#16a34a">Order Update</h2>
+                    <p>Hi ${name},</p>
+                    <p>Your order <strong>${order.orderId}</strong> status is now: <strong>${statusLabel}</strong>.</p>
+                    ${order.awbCode ? `<p>Tracking AWB: <strong>${order.awbCode}</strong></p>` : ''}
+                    <p style="margin-top:24px;color:#6b7280;font-size:12px">Thank you for shopping with us!</p>
+                </div>`
+            }).catch(() => {})
+        }
+    }
+
+    return response.status(200).json({ success: true, message: `Order ${order.orderId} updated to ${mappedStatus}` })
+}
 
 export async function createShiprocketOrder(request, response) {
     try {
