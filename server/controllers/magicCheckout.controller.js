@@ -2,6 +2,9 @@ import DeliveryZoneModel from '../models/deliveryZone.model.js'
 import CouponModel       from '../models/coupon.model.js'
 import SettingModel      from '../models/settings.model.js'
 import OrderModel        from '../models/order.model.js'
+import UserModel         from '../models/user.model.js'
+import sendEmail         from '../config/sendEmail.js'
+import { sendFreeTextWhatsApp } from '../utils/whatsapp.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1.4  Shipping Info API
@@ -168,5 +171,59 @@ export async function applyPromotionController(request, response) {
             valid: false,
             error: { description: 'Could not apply coupon. Please try again.' }
         })
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Abandoned Checkout Webhook
+//  Razorpay posts here when a customer starts Magic Checkout but doesn't pay
+//  POST /api/magic-checkout/abandoned-checkout
+// ─────────────────────────────────────────────────────────────────────────────
+export async function abandonedCheckoutWebhookController(request, response) {
+    try {
+        // Always respond 200 immediately so Razorpay doesn't retry
+        response.status(200).json({ success: true })
+
+        const body    = request.body || {}
+        const contact = body.contact || body.customer?.contact || ''
+        const email   = body.email   || body.customer?.email   || ''
+        const name    = body.customer?.name || ''
+        const items   = body.line_items || []
+        const amount  = body.amount ? (body.amount / 100).toFixed(2) : ''
+
+        if (!contact && !email) return  // nothing to notify
+
+        const phone = String(contact).replace(/\D/g, '').slice(-10)
+
+        const itemNames = items.map(i => i.name).filter(Boolean).join(', ')
+        const msgBody   = `Hi ${name || 'there'}, you left your cart at Saree Shop without completing payment!${itemNames ? `\n\nItems: ${itemNames}` : ''}${amount ? `\nTotal: ₹${amount}` : ''}\n\nComplete your order here 👉 https://saree-shops-iota.vercel.app/checkout`
+
+        // WhatsApp reminder
+        if (phone) {
+            sendFreeTextWhatsApp(phone, msgBody).catch(() => {})
+        }
+
+        // Email reminder
+        if (email) {
+            sendEmail({
+                sendTo:  email,
+                subject: `You left something behind! 🛍️`,
+                html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;padding:24px">
+                    <h2 style="color:#be185d">Your cart is waiting!</h2>
+                    <p>Hi ${name || 'there'},</p>
+                    <p>You started checkout but didn't complete your payment.</p>
+                    ${itemNames ? `<p><strong>Items:</strong> ${itemNames}</p>` : ''}
+                    ${amount ? `<p><strong>Total:</strong> ₹${amount}</p>` : ''}
+                    <a href="https://saree-shops-iota.vercel.app/checkout"
+                       style="display:inline-block;margin-top:16px;padding:12px 24px;background:#be185d;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">
+                       Complete Your Order
+                    </a>
+                    <p style="margin-top:24px;color:#9ca3af;font-size:12px">Saree Shop</p>
+                </div>`
+            }).catch(() => {})
+        }
+
+    } catch (error) {
+        console.error('Abandoned checkout webhook error:', error.message)
     }
 }
