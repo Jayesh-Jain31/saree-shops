@@ -5,6 +5,7 @@ import OrderModel        from '../models/order.model.js'
 import UserModel         from '../models/user.model.js'
 import sendEmail         from '../config/sendEmail.js'
 import { sendFreeTextWhatsApp } from '../utils/whatsapp.js'
+import Razorpay          from '../config/razorpay.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1.4  Shipping Info API
@@ -104,7 +105,8 @@ export async function getPromotionsController(request, response) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function applyPromotionController(request, response) {
     try {
-        // Razorpay sends: order_id, contact, email, code, amount (in paise), cart
+        // Razorpay sends: order_id (Razorpay order ID), contact, email, code
+        // amount in paise may or may not be included
         const { order_id, contact, email, code, amount: amountPaise, cart } = request.body
 
         if (!code) {
@@ -135,46 +137,63 @@ export async function applyPromotionController(request, response) {
             })
         }
 
-        // Order amount in paise (Razorpay sends it); fallback to cart total
-        const orderPaise = amountPaise
-            || (cart?.total)
-            || 0
+        // Resolve order amount in paise
+        // Razorpay may or may not send `amount` — if missing, fetch it from Razorpay API
+        let orderPaise = amountPaise || (cart?.total) || 0
+
+        if (!orderPaise && order_id && order_id.startsWith('order_')) {
+            try {
+                const rzpOrder = await Razorpay.orders.fetch(order_id)
+                orderPaise = rzpOrder?.amount || 0
+            } catch (e) {
+                console.warn('Could not fetch Razorpay order amount:', e.message)
+            }
+        }
 
         // Minimum order check (coupon.minOrderAmount is in rupees)
         const orderRupees = orderPaise / 100
-        if (coupon.minOrderAmount && orderRupees < coupon.minOrderAmount) {
+        if (coupon.minOrderAmount && orderRupees > 0 && orderRupees < coupon.minOrderAmount) {
             return response.status(200).json({
                 valid: false,
                 error: { description: `Minimum order amount ₹${coupon.minOrderAmount} required` }
             })
         }
 
-        // Compute discount always in paise (flat value expected by Razorpay)
+        // Compute discount always as flat paise (Razorpay understands this reliably)
         let discountPaise = 0
         let description   = ''
 
         if (coupon.discountType === 'percentage' || coupon.discountType === 'first_order') {
-            const pct = coupon.discountValue          // e.g. 29
-            discountPaise = Math.round((orderPaise * pct) / 100)
-            // Apply max discount cap if set
-            if (coupon.maxDiscount) {
-                const maxPaise = Math.round(coupon.maxDiscount * 100)
-                discountPaise  = Math.min(discountPaise, maxPaise)
+            const pct = coupon.discountValue
+            if (orderPaise > 0) {
+                discountPaise = Math.round((orderPaise * pct) / 100)
+                if (coupon.maxDiscount) {
+                    discountPaise = Math.min(discountPaise, Math.round(coupon.maxDiscount * 100))
+                }
+                // Never exceed order amount
+                discountPaise = Math.min(discountPaise, orderPaise)
+            } else {
+                // Order amount unknown — return percentage type so Razorpay can show the coupon
+                return response.status(200).json({
+                    valid:          true,
+                    discount_type:  'percentage',
+                    discount_value: pct,
+                    reference_id:   coupon.code,
+                    description:    `${pct}% off`,
+                })
             }
             description = `${pct}% off${coupon.maxDiscount ? ` (max ₹${coupon.maxDiscount})` : ''}`
 
         } else if (coupon.discountType === 'flat') {
             discountPaise = Math.round(coupon.discountValue * 100)
-            description   = `₹${coupon.discountValue} off`
+            // Only cap if we actually know the order amount
+            if (orderPaise > 0) discountPaise = Math.min(discountPaise, orderPaise)
+            description = `₹${coupon.discountValue} off`
 
         } else if (coupon.discountType === 'free_shipping') {
-            // Treat as ₹0 flat discount so Razorpay can show it
             discountPaise = 0
             description   = 'Free shipping'
         }
-
-        // Cap discount at the order amount
-        discountPaise = Math.min(discountPaise, orderPaise)
 
         return response.status(200).json({
             valid:          true,
