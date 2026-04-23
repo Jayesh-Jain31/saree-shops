@@ -3,7 +3,7 @@ import { IoClose } from 'react-icons/io5'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGlobalContext } from '../provider/GlobalProvider'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
-import { FaShoppingBag, FaTag, FaShoppingCart, FaGift } from 'react-icons/fa'
+import { FaShoppingBag, FaTag, FaShoppingCart, FaGift, FaTimes, FaCheckCircle } from 'react-icons/fa'
 import { MdAccountBalanceWallet } from 'react-icons/md'
 import { useSelector } from 'react-redux'
 import AddToCartButton from './AddToCartButton'
@@ -35,41 +35,53 @@ const DisplayCartItem = ({ close }) => {
   const siteName = useSelector(state => state.site.name)
   const navigate = useNavigate()
 
-  const [payLoading, setPayLoading] = useState(false)
+  const [payLoading, setPayLoading]     = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
-  const [useWallet, setUseWallet] = useState(false)
-  const [loyaltyData, setLoyaltyData] = useState(null)
-  const [useLoyalty, setUseLoyalty] = useState(false)
-  const [dataLoading, setDataLoading] = useState(false)
+  const [useWallet, setUseWallet]       = useState(false)
+  const [loyaltyData, setLoyaltyData]   = useState(null)
+  const [useLoyalty, setUseLoyalty]     = useState(false)
+  const [dataLoading, setDataLoading]   = useState(false)
+
+  // Coupon state
+  const [couponCode, setCouponCode]       = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [appliedCoupon, setAppliedCoupon] = useState(null)
+  const [activeCoupons, setActiveCoupons] = useState([])
+  const [showCoupons, setShowCoupons]     = useState(false)
 
   const savings = notDiscountTotalPrice - totalPrice
 
-  // Wallet deduction
-  const walletDeduction = useWallet ? Math.min(walletBalance, totalPrice) : 0
+  // Coupon discount
+  const couponDiscount = appliedCoupon ? (appliedCoupon.discountAmount || 0) : 0
+  const afterCoupon    = Math.max(0, totalPrice - couponDiscount)
+
+  // Wallet deduction (applied on after-coupon amount)
+  const walletDeduction = useWallet ? Math.min(walletBalance, afterCoupon) : 0
 
   // Loyalty deduction
   const loyaltyPointsUsed = (() => {
     if (!useLoyalty || !loyaltyData) return 0
     const { pointValue, maxRedeemPct } = loyaltyData.settings
-    const afterWallet = totalPrice - walletDeduction
-    const maxByPct = Math.floor((afterWallet * maxRedeemPct) / 100 / pointValue)
+    const base = afterCoupon - walletDeduction
+    const maxByPct = Math.floor((base * maxRedeemPct) / 100 / pointValue)
     return Math.min(loyaltyData.points, maxByPct)
   })()
   const loyaltyDiscount = loyaltyPointsUsed > 0
     ? parseFloat((loyaltyPointsUsed * (loyaltyData?.settings?.pointValue || 0)).toFixed(2))
     : 0
 
-  const payableAmount = Math.max(0, totalPrice - walletDeduction - loyaltyDiscount)
+  const payableAmount = Math.max(0, afterCoupon - walletDeduction - loyaltyDiscount)
 
-  // Fetch wallet & loyalty when cart opens
+  // Fetch wallet, loyalty & active coupons when cart opens
   useEffect(() => {
     if (!user?._id) return
     const fetchData = async () => {
       setDataLoading(true)
       try {
-        const [walletRes, loyaltyRes] = await Promise.all([
+        const [walletRes, loyaltyRes, couponRes] = await Promise.all([
           Axios({ ...SummaryApi.getWallet }),
           Axios({ ...SummaryApi.getMyLoyalty }),
+          Axios({ ...SummaryApi.getActiveCoupons }),
         ])
         if (walletRes.data.success) {
           const bal = walletRes.data.data.balance || 0
@@ -80,15 +92,43 @@ const DisplayCartItem = ({ close }) => {
           setLoyaltyData(loyaltyRes.data.data)
           if ((loyaltyRes.data.data.points || 0) > 0) setUseLoyalty(true)
         }
+        if (couponRes.data.success) {
+          setActiveCoupons(couponRes.data.data || [])
+        }
       } catch {}
       finally { setDataLoading(false) }
     }
     fetchData()
   }, [user?._id])
 
+  const handleApplyCoupon = async (code) => {
+    const c = (code || couponCode).trim().toUpperCase()
+    if (!c) { toast.error('Enter a coupon code'); return }
+    setCouponLoading(true)
+    try {
+      const res = await Axios({ ...SummaryApi.validateCoupon, data: { code: c, orderAmount: totalPrice } })
+      if (res.data.success) {
+        setAppliedCoupon(res.data.data)
+        setCouponCode(c)
+        setShowCoupons(false)
+        toast.success(res.data.message || 'Coupon applied!')
+      }
+    } catch (err) { AxiosToastError(err) }
+    finally { setCouponLoading(false) }
+  }
+
+  const handleRemoveCoupon = () => { setAppliedCoupon(null); setCouponCode('') }
+
+  const describeCoupon = (c) => {
+    if (c.discountType === 'percentage' || c.discountType === 'first_order')
+      return `${c.discountValue}% off${c.maxDiscount ? ` (max ₹${c.maxDiscount})` : ''}`
+    if (c.discountType === 'flat') return `₹${c.discountValue} off`
+    if (c.discountType === 'free_shipping') return 'Free shipping'
+    return ''
+  }
+
   const handleCheckout = async () => {
     if (!user?._id) { toast('Please Login'); return }
-
     const activeAddresses = addressList.filter(a => a.status)
     if (!activeAddresses.length) {
       toast.error('Please add a delivery address first.')
@@ -97,14 +137,13 @@ const DisplayCartItem = ({ close }) => {
       return
     }
 
-    // If fully covered by wallet + loyalty, place order directly
     if (payableAmount <= 0) {
       setPayLoading(true)
       try {
         const defaultAddr = activeAddresses[0]
         const res = await Axios({
           ...SummaryApi.CashOnDeliveryOrder,
-          data: { list_items: cartItem, addressId: defaultAddr._id, subTotalAmt: totalPrice, totalAmt: 0, discountAmt: 0, couponCode: '', couponDiscount: 0, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
+          data: { list_items: cartItem, addressId: defaultAddr._id, subTotalAmt: totalPrice, totalAmt: 0, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || '', couponDiscount, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
         })
         if (res.data.success) {
           toast.success('Order placed using wallet/points!')
@@ -122,17 +161,17 @@ const DisplayCartItem = ({ close }) => {
     setPayLoading(true)
     try {
       const scriptLoaded = await loadRazorpayScript()
-      if (!scriptLoaded) { toast.error('Failed to load Razorpay. Check your internet.'); setPayLoading(false); return }
+      if (!scriptLoaded) { toast.error('Failed to load Razorpay.'); setPayLoading(false); return }
 
       const configRes = await Axios({ url: '/api/config/razorpay-key', method: 'get' })
       const razorpayKeyId = configRes.data?.keyId
-      if (!razorpayKeyId) { toast.error('Payment not configured. Contact support.'); setPayLoading(false); return }
+      if (!razorpayKeyId) { toast.error('Payment not configured.'); setPayLoading(false); return }
 
       const orderRes = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: payableAmount, list_items: cartItem } })
       if (!orderRes.data.success) { toast.error('Failed to create payment order.'); setPayLoading(false); return }
 
       const razorpayOrder = orderRes.data.data
-      const defaultAddr = activeAddresses[0]
+      const defaultAddr   = activeAddresses[0]
       const customerMobile = user?.mobile || defaultAddr?.mobile || ''
       const customerName   = user?.name   || defaultAddr?.name   || ''
       const customerEmail  = user?.email  || ''
@@ -175,13 +214,11 @@ const DisplayCartItem = ({ close }) => {
           try {
             const itemsSnapshot = [...cartItem]
             const addrSnapshot  = defaultAddr
+            const orderData = { list_items: itemsSnapshot, addressId: addrSnapshot._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || '', couponDiscount, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
 
             if (paymentResponse.method === 'cod' || !paymentResponse.razorpay_signature) {
               const codToastId = toast.loading('Placing COD order...')
-              const codRes = await Axios({
-                ...SummaryApi.CashOnDeliveryOrder,
-                data: { list_items: itemsSnapshot, addressId: addrSnapshot._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: 0, couponCode: '', couponDiscount: 0, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
-              })
+              const codRes = await Axios({ ...SummaryApi.CashOnDeliveryOrder, data: orderData })
               toast.dismiss(codToastId)
               if (codRes.data.success) {
                 toast.success('COD order placed!')
@@ -197,7 +234,7 @@ const DisplayCartItem = ({ close }) => {
             const verifyToastId = toast.loading('Verifying payment...')
             const verifyRes = await Axios({
               ...SummaryApi.razorpayVerify,
-              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, list_items: itemsSnapshot, addressId: addrSnapshot._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: 0, couponCode: '', couponDiscount: 0, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
+              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, ...orderData }
             })
             toast.dismiss(verifyToastId)
             if (verifyRes.data.success) {
@@ -217,18 +254,13 @@ const DisplayCartItem = ({ close }) => {
       setPayLoading(false)
       const razorpay = new window.Razorpay(options)
       razorpay.open()
-    } catch (error) {
-      setPayLoading(false)
-      AxiosToastError(error)
-    }
+    } catch (error) { setPayLoading(false); AxiosToastError(error) }
   }
 
   return (
     <section className='fixed inset-0 bg-black/60 z-50 backdrop-blur-sm' onClick={close}>
-      <div
-        className='bg-white w-full max-w-sm min-h-screen max-h-screen ml-auto flex flex-col shadow-2xl'
-        onClick={e => e.stopPropagation()}
-      >
+      <div className='bg-white w-full max-w-sm min-h-screen max-h-screen ml-auto flex flex-col shadow-2xl' onClick={e => e.stopPropagation()}>
+
         {/* ── Header ── */}
         <div className='flex items-center justify-between px-5 py-4 border-b flex-shrink-0'>
           <div className='flex items-center gap-2.5'>
@@ -237,9 +269,7 @@ const DisplayCartItem = ({ close }) => {
             </div>
             <div>
               <h2 className='font-bold text-gray-800 text-base leading-tight'>My Cart</h2>
-              {cartItem.length > 0 && (
-                <p className='text-xs text-gray-500'>{totalQty} item{totalQty !== 1 ? 's' : ''}</p>
-              )}
+              {cartItem.length > 0 && <p className='text-xs text-gray-500'>{totalQty} item{totalQty !== 1 ? 's' : ''}</p>}
             </div>
           </div>
           <button onClick={close} className='w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition'>
@@ -277,9 +307,7 @@ const DisplayCartItem = ({ close }) => {
                         {item?.productId?.unit && <p className='text-xs text-gray-400 mt-0.5'>{item?.productId?.unit}</p>}
                         <div className='flex items-center gap-1.5 mt-1'>
                           <p className='text-sm font-bold text-gray-900'>{DisplayPriceInRupees(discountedPrice)}</p>
-                          {item?.productId?.discount > 0 && (
-                            <p className='text-xs text-gray-400 line-through'>{DisplayPriceInRupees(item?.productId?.price)}</p>
-                          )}
+                          {item?.productId?.discount > 0 && <p className='text-xs text-gray-400 line-through'>{DisplayPriceInRupees(item?.productId?.price)}</p>}
                         </div>
                       </div>
                       <div className='w-24 flex-shrink-0'>
@@ -290,16 +318,82 @@ const DisplayCartItem = ({ close }) => {
                 })}
               </div>
 
-              {/* Wallet & Loyalty */}
+              {/* ── Coupon Section ── */}
+              {user?._id && (
+                <div className='rounded-2xl border border-dashed border-primary/40 bg-primary/5 overflow-hidden'>
+                  {appliedCoupon ? (
+                    <div className='flex items-center justify-between px-4 py-3'>
+                      <div className='flex items-center gap-2'>
+                        <FaCheckCircle className='text-green-600' size={15} />
+                        <div>
+                          <p className='text-sm font-bold text-green-700'>{appliedCoupon.code}</p>
+                          <p className='text-xs text-green-600'>Saving {DisplayPriceInRupees(couponDiscount)}</p>
+                        </div>
+                      </div>
+                      <button onClick={handleRemoveCoupon} className='text-gray-400 hover:text-red-500 transition'>
+                        <FaTimes size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className='p-3 space-y-2'>
+                      <div className='flex gap-2'>
+                        <input
+                          value={couponCode}
+                          onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                          onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
+                          placeholder='Enter coupon code'
+                          className='flex-1 text-sm border rounded-xl px-3 py-2 outline-none focus:border-primary font-mono tracking-wider uppercase'
+                        />
+                        <button
+                          onClick={() => handleApplyCoupon()}
+                          disabled={couponLoading || !couponCode.trim()}
+                          className='btn-primary px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50'
+                        >
+                          {couponLoading ? '...' : 'Apply'}
+                        </button>
+                      </div>
+
+                      {/* Available coupons list */}
+                      {activeCoupons.length > 0 && (
+                        <div>
+                          <button
+                            onClick={() => setShowCoupons(v => !v)}
+                            className='text-xs text-primary font-semibold flex items-center gap-1'
+                          >
+                            <FaTag size={10} />
+                            {showCoupons ? 'Hide' : 'View'} {activeCoupons.length} available coupon{activeCoupons.length !== 1 ? 's' : ''}
+                          </button>
+                          {showCoupons && (
+                            <div className='mt-2 space-y-1.5'>
+                              {activeCoupons.map(c => (
+                                <div key={c._id} className='flex items-center justify-between bg-white rounded-xl px-3 py-2 border'>
+                                  <div>
+                                    <span className='text-xs font-bold tracking-widest text-primary font-mono bg-primary/10 px-2 py-0.5 rounded'>{c.code}</span>
+                                    <p className='text-xs text-gray-500 mt-0.5'>{describeCoupon(c)}{c.minOrderAmount ? ` · Min ₹${c.minOrderAmount}` : ''}</p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleApplyCoupon(c.code)}
+                                    disabled={couponLoading}
+                                    className='text-xs text-primary font-bold border border-primary px-3 py-1 rounded-lg'
+                                  >
+                                    Apply
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Wallet & Loyalty ── */}
               {user?._id && !dataLoading && (walletBalance > 0 || (loyaltyData?.points > 0)) && (
                 <div className='space-y-2'>
-
-                  {/* Wallet */}
                   {walletBalance > 0 && (
-                    <div
-                      onClick={() => setUseWallet(v => !v)}
-                      className={`flex items-center justify-between rounded-xl px-4 py-3 border cursor-pointer transition-all ${useWallet ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'}`}
-                    >
+                    <div onClick={() => setUseWallet(v => !v)} className={`flex items-center justify-between rounded-xl px-4 py-3 border cursor-pointer transition-all ${useWallet ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'}`}>
                       <div className='flex items-center gap-2.5'>
                         <MdAccountBalanceWallet className={useWallet ? 'text-blue-600' : 'text-gray-400'} size={20} />
                         <div>
@@ -308,22 +402,15 @@ const DisplayCartItem = ({ close }) => {
                         </div>
                       </div>
                       <div className='flex items-center gap-2'>
-                        {useWallet && (
-                          <span className='text-xs font-bold text-blue-600'>-{DisplayPriceInRupees(walletDeduction)}</span>
-                        )}
+                        {useWallet && <span className='text-xs font-bold text-blue-600'>-{DisplayPriceInRupees(walletDeduction)}</span>}
                         <div className={`w-10 h-5 rounded-full transition-all ${useWallet ? 'bg-blue-500' : 'bg-gray-300'} relative`}>
                           <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${useWallet ? 'right-0.5' : 'left-0.5'}`} />
                         </div>
                       </div>
                     </div>
                   )}
-
-                  {/* Loyalty / Referral Points */}
                   {loyaltyData?.points > 0 && (
-                    <div
-                      onClick={() => setUseLoyalty(v => !v)}
-                      className={`flex items-center justify-between rounded-xl px-4 py-3 border cursor-pointer transition-all ${useLoyalty ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'}`}
-                    >
+                    <div onClick={() => setUseLoyalty(v => !v)} className={`flex items-center justify-between rounded-xl px-4 py-3 border cursor-pointer transition-all ${useLoyalty ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'}`}>
                       <div className='flex items-center gap-2.5'>
                         <FaGift className={useLoyalty ? 'text-yellow-600' : 'text-gray-400'} size={17} />
                         <div>
@@ -332,9 +419,7 @@ const DisplayCartItem = ({ close }) => {
                         </div>
                       </div>
                       <div className='flex items-center gap-2'>
-                        {useLoyalty && loyaltyDiscount > 0 && (
-                          <span className='text-xs font-bold text-yellow-600'>-{DisplayPriceInRupees(loyaltyDiscount)}</span>
-                        )}
+                        {useLoyalty && loyaltyDiscount > 0 && <span className='text-xs font-bold text-yellow-600'>-{DisplayPriceInRupees(loyaltyDiscount)}</span>}
                         <div className={`w-10 h-5 rounded-full transition-all ${useLoyalty ? 'bg-yellow-400' : 'bg-gray-300'} relative`}>
                           <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${useLoyalty ? 'right-0.5' : 'left-0.5'}`} />
                         </div>
@@ -344,7 +429,7 @@ const DisplayCartItem = ({ close }) => {
                 </div>
               )}
 
-              {/* Bill Summary */}
+              {/* ── Bill Summary ── */}
               <div className='bg-gray-50 rounded-2xl p-4 space-y-2.5'>
                 <p className='font-bold text-gray-800 text-sm'>Bill Summary</p>
                 <div className='space-y-2 text-sm'>
@@ -356,6 +441,12 @@ const DisplayCartItem = ({ close }) => {
                     <div className='flex justify-between text-green-600'>
                       <span>Product Discount</span>
                       <span>- {DisplayPriceInRupees(savings)}</span>
+                    </div>
+                  )}
+                  {couponDiscount > 0 && (
+                    <div className='flex justify-between text-primary'>
+                      <span>Coupon ({appliedCoupon?.code})</span>
+                      <span>- {DisplayPriceInRupees(couponDiscount)}</span>
                     </div>
                   )}
                   {walletDeduction > 0 && (
@@ -387,9 +478,7 @@ const DisplayCartItem = ({ close }) => {
               <img src={imageEmpty} alt='Empty cart' className='w-48 object-contain mb-4 opacity-80' />
               <p className='text-gray-500 font-medium text-base mb-1'>Your cart is empty</p>
               <p className='text-gray-400 text-sm text-center mb-5'>Add items to get started</p>
-              <Link onClick={close} to='/' className='btn-primary px-6 py-2.5 rounded-xl font-semibold text-sm'>
-                Shop Now
-              </Link>
+              <Link onClick={close} to='/' className='btn-primary px-6 py-2.5 rounded-xl font-semibold text-sm'>Shop Now</Link>
             </div>
           )}
         </div>
