@@ -90,7 +90,7 @@ export async function getPromotionsController(request, response) {
                 }
             })
 
-        return response.status(200).json({ promotions, _v: 'v4' })
+        return response.status(200).json({ promotions })
 
     } catch (error) {
         console.error('Magic Checkout getPromotions error:', error.message)
@@ -138,15 +138,23 @@ export async function applyPromotionController(request, response) {
         }
 
         // Resolve order amount in paise
-        // Razorpay may or may not send `amount` — if missing, fetch it from Razorpay API
+        // Razorpay sends `amount` directly, or we look it up by order_id / receipt
         let orderPaise = amountPaise || (cart?.total) || 0
 
-        if (!orderPaise && order_id && order_id.startsWith('order_')) {
+        if (!orderPaise && order_id) {
             try {
-                const rzpOrder = await Razorpay.orders.fetch(order_id)
-                orderPaise = rzpOrder?.amount || 0
+                if (order_id.startsWith('order_')) {
+                    // Direct Razorpay order ID
+                    const rzpOrder = await Razorpay.orders.fetch(order_id)
+                    orderPaise = rzpOrder?.amount || 0
+                } else {
+                    // Razorpay sends the receipt value as order_id (per their docs)
+                    const result = await Razorpay.orders.all({ receipt: order_id })
+                    const rzpOrder = result?.items?.[0]
+                    orderPaise = rzpOrder?.amount || 0
+                }
             } catch (e) {
-                console.warn('Could not fetch Razorpay order amount:', e.message)
+                console.warn('Could not resolve order amount:', e.message)
             }
         }
 
@@ -159,7 +167,7 @@ export async function applyPromotionController(request, response) {
             })
         }
 
-        // Compute discount always as flat paise (Razorpay understands this reliably)
+        // Always return discount_type: "flat" in paise — Razorpay Magic Checkout requires this
         let discountPaise = 0
         let description   = ''
 
@@ -170,23 +178,15 @@ export async function applyPromotionController(request, response) {
                 if (coupon.maxDiscount) {
                     discountPaise = Math.min(discountPaise, Math.round(coupon.maxDiscount * 100))
                 }
-                // Never exceed order amount
                 discountPaise = Math.min(discountPaise, orderPaise)
             } else {
-                // Order amount unknown — return percentage type so Razorpay can show the coupon
-                return response.status(200).json({
-                    valid:          true,
-                    discount_type:  'percentage',
-                    discount_value: pct,
-                    reference_id:   coupon.code,
-                    description:    `${pct}% off`,
-                })
+                // Amount still unknown — mark as valid with 0 so Razorpay shows the coupon
+                discountPaise = 0
             }
             description = `${pct}% off${coupon.maxDiscount ? ` (max ₹${coupon.maxDiscount})` : ''}`
 
         } else if (coupon.discountType === 'flat') {
             discountPaise = Math.round(coupon.discountValue * 100)
-            // Only cap if we actually know the order amount
             if (orderPaise > 0) discountPaise = Math.min(discountPaise, orderPaise)
             description = `₹${coupon.discountValue} off`
 
