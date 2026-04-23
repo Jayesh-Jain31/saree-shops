@@ -147,28 +147,28 @@ export async function applyPromotionController(request, response) {
         const { order_id, contact, email, code, amount: amountPaise, cart } = request.body
 
         if (!code) {
-            const r = { success: false, error: true, message: 'Coupon code required' }
+            const r = { failure_code: 'INVALID_PROMOTION', failure_reason: 'Coupon code is required' }
             captureDebug('apply-promotion-ERR-nocode', request.headers, request.body, r)
-            return response.status(400).json(r)
+            return response.status(200).json(r)
         }
 
         const coupon = await CouponModel.findOne({ code: code.toUpperCase().trim(), isActive: true }).lean()
 
         if (!coupon) {
-            const r = { error: { description: 'Invalid or expired coupon code' } }
+            const r = { failure_code: 'INVALID_PROMOTION', failure_reason: 'Invalid or expired coupon code' }
             captureDebug('apply-promotion-ERR-notfound', request.headers, request.body, r)
             return response.status(200).json(r)
         }
 
         const now = new Date()
         if (coupon.expiresAt && now > new Date(coupon.expiresAt)) {
-            const r = { error: { description: 'This coupon has expired' } }
+            const r = { failure_code: 'INVALID_PROMOTION', failure_reason: 'This coupon has expired' }
             captureDebug('apply-promotion-ERR-expired', request.headers, request.body, r)
             return response.status(200).json(r)
         }
 
         if (coupon.usageLimit != null && coupon.usageCount >= coupon.usageLimit) {
-            const r = { error: { description: 'Coupon usage limit reached' } }
+            const r = { failure_code: 'INVALID_PROMOTION', failure_reason: 'Coupon usage limit reached' }
             captureDebug('apply-promotion-ERR-limit', request.headers, request.body, r)
             return response.status(200).json(r)
         }
@@ -197,7 +197,7 @@ export async function applyPromotionController(request, response) {
         // Minimum order check (coupon.minOrderAmount is in rupees)
         const orderRupees = orderPaise / 100
         if (coupon.minOrderAmount && orderRupees > 0 && orderRupees < coupon.minOrderAmount) {
-            const r = { error: { description: `Minimum order amount ₹${coupon.minOrderAmount} required` } }
+            const r = { failure_code: 'REQUIREMENT_NOT_MET', failure_reason: `Minimum order amount ₹${coupon.minOrderAmount} required` }
             captureDebug('apply-promotion-ERR-minorder', request.headers, request.body, r)
             return response.status(200).json(r)
         }
@@ -248,7 +248,7 @@ export async function applyPromotionController(request, response) {
 
     } catch (error) {
         console.error('Magic Checkout applyPromotion error:', error.message)
-        const r = { error: { description: 'Could not apply coupon. Please try again.' } }
+        const r = { failure_code: 'INVALID_PROMOTION', failure_reason: 'Could not apply coupon. Please try again.' }
         captureDebug('apply-promotion-ERR-exception:' + error.message, request.headers, request.body, r)
         return response.status(200).json(r)
     }

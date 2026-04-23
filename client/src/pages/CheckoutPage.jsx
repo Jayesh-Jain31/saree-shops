@@ -332,7 +332,8 @@ const CheckoutPage = () => {
         order_id: razorpayOrder.id,
 
         // Magic Checkout — 1-click for returning Razorpay users
-        magic: true,
+        one_click_checkout: true,
+        show_coupons: true,
 
         // Pre-fill customer details
         prefill: {
