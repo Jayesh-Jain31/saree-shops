@@ -105,6 +105,14 @@ export async function getPromotionsController(request, response) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function applyPromotionController(request, response) {
     try {
+        // Log full request so we can see exactly what Razorpay sends
+        console.log('[apply-promotion] headers:', JSON.stringify({
+            origin: request.headers.origin,
+            'content-type': request.headers['content-type'],
+            'user-agent': request.headers['user-agent'],
+        }))
+        console.log('[apply-promotion] body:', JSON.stringify(request.body))
+
         // Razorpay sends: order_id (Razorpay order ID), contact, email, code
         // amount in paise may or may not be included
         const { order_id, contact, email, code, amount: amountPaise, cart } = request.body
