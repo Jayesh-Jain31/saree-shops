@@ -90,7 +90,7 @@ export async function getPromotionsController(request, response) {
                 }
             })
 
-        return response.status(200).json({ promotions })
+        return response.status(200).json({ promotions, _v: 'v4' })
 
     } catch (error) {
         console.error('Magic Checkout getPromotions error:', error.message)
