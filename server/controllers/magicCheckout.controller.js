@@ -104,7 +104,8 @@ export async function getPromotionsController(request, response) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function applyPromotionController(request, response) {
     try {
-        const { order_id, contact, email, code } = request.body
+        // Razorpay sends: order_id, contact, email, code, amount (in paise), cart
+        const { order_id, contact, email, code, amount: amountPaise, cart } = request.body
 
         if (!code) {
             return response.status(400).json({ success: false, error: true, message: 'Coupon code required' })
@@ -127,42 +128,60 @@ export async function applyPromotionController(request, response) {
             })
         }
 
-        if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
+        if (coupon.usageLimit != null && coupon.usageCount >= coupon.usageLimit) {
             return response.status(200).json({
                 valid: false,
                 error: { description: 'Coupon usage limit reached' }
             })
         }
 
-        // Compute discount (Razorpay expects value in paise)
-        let discountPaise = 0
-        if (coupon.discountType === 'percentage' || coupon.discountType === 'first_order') {
-            // We don't know the exact order amount here from Razorpay's call,
-            // so we return the percentage — Razorpay will calculate
+        // Order amount in paise (Razorpay sends it); fallback to cart total
+        const orderPaise = amountPaise
+            || (cart?.total)
+            || 0
+
+        // Minimum order check (coupon.minOrderAmount is in rupees)
+        const orderRupees = orderPaise / 100
+        if (coupon.minOrderAmount && orderRupees < coupon.minOrderAmount) {
             return response.status(200).json({
-                valid:           true,
-                discount_type:  'percentage',
-                discount_value: coupon.discountValue,
-                reference_id:   coupon.code,
-                description:    `${coupon.discountValue}% off`,
-            })
-        } else if (coupon.discountType === 'flat') {
-            discountPaise = Math.round(coupon.discountValue * 100)
-        } else if (coupon.discountType === 'free_shipping') {
-            return response.status(200).json({
-                valid:          true,
-                discount_type: 'shipping',
-                reference_id:  coupon.code,
-                description:   'Free shipping applied',
+                valid: false,
+                error: { description: `Minimum order amount ₹${coupon.minOrderAmount} required` }
             })
         }
 
+        // Compute discount always in paise (flat value expected by Razorpay)
+        let discountPaise = 0
+        let description   = ''
+
+        if (coupon.discountType === 'percentage' || coupon.discountType === 'first_order') {
+            const pct = coupon.discountValue          // e.g. 29
+            discountPaise = Math.round((orderPaise * pct) / 100)
+            // Apply max discount cap if set
+            if (coupon.maxDiscount) {
+                const maxPaise = Math.round(coupon.maxDiscount * 100)
+                discountPaise  = Math.min(discountPaise, maxPaise)
+            }
+            description = `${pct}% off${coupon.maxDiscount ? ` (max ₹${coupon.maxDiscount})` : ''}`
+
+        } else if (coupon.discountType === 'flat') {
+            discountPaise = Math.round(coupon.discountValue * 100)
+            description   = `₹${coupon.discountValue} off`
+
+        } else if (coupon.discountType === 'free_shipping') {
+            // Treat as ₹0 flat discount so Razorpay can show it
+            discountPaise = 0
+            description   = 'Free shipping'
+        }
+
+        // Cap discount at the order amount
+        discountPaise = Math.min(discountPaise, orderPaise)
+
         return response.status(200).json({
             valid:          true,
-            discount_type: 'flat',
+            discount_type:  'flat',
             discount_value: discountPaise,
-            reference_id:  coupon.code,
-            description:   `₹${coupon.discountValue} off`,
+            reference_id:   coupon.code,
+            description,
         })
 
     } catch (error) {
