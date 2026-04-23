@@ -89,20 +89,31 @@ export async function getPromotionsController(request, response) {
             .map(c => {
                 let summary     = ''
                 let description = ''
+                let value       = 0
+                let value_type  = 'fixed_amount'
+
                 if (c.discountType === 'percentage' || c.discountType === 'first_order') {
                     summary     = `${c.discountValue}% off${c.maxDiscount ? ` (max ₹${c.maxDiscount})` : ''}`
                     description = `${c.discountValue}% off on total cart value${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}`
+                    value       = c.discountValue   // percentage rate (e.g. 29)
+                    value_type  = 'percentage'
                 } else if (c.discountType === 'flat') {
                     summary     = `₹${c.discountValue} off`
                     description = `₹${c.discountValue} off on total cart value${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}`
+                    value       = Math.round(c.discountValue * 100)   // paise
+                    value_type  = 'fixed_amount'
                 } else if (c.discountType === 'free_shipping') {
                     summary     = 'Free shipping'
                     description = 'Free shipping on this order'
+                    value       = 0
+                    value_type  = 'fixed_amount'
                 }
                 return {
-                    code:        c.code,
+                    code: c.code,
                     summary,
                     description,
+                    value,
+                    value_type,
                 }
             })
 
