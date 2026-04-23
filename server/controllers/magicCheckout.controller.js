@@ -73,20 +73,23 @@ export async function getPromotionsController(request, response) {
         const promotions = coupons
             .filter(c => !c.usageLimit || c.usageCount < c.usageLimit)
             .map(c => {
+                let summary     = ''
                 let description = ''
                 if (c.discountType === 'percentage' || c.discountType === 'first_order') {
-                    description = `${c.discountValue}% off${c.maxDiscount ? ` (max ₹${c.maxDiscount})` : ''}${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}`
+                    summary     = `${c.discountValue}% off${c.maxDiscount ? ` (max ₹${c.maxDiscount})` : ''}`
+                    description = `${c.discountValue}% off on total cart value${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}`
                 } else if (c.discountType === 'flat') {
-                    description = `₹${c.discountValue} off${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}`
+                    summary     = `₹${c.discountValue} off`
+                    description = `₹${c.discountValue} off on total cart value${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}`
                 } else if (c.discountType === 'free_shipping') {
-                    description = 'Free shipping'
+                    summary     = 'Free shipping'
+                    description = 'Free shipping on this order'
                 }
                 return {
-                    reference_id:  c.code,
-                    code:          c.code,
-                    type:          'coupon',
+                    reference_id: c.code,
+                    code:         c.code,
+                    summary,
                     description,
-                    tnc:           c.minOrderAmount ? `Min order ₹${c.minOrderAmount}` : 'No minimum order',
                 }
             })
 
@@ -203,12 +206,18 @@ export async function applyPromotionController(request, response) {
             description   = 'Free shipping'
         }
 
+        // Razorpay Magic Checkout expects: { promotion: { reference_id, type, code, value, value_type, description } }
+        // value_type: "fixed_amount" = flat (value in paise), "percentage" = percent (value 0-100)
+        const isPercentage = coupon.discountType === 'percentage' || coupon.discountType === 'first_order'
         return response.status(200).json({
-            valid:          true,
-            discount_type:  'flat',
-            discount_value: discountPaise,
-            reference_id:   coupon.code,
-            description,
+            promotion: {
+                reference_id: coupon.code,
+                type:         'offer',
+                code:         coupon.code,
+                value:        isPercentage && orderPaise === 0 ? coupon.discountValue : discountPaise,
+                value_type:   isPercentage && orderPaise === 0 ? 'percentage' : 'fixed_amount',
+                description,
+            }
         })
 
     } catch (error) {
