@@ -72,47 +72,19 @@ export async function shippingInfoController(request, response) {
 //  POST /api/magic-checkout/promotions
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getPromotionsController(request, response) {
-    try {
-        console.log('[get-promotions] headers:', JSON.stringify(request.headers))
-        console.log('[get-promotions] body:', JSON.stringify(request.body))
+    const t0 = Date.now()
+    console.log('[get-promotions] body:', JSON.stringify(request.body))
 
-        const { order_id, contact, email } = request.body
-
-        const now     = new Date()
-        const coupons = await CouponModel.find({
-            isActive:  true,
-            $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
-        }).lean()
-
-        const promotions = coupons
-            .filter(c => !c.usageLimit || c.usageCount < c.usageLimit)
-            .map(c => {
-                let summary     = ''
-                let description = ''
-
-                if (c.discountType === 'percentage' || c.discountType === 'first_order') {
-                    summary     = `${c.discountValue}% off on total cart value`
-                    description = `${c.discountValue}% off on total cart value${c.maxDiscount ? ` upto ₹${c.maxDiscount}` : ''}${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}`
-                } else if (c.discountType === 'flat') {
-                    summary     = `₹${c.discountValue} off on total cart value`
-                    description = `₹${c.discountValue} off${c.minOrderAmount ? ` on a minimum cart value of ₹${c.minOrderAmount}` : ''}`
-                } else if (c.discountType === 'free_shipping') {
-                    summary     = 'Free shipping on this order'
-                    description = 'Free shipping applied on this order'
-                }
-
-                // Exact format per Razorpay docs: code, summary, description
-                return { code: c.code, summary, description }
-            })
-
-        const result = { promotions }
-        captureDebug('get-promotions', request.headers, request.body, result)
-        return response.status(200).json(result)
-
-    } catch (error) {
-        console.error('Magic Checkout getPromotions error:', error.message)
-        return response.status(200).json({ promotions: [] })
+    // ── HARDCODED TEST — bypass DB to check if Razorpay shows our coupons ──
+    const result = {
+        promotions: [
+            { code: 'SAREE', summary: '29% off on total cart value', description: '29% off on total cart value' },
+            { code: 'JAIN',  summary: '₹100 off on total cart value', description: '₹100 off on minimum order' },
+        ]
     }
+    console.log('[get-promotions] responding in', Date.now() - t0, 'ms:', JSON.stringify(result))
+    captureDebug('get-promotions', request.headers, request.body, result)
+    return response.status(200).json(result)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
