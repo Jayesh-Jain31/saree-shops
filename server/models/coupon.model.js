@@ -41,6 +41,10 @@ const couponSchema = new mongoose.Schema({
         type: Date,
         default: null,
     },
+    razorpayOfferId: {
+        type: String,
+        default: null,
+    },
 }, { timestamps: true })
 
 const CouponModel = mongoose.model('coupon', couponSchema)

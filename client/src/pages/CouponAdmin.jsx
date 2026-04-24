@@ -3,7 +3,8 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import AxiosToastError from '../utils/AxiosToastError'
 import toast from 'react-hot-toast'
-import { FaPlus, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaTimesCircle, FaTag, FaTruck, FaStar, FaPercent, FaRupeeSign } from 'react-icons/fa'
+import { FaPlus, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaTimesCircle, FaTag, FaTruck, FaStar, FaPercent, FaRupeeSign, FaSync } from 'react-icons/fa'
+import { SiRazorpay } from 'react-icons/si'
 import Loading from '../components/Loading'
 import NoData from '../components/NoData'
 
@@ -100,6 +101,24 @@ const CouponAdmin = () => {
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [deleteId, setDeleteId] = useState(null)
+  const [syncing, setSyncing] = useState(false)
+
+  const handleSyncRazorpay = async () => {
+    setSyncing(true)
+    try {
+      const res = await Axios({ ...SummaryApi.syncCouponsRazorpay })
+      if (res.data.success) {
+        const results = res.data.data || []
+        const synced = results.filter(r => r.status === 'synced').length
+        const failed = results.filter(r => r.status === 'failed').length
+        if (synced > 0) toast.success(`${synced} coupon${synced > 1 ? 's' : ''} synced to Razorpay!`)
+        if (failed > 0) toast.error(`${failed} coupon${failed > 1 ? 's' : ''} failed to sync`)
+        if (synced === 0 && failed === 0) toast.success('All coupons already synced!')
+        fetchCoupons()
+      }
+    } catch (error) { AxiosToastError(error) }
+    finally { setSyncing(false) }
+  }
 
   const fetchCoupons = async () => {
     setLoading(true)
@@ -179,9 +198,20 @@ const CouponAdmin = () => {
     <section>
       <div className='p-3 sm:p-4 bg-white shadow-sm flex items-center justify-between sticky top-0 z-10 border-b'>
         <h2 className='font-bold text-gray-800 text-base'>Coupon Management</h2>
-        <button onClick={openCreate} className='btn-primary flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg font-semibold'>
-          <FaPlus size={12} /> Add Coupon
-        </button>
+        <div className='flex items-center gap-2'>
+          <button
+            onClick={handleSyncRazorpay}
+            disabled={syncing}
+            title='Sync existing coupons to Razorpay so they appear in the checkout popup'
+            className='flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg font-semibold border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 transition'
+          >
+            {syncing ? <FaSync size={12} className='animate-spin' /> : <SiRazorpay size={12} />}
+            {syncing ? 'Syncing…' : 'Sync to Razorpay'}
+          </button>
+          <button onClick={openCreate} className='btn-primary flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg font-semibold'>
+            <FaPlus size={12} /> Add Coupon
+          </button>
+        </div>
       </div>
 
       {loading && <Loading />}
