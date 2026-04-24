@@ -243,33 +243,16 @@ export async function razorpayOrderController(request, response) {
 
         const amountPaise = Math.round(totalAmt * 100)
 
-        // Fetch active coupon offer IDs registered with Razorpay — these show in the popup
-        const CouponModel = (await import('../models/coupon.model.js')).default
-        const now = new Date()
-        const activeCoupons = await CouponModel.find({
-            isActive: true,
-            razorpayOfferId: { $exists: true, $ne: null },
-            $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
-        }).lean()
-        const offerIds = activeCoupons.map(c => c.razorpayOfferId).filter(Boolean)
-
-        console.log('[RZP Order] coupons with offerIds:', activeCoupons.map(c => ({ code: c.code, offerId: c.razorpayOfferId })))
-        console.log('[RZP Order] offerIds being sent:', offerIds)
-
         const options = {
             amount: amountPaise,
             currency: "INR",
             receipt: `receipt_${new mongoose.Types.ObjectId()}`,
-            // Razorpay offer IDs — makes coupons visible in the checkout popup
-            ...(offerIds.length > 0 && { offers: offerIds }),
             // Magic Checkout: line_items_total must equal amount to avoid mismatch in popup
             ...(line_items.length > 0 && {
                 line_items_total: amountPaise,
                 line_items,
             })
         }
-
-        console.log('[RZP Order] full options sent to Razorpay:', JSON.stringify({ amount: options.amount, offers: options.offers, line_items_count: options.line_items?.length }))
 
         const razorpayOrder = await Razorpay.orders.create(options)
 
