@@ -87,30 +87,22 @@ export async function getPromotionsController(request, response) {
         const promotions = coupons
             .filter(c => !c.usageLimit || c.usageCount < c.usageLimit)
             .map(c => {
+                let summary     = ''
                 let description = ''
-                // value in paise — for flat coupons use the fixed amount;
-                // for percentage coupons use 0 (exact value calculated at apply time)
-                let value = 0
 
                 if (c.discountType === 'percentage' || c.discountType === 'first_order') {
-                    description = `${c.discountValue}% off on total cart value${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}${c.maxDiscount ? ` (max ₹${c.maxDiscount})` : ''}`
-                    value = 0  // percentage — actual paise calculated when applied
+                    summary     = `${c.discountValue}% off on total cart value`
+                    description = `${c.discountValue}% off on total cart value${c.maxDiscount ? ` upto ₹${c.maxDiscount}` : ''}${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}`
                 } else if (c.discountType === 'flat') {
-                    description = `₹${c.discountValue} off${c.minOrderAmount ? ` on orders above ₹${c.minOrderAmount}` : ''}`
-                    value = Math.round(c.discountValue * 100)
+                    summary     = `₹${c.discountValue} off on total cart value`
+                    description = `₹${c.discountValue} off${c.minOrderAmount ? ` on a minimum cart value of ₹${c.minOrderAmount}` : ''}`
                 } else if (c.discountType === 'free_shipping') {
-                    description = 'Free shipping on this order'
-                    value = 0
+                    summary     = 'Free shipping on this order'
+                    description = 'Free shipping applied on this order'
                 }
 
-                // Exact format per Razorpay docs
-                return {
-                    reference_id: String(c._id),
-                    type:         'coupon',
-                    code:         c.code,
-                    value,
-                    description,
-                }
+                // Exact format per Razorpay docs: code, summary, description
+                return { code: c.code, summary, description }
             })
 
         const result = { promotions }
@@ -143,7 +135,7 @@ export async function applyPromotionController(request, response) {
         const { order_id, contact, email, code, amount: amountPaise, cart } = request.body
 
         if (!code) {
-            const r = { failure_code: 'COUPON_INVALID' }
+            const r = { failure_code: 'INVALID_PROMOTION' }
             captureDebug('apply-promotion-ERR-nocode', request.headers, request.body, r)
             return response.status(200).json(r)
         }
@@ -151,20 +143,20 @@ export async function applyPromotionController(request, response) {
         const coupon = await CouponModel.findOne({ code: code.toUpperCase().trim(), isActive: true }).lean()
 
         if (!coupon) {
-            const r = { failure_code: 'COUPON_INVALID' }
+            const r = { failure_code: 'INVALID_PROMOTION' }
             captureDebug('apply-promotion-ERR-notfound', request.headers, request.body, r)
             return response.status(200).json(r)
         }
 
         const now = new Date()
         if (coupon.expiresAt && now > new Date(coupon.expiresAt)) {
-            const r = { failure_code: 'COUPON_EXPIRED' }
+            const r = { failure_code: 'INVALID_PROMOTION' }
             captureDebug('apply-promotion-ERR-expired', request.headers, request.body, r)
             return response.status(200).json(r)
         }
 
         if (coupon.usageLimit != null && coupon.usageCount >= coupon.usageLimit) {
-            const r = { failure_code: 'COUPON_ALREADY_USED' }
+            const r = { failure_code: 'INVALID_PROMOTION' }
             captureDebug('apply-promotion-ERR-limit', request.headers, request.body, r)
             return response.status(200).json(r)
         }
@@ -193,13 +185,14 @@ export async function applyPromotionController(request, response) {
         // Minimum order check (coupon.minOrderAmount is in rupees)
         const orderRupees = orderPaise / 100
         if (coupon.minOrderAmount && orderRupees > 0 && orderRupees < coupon.minOrderAmount) {
-            const r = { failure_code: 'COUPON_NOT_APPLICABLE' }
+            const r = { failure_code: 'REQUIREMENT_NOT_MET' }
             captureDebug('apply-promotion-ERR-minorder', request.headers, request.body, r)
             return response.status(200).json(r)
         }
 
         // Calculate discount in paise
         let discountPaise = 0
+        let description   = ''
 
         if (coupon.discountType === 'percentage' || coupon.discountType === 'first_order') {
             const pct = coupon.discountValue
@@ -210,20 +203,25 @@ export async function applyPromotionController(request, response) {
                 }
                 discountPaise = Math.min(discountPaise, orderPaise)
             }
+            description = `${pct}% off${coupon.maxDiscount ? ` upto ₹${coupon.maxDiscount}` : ''}`
         } else if (coupon.discountType === 'flat') {
             discountPaise = Math.round(coupon.discountValue * 100)
             if (orderPaise > 0) discountPaise = Math.min(discountPaise, orderPaise)
+            description = `₹${coupon.discountValue} off`
         } else if (coupon.discountType === 'free_shipping') {
             discountPaise = 0
+            description   = 'Free shipping'
         }
 
-        // Exact format per Razorpay docs: reference_id, type, code, value (paise)
+        // Exact format per Razorpay docs (from official documentation)
         const applyResult = {
             promotion: {
                 reference_id: String(coupon._id),
-                type:         'coupon',
+                type:         'offer',
                 code:         coupon.code,
                 value:        discountPaise,
+                value_type:   'fixed_amount',
+                description,
             }
         }
         captureDebug('apply-promotion', request.headers, request.body, applyResult)
@@ -231,7 +229,7 @@ export async function applyPromotionController(request, response) {
 
     } catch (error) {
         console.error('Magic Checkout applyPromotion error:', error.message)
-        const r = { failure_code: 'COUPON_INVALID' }
+        const r = { failure_code: 'INVALID_PROMOTION' }
         captureDebug('apply-promotion-ERR-exception:' + error.message, request.headers, request.body, r)
         return response.status(200).json(r)
     }
