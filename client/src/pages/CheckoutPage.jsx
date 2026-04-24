@@ -337,9 +337,10 @@ const CheckoutPage = () => {
 
         // Pre-fill customer details
         prefill: {
-          name:    customerName,
-          email:   customerEmail,
-          contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
+          name:         customerName,
+          email:        customerEmail,
+          contact:      customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
+          coupon_code:  appliedCoupon?.code || '',
         },
 
         // Shipping address for Magic Checkout

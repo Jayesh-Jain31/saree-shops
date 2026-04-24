@@ -152,7 +152,8 @@ const DisplayCartItem = ({ close }) => {
         description: 'Order Payment',
         image: '/logo.png',
         order_id: razorpayOrder.id,
-        magic: true,
+        one_click_checkout: true,
+        show_coupons: true,
         prefill: {
           name:    customerName,
           email:   customerEmail,
