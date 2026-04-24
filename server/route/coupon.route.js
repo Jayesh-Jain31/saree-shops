@@ -8,7 +8,6 @@ import {
     createCouponController,
     updateCouponController,
     deleteCouponController,
-    syncCouponsToRazorpayController,
 } from '../controllers/coupon.controller.js'
 
 const couponRouter = Router()
@@ -24,6 +23,5 @@ couponRouter.get('/all', auth, admin, getAllCouponsController)
 couponRouter.post('/create', auth, admin, createCouponController)
 couponRouter.put('/update', auth, admin, updateCouponController)
 couponRouter.delete('/delete', auth, admin, deleteCouponController)
-couponRouter.post('/sync-razorpay', auth, admin, syncCouponsToRazorpayController)
 
 export default couponRouter

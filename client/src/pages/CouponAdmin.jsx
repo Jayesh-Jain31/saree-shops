@@ -3,7 +3,7 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import AxiosToastError from '../utils/AxiosToastError'
 import toast from 'react-hot-toast'
-import { FaPlus, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaTimesCircle, FaTag, FaTruck, FaStar, FaPercent, FaRupeeSign, FaSync } from 'react-icons/fa'
+import { FaPlus, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaTimesCircle, FaTag, FaTruck, FaStar, FaPercent, FaRupeeSign } from 'react-icons/fa'
 import { SiRazorpay } from 'react-icons/si'
 import Loading from '../components/Loading'
 import NoData from '../components/NoData'
@@ -26,6 +26,7 @@ const emptyForm = {
   usageLimit: '',
   isActive: true,
   expiresAt: '',
+  razorpayOfferId: '',
 }
 
 const CouponCard = ({ coupon, onEdit, onDelete, onToggle }) => {
@@ -101,24 +102,6 @@ const CouponAdmin = () => {
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [deleteId, setDeleteId] = useState(null)
-  const [syncing, setSyncing] = useState(false)
-
-  const handleSyncRazorpay = async () => {
-    setSyncing(true)
-    try {
-      const res = await Axios({ ...SummaryApi.syncCouponsRazorpay })
-      if (res.data.success) {
-        const results = res.data.data || []
-        const synced = results.filter(r => r.status === 'synced').length
-        const failed = results.filter(r => r.status === 'failed').length
-        if (synced > 0) toast.success(`${synced} coupon${synced > 1 ? 's' : ''} synced to Razorpay!`)
-        if (failed > 0) toast.error(`${failed} coupon${failed > 1 ? 's' : ''} failed to sync`)
-        if (synced === 0 && failed === 0) toast.success('All coupons already synced!')
-        fetchCoupons()
-      }
-    } catch (error) { AxiosToastError(error) }
-    finally { setSyncing(false) }
-  }
 
   const fetchCoupons = async () => {
     setLoading(true)
@@ -152,6 +135,7 @@ const CouponAdmin = () => {
       usageLimit: coupon.usageLimit || '',
       isActive: coupon.isActive,
       expiresAt: coupon.expiresAt ? coupon.expiresAt.slice(0, 10) : '',
+      razorpayOfferId: coupon.razorpayOfferId || '',
     })
     setEditMode(true)
     setShowForm(true)
@@ -198,20 +182,9 @@ const CouponAdmin = () => {
     <section>
       <div className='p-3 sm:p-4 bg-white shadow-sm flex items-center justify-between sticky top-0 z-10 border-b'>
         <h2 className='font-bold text-gray-800 text-base'>Coupon Management</h2>
-        <div className='flex items-center gap-2'>
-          <button
-            onClick={handleSyncRazorpay}
-            disabled={syncing}
-            title='Sync existing coupons to Razorpay so they appear in the checkout popup'
-            className='flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg font-semibold border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 transition'
-          >
-            {syncing ? <FaSync size={12} className='animate-spin' /> : <SiRazorpay size={12} />}
-            {syncing ? 'Syncing…' : 'Sync to Razorpay'}
-          </button>
-          <button onClick={openCreate} className='btn-primary flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg font-semibold'>
-            <FaPlus size={12} /> Add Coupon
-          </button>
-        </div>
+        <button onClick={openCreate} className='btn-primary flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg font-semibold'>
+          <FaPlus size={12} /> Add Coupon
+        </button>
       </div>
 
       {loading && <Loading />}
@@ -395,6 +368,22 @@ const CouponAdmin = () => {
                     className='w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary'
                   />
                 </div>
+              </div>
+
+              {/* Razorpay Offer ID — optional, makes coupon appear inside the Razorpay checkout popup */}
+              <div className='border border-blue-100 bg-blue-50 rounded-xl p-3 space-y-1.5'>
+                <div className='flex items-center gap-1.5'>
+                  <SiRazorpay size={13} className='text-blue-600' />
+                  <label className='block text-xs font-bold text-blue-700 uppercase tracking-wide'>Razorpay Offer ID (optional)</label>
+                </div>
+                <input
+                  name='razorpayOfferId' value={form.razorpayOfferId} onChange={handleChange}
+                  placeholder='e.g. offer_XxxxxxxXxxxxxx'
+                  className='w-full border border-blue-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white'
+                />
+                <p className='text-[11px] text-blue-500 leading-snug'>
+                  Create a matching offer in Razorpay Dashboard → Checkout Settings → Discounts &amp; Cash Backs → copy the ID here. This makes the coupon appear inside the Razorpay payment popup.
+                </p>
               </div>
 
               <div className='flex items-center gap-3 p-3 bg-gray-50 rounded-xl'>
