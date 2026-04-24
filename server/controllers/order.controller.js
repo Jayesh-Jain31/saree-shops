@@ -253,6 +253,9 @@ export async function razorpayOrderController(request, response) {
         }).lean()
         const offerIds = activeCoupons.map(c => c.razorpayOfferId).filter(Boolean)
 
+        console.log('[RZP Order] coupons with offerIds:', activeCoupons.map(c => ({ code: c.code, offerId: c.razorpayOfferId })))
+        console.log('[RZP Order] offerIds being sent:', offerIds)
+
         const options = {
             amount: amountPaise,
             currency: "INR",
@@ -265,6 +268,8 @@ export async function razorpayOrderController(request, response) {
                 line_items,
             })
         }
+
+        console.log('[RZP Order] full options sent to Razorpay:', JSON.stringify({ amount: options.amount, offers: options.offers, line_items_count: options.line_items?.length }))
 
         const razorpayOrder = await Razorpay.orders.create(options)
 
