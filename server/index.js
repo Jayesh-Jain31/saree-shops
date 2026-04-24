@@ -78,7 +78,7 @@ app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (mobile apps, curl, Postman)
         if (!origin) return callback(null, true)
-        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.replit.dev') || origin.endsWith('.razorpay.com')) {
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.replit.dev') || origin.endsWith('.repl.co') || origin.endsWith('.razorpay.com')) {
             return callback(null, true)
         }
         return callback(new Error('Not allowed by CORS'))
