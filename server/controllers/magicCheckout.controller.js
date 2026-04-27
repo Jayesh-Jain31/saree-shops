@@ -165,24 +165,31 @@ export async function applyPromotionController(request, response) {
             return response.status(200).json(r)
         }
 
-        // Resolve order amount in paise
-        // Razorpay sends `amount` directly, or we look it up by order_id / receipt
+        // Resolve order amount in paise AND get the canonical Razorpay order_xxx ID
+        // (Razorpay sometimes sends receipt value instead of order_xxx in apply-promotion)
         let orderPaise = amountPaise || (cart?.total) || 0
+        let resolvedOrderId = order_id  // will be updated to order_xxx if we resolve it
 
-        if (!orderPaise && order_id) {
+        if (order_id) {
             try {
                 if (order_id.startsWith('order_')) {
-                    // Direct Razorpay order ID
-                    const rzpOrder = await Razorpay.orders.fetch(order_id)
-                    orderPaise = rzpOrder?.amount || 0
+                    // Already a Razorpay order ID
+                    if (!orderPaise) {
+                        const rzpOrder = await Razorpay.orders.fetch(order_id)
+                        orderPaise = rzpOrder?.amount || 0
+                    }
+                    resolvedOrderId = order_id
                 } else {
-                    // Razorpay sends the receipt value as order_id (per their docs)
+                    // Razorpay sent the receipt value — resolve to the actual order_xxx ID
                     const result = await Razorpay.orders.all({ receipt: order_id })
                     const rzpOrder = result?.items?.[0]
-                    orderPaise = rzpOrder?.amount || 0
+                    if (rzpOrder) {
+                        if (!orderPaise) orderPaise = rzpOrder.amount || 0
+                        resolvedOrderId = rzpOrder.id  // canonical order_xxx ID
+                    }
                 }
             } catch (e) {
-                console.warn('Could not resolve order amount:', e.message)
+                console.warn('Could not resolve order amount/id:', e.message)
             }
         }
 
@@ -218,13 +225,15 @@ export async function applyPromotionController(request, response) {
         }
 
         // Save to in-memory map so verify controller can record the popup coupon on the order
-        if (order_id) {
-            popupCouponMap.set(order_id, {
-                code:            coupon.code,
-                discountRupees:  discountPaise / 100,
-                ts:              Date.now(),
-            })
+        // Save under BOTH the received order_id AND the resolved order_xxx ID so lookup always works
+        const couponEntry = {
+            code:           coupon.code,
+            discountRupees: discountPaise / 100,
+            ts:             Date.now(),
         }
+        if (order_id)         popupCouponMap.set(order_id, couponEntry)
+        if (resolvedOrderId && resolvedOrderId !== order_id) popupCouponMap.set(resolvedOrderId, couponEntry)
+        console.log(`[apply-promotion] saved coupon ${coupon.code} discount=${discountPaise/100} keys=[${order_id}, ${resolvedOrderId}]`)
 
         // Exact format per Razorpay docs (from official documentation)
         const applyResult = {

@@ -324,11 +324,12 @@ export async function razorpayVerifyController(request, response) {
         // Check if a coupon was applied inside the Razorpay popup
         // (apply-promotion saves the mapping when Razorpay calls that endpoint)
         const popupCoupon = getPopupCoupon(razorpay_order_id)
+        console.log(`[verify] order=${razorpay_order_id} popupCoupon=`, popupCoupon)
         if (popupCoupon) {
             // Popup coupon overrides any UI coupon (customer can only apply one at a time)
             rzpCouponCode     = popupCoupon.code
             rzpCouponDiscount = popupCoupon.discountRupees
-            rzpTotalAmt       = totalAmt - popupCoupon.discountRupees
+            rzpTotalAmt       = Math.max(0, totalAmt - popupCoupon.discountRupees)
         }
 
         // For online payments, verify signature. Skip for COD (no signature for COD in Magic Checkout)
