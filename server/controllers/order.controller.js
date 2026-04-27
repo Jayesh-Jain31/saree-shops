@@ -306,18 +306,53 @@ export async function razorpayVerifyController(request, response) {
             loyaltyDiscount = 0,
         } = request.body
 
-        const body = razorpay_order_id + "|" + razorpay_payment_id
-        const expectedSignature = crypto
-            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-            .update(body)
-            .digest("hex")
+        // Fetch actual payment details from Razorpay to reliably detect COD
+        // (Magic Checkout COD passes a signature too, so client-side check is unreliable)
+        let isCOD = false
+        let rzpCouponCode = couponCode
+        let rzpCouponDiscount = couponDiscount
+        let rzpTotalAmt = totalAmt
 
-        if (expectedSignature !== razorpay_signature) {
-            return response.status(400).json({
-                message: "Payment verification failed. Invalid signature.",
-                error: true,
-                success: false
-            })
+        try {
+            const paymentDetails = await Razorpay.payments.fetch(razorpay_payment_id)
+            isCOD = paymentDetails.method === 'cod'
+
+            // If coupon was applied inside the popup, capture it from the Razorpay order
+            if (!isCOD) {
+                try {
+                    const orderDetails = await Razorpay.orders.fetch(razorpay_order_id)
+                    // amount_due reflects the amount after popup coupon was applied
+                    const actualAmountPaise = orderDetails.amount_due || orderDetails.amount
+                    const actualAmountRupees = actualAmountPaise / 100
+                    if (actualAmountRupees < totalAmt) {
+                        rzpCouponDiscount = couponDiscount + (totalAmt - actualAmountRupees)
+                        rzpTotalAmt = actualAmountRupees
+                    }
+                    // Capture coupon code from order notes if Razorpay stores it
+                    if (orderDetails.discount_desc && !rzpCouponCode) {
+                        rzpCouponCode = orderDetails.discount_desc
+                    }
+                } catch (_) {}
+            }
+        } catch (fetchErr) {
+            if(process.env.NODE_ENV !== 'production') console.log("Razorpay payment fetch error:", fetchErr?.message)
+        }
+
+        // For online payments, verify signature. Skip for COD (no signature for COD in Magic Checkout)
+        if (!isCOD) {
+            const body = razorpay_order_id + "|" + razorpay_payment_id
+            const expectedSignature = crypto
+                .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+                .update(body)
+                .digest("hex")
+
+            if (expectedSignature !== razorpay_signature) {
+                return response.status(400).json({
+                    message: "Payment verification failed. Invalid signature.",
+                    error: true,
+                    success: false
+                })
+            }
         }
 
         const items = list_items.map(el => ({
@@ -352,14 +387,14 @@ export async function razorpayVerifyController(request, response) {
             orderId: `ORD-${new mongoose.Types.ObjectId()}`,
             items: items,
             paymentId: razorpay_payment_id,
-            payment_status: "PAID",
+            payment_status: isCOD ? "CASH ON DELIVERY" : "PAID",
             delivery_address: addressId,
             delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
-            totalAmt: totalAmt,
+            totalAmt: rzpTotalAmt,
             discountAmt: discountAmt,
-            couponCode: couponCode,
-            couponDiscount: couponDiscount,
+            couponCode: rzpCouponCode,
+            couponDiscount: rzpCouponDiscount,
             walletDeduction: walletDeduction,
             loyaltyPointsUsed: loyaltyPointsUsed,
             loyaltyDiscount: loyaltyDiscount,
