@@ -1,4 +1,5 @@
 import Razorpay from "../config/razorpay.js";
+import { getPopupCoupon } from "./magicCheckout.controller.js";
 import CartProductModel from "../models/cartproduct.model.js";
 import OrderModel from "../models/order.model.js";
 import UserModel from "../models/user.model.js";
@@ -316,26 +317,18 @@ export async function razorpayVerifyController(request, response) {
         try {
             const paymentDetails = await Razorpay.payments.fetch(razorpay_payment_id)
             isCOD = paymentDetails.method === 'cod'
-
-            // If coupon was applied inside the popup, capture it from the Razorpay order
-            if (!isCOD) {
-                try {
-                    const orderDetails = await Razorpay.orders.fetch(razorpay_order_id)
-                    // amount_due reflects the amount after popup coupon was applied
-                    const actualAmountPaise = orderDetails.amount_due || orderDetails.amount
-                    const actualAmountRupees = actualAmountPaise / 100
-                    if (actualAmountRupees < totalAmt) {
-                        rzpCouponDiscount = couponDiscount + (totalAmt - actualAmountRupees)
-                        rzpTotalAmt = actualAmountRupees
-                    }
-                    // Capture coupon code from order notes if Razorpay stores it
-                    if (orderDetails.discount_desc && !rzpCouponCode) {
-                        rzpCouponCode = orderDetails.discount_desc
-                    }
-                } catch (_) {}
-            }
         } catch (fetchErr) {
             if(process.env.NODE_ENV !== 'production') console.log("Razorpay payment fetch error:", fetchErr?.message)
+        }
+
+        // Check if a coupon was applied inside the Razorpay popup
+        // (apply-promotion saves the mapping when Razorpay calls that endpoint)
+        const popupCoupon = getPopupCoupon(razorpay_order_id)
+        if (popupCoupon) {
+            // Popup coupon overrides any UI coupon (customer can only apply one at a time)
+            rzpCouponCode     = popupCoupon.code
+            rzpCouponDiscount = popupCoupon.discountRupees
+            rzpTotalAmt       = totalAmt - popupCoupon.discountRupees
         }
 
         // For online payments, verify signature. Skip for COD (no signature for COD in Magic Checkout)

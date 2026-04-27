@@ -14,6 +14,16 @@ function captureDebug(endpoint, headers, body, responseBody) {
     if (debugLog.length > 5) debugLog.pop()
 }
 
+// In-memory store: maps Razorpay order_id → applied popup coupon info
+// Entries expire after 30 minutes to avoid memory bloat
+const popupCouponMap = new Map()
+export function getPopupCoupon(razorpayOrderId) {
+    const entry = popupCouponMap.get(razorpayOrderId)
+    if (!entry) return null
+    if (Date.now() - entry.ts > 30 * 60 * 1000) { popupCouponMap.delete(razorpayOrderId); return null }
+    return entry
+}
+
 export function debugController(request, response) {
     response.json({ log: debugLog })
 }
@@ -205,6 +215,15 @@ export async function applyPromotionController(request, response) {
         } else if (coupon.discountType === 'free_shipping') {
             discountPaise = 0
             description   = 'Free shipping'
+        }
+
+        // Save to in-memory map so verify controller can record the popup coupon on the order
+        if (order_id) {
+            popupCouponMap.set(order_id, {
+                code:            coupon.code,
+                discountRupees:  discountPaise / 100,
+                ts:              Date.now(),
+            })
         }
 
         // Exact format per Razorpay docs (from official documentation)
