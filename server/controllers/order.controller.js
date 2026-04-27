@@ -99,6 +99,19 @@ export async function CashOnDeliveryOrderController(request, response) {
             await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
         }
 
+        // Snapshot address at order time so it never changes even if customer edits/deletes it
+        const addrDoc = await AddressModel.findById(addressId).lean()
+        const delivery_address_snapshot = addrDoc ? {
+            name:         addrDoc.name         || '',
+            mobile:       addrDoc.mobile        || '',
+            address_line: addrDoc.address_line  || '',
+            city:         addrDoc.city          || '',
+            state:        addrDoc.state         || '',
+            pincode:      String(addrDoc.pincode || ''),
+            country:      addrDoc.country       || 'India',
+            landmark:     addrDoc.landmark      || '',
+        } : {}
+
         const order = await OrderModel.create({
             userId: userId,
             orderId: `ORD-${new mongoose.Types.ObjectId()}`,
@@ -106,6 +119,7 @@ export async function CashOnDeliveryOrderController(request, response) {
             paymentId: "",
             payment_status: "CASH ON DELIVERY",
             delivery_address: addressId,
+            delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
             totalAmt: totalAmt,
             discountAmt: discountAmt,
@@ -320,6 +334,19 @@ export async function razorpayVerifyController(request, response) {
             await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
         }
 
+        // Snapshot address at order time so it never changes even if customer edits/deletes it
+        const addrDocOnline = await AddressModel.findById(addressId).lean()
+        const delivery_address_snapshot = addrDocOnline ? {
+            name:         addrDocOnline.name         || '',
+            mobile:       addrDocOnline.mobile        || '',
+            address_line: addrDocOnline.address_line  || '',
+            city:         addrDocOnline.city          || '',
+            state:        addrDocOnline.state         || '',
+            pincode:      String(addrDocOnline.pincode || ''),
+            country:      addrDocOnline.country       || 'India',
+            landmark:     addrDocOnline.landmark      || '',
+        } : {}
+
         const order = await OrderModel.create({
             userId: userId,
             orderId: `ORD-${new mongoose.Types.ObjectId()}`,
@@ -327,6 +354,7 @@ export async function razorpayVerifyController(request, response) {
             paymentId: razorpay_payment_id,
             payment_status: "PAID",
             delivery_address: addressId,
+            delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
             totalAmt: totalAmt,
             discountAmt: discountAmt,

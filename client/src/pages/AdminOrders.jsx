@@ -123,7 +123,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     if (!order) return
     const STORE = 'Sarees Store'
     const items = order.items || []
-    const addr = order.delivery_address || {}
+    const addr = (order.delivery_address_snapshot?.address_line ? order.delivery_address_snapshot : order.delivery_address) || {}
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Order ${esc(order.orderId)}</title>
     <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui;padding:32px;color:#333;max-width:800px;margin:0 auto}
     .brand{font-size:22px;font-weight:700;color:#16a34a}.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #16a34a;padding-bottom:16px;margin-bottom:24px}
@@ -303,30 +303,34 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
               </div>
             </Link>
 
-            {/* Delivery Address */}
-            {order.delivery_address && (
+            {/* Delivery Address — use snapshot if available, else fall back to populated ref */}
+            {(order.delivery_address_snapshot?.address_line || order.delivery_address) && (() => {
+              const a = order.delivery_address_snapshot?.address_line
+                ? order.delivery_address_snapshot
+                : order.delivery_address
+              return (
               <div className='bg-white rounded-2xl border p-4'>
                 <h3 className='font-bold text-gray-700 text-sm mb-3 flex items-center gap-2'>
                   <FaMapMarkerAlt className='text-red-500' size={13} /> Delivery Address
+                  {order.delivery_address_snapshot?.address_line && (
+                    <span className='text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-200'>Saved at order time</span>
+                  )}
                 </h3>
                 <div className='bg-blue-50 rounded-xl p-3'>
-                  <p className='text-sm text-gray-700 leading-relaxed'>
-                    {order.delivery_address.address_line}
-                  </p>
-                  <p className='text-sm text-gray-600'>
-                    {[order.delivery_address.city, order.delivery_address.state].filter(Boolean).join(', ')}
-                  </p>
-                  <p className='text-sm text-gray-600'>
-                    {[order.delivery_address.country, order.delivery_address.pincode].filter(Boolean).join(' - ')}
-                  </p>
-                  {order.delivery_address.mobile && (
+                  {a.name && <p className='text-sm font-medium text-gray-800'>{a.name}</p>}
+                  <p className='text-sm text-gray-700 leading-relaxed'>{a.address_line}</p>
+                  {a.landmark && <p className='text-xs text-gray-500'>{a.landmark}</p>}
+                  <p className='text-sm text-gray-600'>{[a.city, a.state].filter(Boolean).join(', ')}</p>
+                  <p className='text-sm text-gray-600'>{[a.country, a.pincode].filter(Boolean).join(' - ')}</p>
+                  {a.mobile && (
                     <p className='text-xs text-gray-500 mt-1.5 flex items-center gap-1'>
-                      <FaPhone size={9} /> {order.delivery_address.mobile}
+                      <FaPhone size={9} /> {a.mobile}
                     </p>
                   )}
                 </div>
               </div>
-            )}
+              )
+            })()}
 
             {/* Items */}
             <div className='bg-white rounded-2xl border p-4'>

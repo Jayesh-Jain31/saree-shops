@@ -42,6 +42,16 @@ const orderSchema = new mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'address'
     },
+    delivery_address_snapshot: {
+        name:         { type: String, default: '' },
+        mobile:       { type: String, default: '' },
+        address_line: { type: String, default: '' },
+        city:         { type: String, default: '' },
+        state:        { type: String, default: '' },
+        pincode:      { type: String, default: '' },
+        country:      { type: String, default: '' },
+        landmark:     { type: String, default: '' },
+    },
     subTotalAmt: {
         type: Number,
         default: 0
