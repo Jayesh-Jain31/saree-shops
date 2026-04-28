@@ -398,7 +398,10 @@ const OrderDetails = () => {
           ` : ''}
           <div class="total-row">
             <span>Delivery</span>
-            <span style="color:#16a34a">FREE</span>
+            ${order?.deliveryCharge > 0
+              ? `<span>${DisplayPriceInRupees(order.deliveryCharge)}</span>`
+              : `<span style="color:#16a34a">FREE</span>`
+            }
           </div>
           <div class="total-row grand">
             <span>Grand Total</span>
@@ -607,7 +610,10 @@ const OrderDetails = () => {
             )}
             <div className='flex justify-between text-sm'>
               <span className='text-gray-500'>Delivery</span>
-              <span className='text-green-600 font-medium'>FREE</span>
+              {order?.deliveryCharge > 0
+                ? <span className='text-gray-700'>{DisplayPriceInRupees(order.deliveryCharge)}</span>
+                : <span className='text-green-600 font-medium'>FREE</span>
+              }
             </div>
             <div className='border-t pt-2.5 flex justify-between'>
               <span className='font-bold text-gray-800'>Grand Total</span>

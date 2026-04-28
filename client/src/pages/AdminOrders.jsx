@@ -148,7 +148,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     <table><thead><tr><th>#</th><th>Product</th><th class="tr">Qty</th><th class="tr">Price</th></tr></thead><tbody>
     ${items.map((item, i) => `<tr><td>${i+1}</td><td>${item.product_details?.name || 'Product'}</td><td class="tr">${item.quantity || 1}</td><td class="tr">₹${item.price || 0}</td></tr>`).join('')}
     </tbody></table>
-    <div class="totals">${order.couponCode && order.couponDiscount > 0 ? `<div class="trow"><span>Coupon (${order.couponCode})</span><span style="color:#16a34a">- ₹${order.couponDiscount}</span></div>` : ''}${order.walletDeduction > 0 ? `<div class="trow"><span>Wallet used</span><span style="color:#2563eb">- ₹${order.walletDeduction}</span></div>` : ''}${!order.couponCode && !order.walletDeduction && order.discountAmt > 0 ? `<div class="trow"><span>Discount</span><span style="color:#16a34a">- ₹${order.discountAmt}</span></div>` : ''}
+    <div class="totals">${order.couponCode && order.couponDiscount > 0 ? `<div class="trow"><span>Coupon (${order.couponCode})</span><span style="color:#16a34a">- ₹${order.couponDiscount}</span></div>` : ''}${order.walletDeduction > 0 ? `<div class="trow"><span>Wallet used</span><span style="color:#2563eb">- ₹${order.walletDeduction}</span></div>` : ''}${!order.couponCode && !order.walletDeduction && order.discountAmt > 0 ? `<div class="trow"><span>Discount</span><span style="color:#16a34a">- ₹${order.discountAmt}</span></div>` : ''}<div class="trow"><span>Delivery</span><span>${order.deliveryCharge > 0 ? `₹${order.deliveryCharge}` : 'FREE'}</span></div>
     <div class="trow grand"><span>Grand Total</span><span>₹${order.totalAmt}</span></div></div>
     <p style="margin-top:32px;text-align:center;font-size:11px;color:#999">Order Status: ${order.orderStatus}</p>
     <script>window.onload=function(){window.print()}<\/script>
@@ -414,8 +414,12 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                       <span>- {DisplayPriceInRupees(order.discountAmt)}</span>
                     </div>
                   )}
-                  <div className='flex justify-between text-xs text-green-600 font-medium'>
-                    <span>Delivery</span><span>FREE</span>
+                  <div className='flex justify-between text-xs font-medium'>
+                    <span>Delivery</span>
+                    {order.deliveryCharge > 0
+                      ? <span className='text-gray-700'>{DisplayPriceInRupees(order.deliveryCharge)}</span>
+                      : <span className='text-green-600'>FREE</span>
+                    }
                   </div>
                   <div className='flex justify-between font-bold text-gray-800 pt-1 border-t'>
                     <span>Grand Total</span>

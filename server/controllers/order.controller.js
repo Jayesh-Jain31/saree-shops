@@ -64,7 +64,20 @@ async function creditReferralReward(userId) {
 export async function CashOnDeliveryOrderController(request, response) {
     try {
         const userId = request.userId
-        const { list_items, totalAmt, addressId, subTotalAmt, discountAmt = 0, couponCode = "", couponDiscount = 0, walletDeduction = 0, loyaltyPointsUsed = 0, loyaltyDiscount = 0 } = request.body
+        const { list_items, totalAmt, addressId, subTotalAmt, deliveryCharge = 0, discountAmt = 0, couponCode = "", couponDiscount = 0, walletDeduction = 0, loyaltyPointsUsed = 0, loyaltyDiscount = 0, razorpay_order_id = "" } = request.body
+
+        // If this COD came from inside the Razorpay popup, check for a popup-applied coupon
+        let finalCouponCode = couponCode
+        let finalCouponDiscount = couponDiscount
+        let finalTotalAmt = totalAmt
+        if (razorpay_order_id) {
+            const popupCoupon = getPopupCoupon(razorpay_order_id)
+            if (popupCoupon) {
+                finalCouponCode     = popupCoupon.code
+                finalCouponDiscount = popupCoupon.discountRupees
+                finalTotalAmt       = Math.max(0, totalAmt - popupCoupon.discountRupees)
+            }
+        }
 
         const items = list_items.map(el => ({
             productId: el.productId._id,
@@ -122,10 +135,11 @@ export async function CashOnDeliveryOrderController(request, response) {
             delivery_address: addressId,
             delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
-            totalAmt: totalAmt,
+            deliveryCharge: deliveryCharge,
+            totalAmt: finalTotalAmt,
             discountAmt: discountAmt,
-            couponCode: couponCode,
-            couponDiscount: couponDiscount,
+            couponCode: finalCouponCode,
+            couponDiscount: finalCouponDiscount,
             walletDeduction: walletDeduction,
             loyaltyPointsUsed: loyaltyPointsUsed,
             loyaltyDiscount: loyaltyDiscount,
@@ -298,6 +312,7 @@ export async function razorpayVerifyController(request, response) {
             list_items,
             addressId,
             subTotalAmt,
+            deliveryCharge = 0,
             totalAmt,
             discountAmt = 0,
             couponCode = "",
@@ -385,6 +400,7 @@ export async function razorpayVerifyController(request, response) {
             delivery_address: addressId,
             delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
+            deliveryCharge: deliveryCharge,
             totalAmt: rzpTotalAmt,
             discountAmt: discountAmt,
             couponCode: rzpCouponCode,

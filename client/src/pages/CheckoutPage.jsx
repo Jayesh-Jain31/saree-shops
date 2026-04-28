@@ -207,14 +207,14 @@ const CheckoutPage = () => {
     const selectedAddrSnapshot = addressList[selectAddress]
     const response = await Axios({
       ...SummaryApi.CashOnDeliveryOrder,
-      data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
+      data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, deliveryCharge, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
     })
     if (response.data.success) {
       toast.success(response.data.message)
       addNotification('Your Cash on Delivery order has been placed successfully!', 'success')
       if (fetchCartItem) fetchCartItem()
       if (fetchOrder) fetchOrder()
-      navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+      navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: response.data.data?.totalAmt ?? payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
     }
   }
 
@@ -292,7 +292,7 @@ const CheckoutPage = () => {
       try {
         const response = await Axios({
           ...SummaryApi.CashOnDeliveryOrder,
-          data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, totalAmt: 0, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
+          data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, deliveryCharge, totalAmt: 0, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
         })
         if (response.data.success) {
           const itemsSnapshot = [...cartItemsList]
@@ -301,7 +301,7 @@ const CheckoutPage = () => {
           addNotification('Your order has been placed using your wallet balance.', 'success')
           if (fetchCartItem) fetchCartItem()
           if (fetchOrder) fetchOrder()
-          navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: 0, deliveryCharge, paymentMethod: 'Wallet', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+          navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: response.data.data?.totalAmt ?? 0, deliveryCharge, paymentMethod: 'Wallet', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
         }
       } catch (error) { AxiosToastError(error) }
       return
@@ -381,7 +381,7 @@ const CheckoutPage = () => {
               const codToastId = toast.loading('Placing COD order...')
               const codRes = await Axios({
                 ...SummaryApi.CashOnDeliveryOrder,
-                data: { list_items: cartItemsList, addressId: selectedAddrSnapshot?._id, subTotalAmt: totalPrice, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || '', couponDiscount, walletDeduction, loyaltyPointsUsed, loyaltyDiscount }
+                data: { list_items: cartItemsList, addressId: selectedAddrSnapshot?._id, subTotalAmt: totalPrice, deliveryCharge, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || '', couponDiscount, walletDeduction, loyaltyPointsUsed, loyaltyDiscount, razorpay_order_id: paymentResponse.razorpay_order_id || '' }
               })
               toast.dismiss(codToastId)
               if (codRes.data.success) {
@@ -389,7 +389,7 @@ const CheckoutPage = () => {
                 addNotification('Your Cash on Delivery order has been placed!', 'success')
                 if (fetchCartItem) fetchCartItem()
                 if (fetchOrder) fetchOrder()
-                navigate('/success', { state: { text: 'Order', address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+                navigate('/success', { state: { text: 'Order', address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: codRes.data.data?.totalAmt ?? payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
               } else { toast.error('Failed to place COD order.') }
               return
             }
@@ -400,7 +400,7 @@ const CheckoutPage = () => {
             const verifyToastId = toast.loading('Verifying payment...')
             const verifyRes = await Axios({
               ...SummaryApi.razorpayVerify,
-              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, list_items: cartItemsList, addressId: selectedAddrSnapshot?._id, subTotalAmt: totalPrice, totalAmt: finalAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
+              data: { razorpay_order_id: paymentResponse.razorpay_order_id, razorpay_payment_id: paymentResponse.razorpay_payment_id, razorpay_signature: paymentResponse.razorpay_signature, list_items: cartItemsList, addressId: selectedAddrSnapshot?._id, subTotalAmt: totalPrice, deliveryCharge, totalAmt: payableAmount, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
             })
             toast.dismiss(verifyToastId)
             if (verifyRes.data.success) {
@@ -408,7 +408,7 @@ const CheckoutPage = () => {
               addNotification('Your order has been placed successfully! Payment received via Razorpay.', 'success')
               if (fetchCartItem) fetchCartItem()
               if (fetchOrder) fetchOrder()
-              navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge, paymentMethod: 'Razorpay', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+              navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: verifyRes.data.data?.totalAmt ?? payableAmount, deliveryCharge, paymentMethod: 'Razorpay', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
             } else { toast.error('Payment verification failed.') }
           } catch (err) { toast.dismiss(); AxiosToastError(err) }
         },
