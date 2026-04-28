@@ -50,9 +50,23 @@ export async function shippingInfoController(request, response) {
         // Save full address details to the map keyed by order_id so the verify/COD
         // controller can later build the correct delivery_address_snapshot
         if (order_id && addresses.length > 0) {
-            popupAddressMap.set(order_id, { addresses, ts: Date.now() })
-            console.log(`[shipping-info] saved ${addresses.length} addresses for order ${order_id}`)
+
+    let key = order_id
+
+    // 🔥 convert receipt → order_xxx
+    if (!order_id.startsWith("order_")) {
+        try {
+            const result = await Razorpay.orders.all({ receipt: order_id })
+            const rzpOrder = result?.items?.[0]
+            if (rzpOrder) key = rzpOrder.id
+        } catch (err) {
+            console.log("Order resolve failed:", err.message)
         }
+    }
+
+    popupAddressMap.set(key, { addresses, ts: Date.now() })
+    console.log(`[shipping-info] saved ${addresses.length} addresses for order ${key}`)
+}
 
         // Check global COD toggle from site settings
         const codSetting = await SettingModel.findOne({ key: 'cod_enabled' }).lean()
@@ -87,8 +101,23 @@ export async function shippingInfoController(request, response) {
 
         // Re-save with annotated fees after computation
         if (order_id && addresses.length > 0) {
-            popupAddressMap.set(order_id, { addresses, ts: Date.now() })
+
+    let key = order_id
+
+    // 🔥 convert receipt → order_xxx
+    if (!order_id.startsWith("order_")) {
+        try {
+            const result = await Razorpay.orders.all({ receipt: order_id })
+            const rzpOrder = result?.items?.[0]
+            if (rzpOrder) key = rzpOrder.id
+        } catch (err) {
+            console.log("Order resolve failed:", err.message)
         }
+    }
+
+    popupAddressMap.set(key, { addresses, ts: Date.now() })
+    console.log(`[shipping-info] saved ${addresses.length} addresses for order ${key}`)
+}
 
         return response.status(200).json({ addresses: result })
 
