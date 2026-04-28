@@ -353,7 +353,7 @@ export async function razorpayVerifyController(request, response) {
         } = request.body
         
         
-
+const popupAddresses = getPopupAddresses(razorpay_order_id)
 console.log("POPUP ADDRESSES:", popupAddresses)
 
         // Fetch actual payment details from Razorpay to reliably detect COD and extract address
