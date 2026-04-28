@@ -1,5 +1,5 @@
 import Razorpay from "../config/razorpay.js";
-import { getPopupCoupon } from "./magicCheckout.controller.js";
+import { getPopupCoupon, getPopupAddresses } from "./magicCheckout.controller.js";
 import CartProductModel from "../models/cartproduct.model.js";
 import OrderModel from "../models/order.model.js";
 import UserModel from "../models/user.model.js";
@@ -113,18 +113,48 @@ export async function CashOnDeliveryOrderController(request, response) {
             await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
         }
 
-        // Snapshot address at order time so it never changes even if customer edits/deletes it
-        const addrDoc = await AddressModel.findById(addressId).lean()
-        const delivery_address_snapshot = addrDoc ? {
-            name:         addrDoc.name         || '',
-            mobile:       addrDoc.mobile        || '',
-            address_line: addrDoc.address_line  || '',
-            city:         addrDoc.city          || '',
-            state:        addrDoc.state         || '',
-            pincode:      String(addrDoc.pincode || ''),
-            country:      addrDoc.country       || 'India',
-            landmark:     addrDoc.landmark      || '',
-        } : {}
+        // Build delivery_address_snapshot.
+        // If this is COD from Magic Checkout popup (razorpay_order_id provided),
+        // use addresses from the popup address map (saved during shipping-info call).
+        let delivery_address_snapshot = {}
+        let resolvedDeliveryCharge = deliveryCharge
+
+        if (razorpay_order_id) {
+            const popupAddresses = getPopupAddresses(razorpay_order_id)
+            // Razorpay sends all addresses for serviceability check; use the first one
+            // (most likely the selected one, especially when the user has one saved address)
+            if (popupAddresses && popupAddresses.length > 0) {
+                const pa = popupAddresses[0]
+                delivery_address_snapshot = {
+                    name:         pa.name    || '',
+                    mobile:       String(pa.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10) || '',
+                    address_line: [pa.line1, pa.line2].filter(Boolean).join(', ') || '',
+                    city:         pa.city    || '',
+                    state:        pa.state   || '',
+                    pincode:      String(pa.zipcode || ''),
+                    country:      (pa.country === 'IN' || pa.country === 'in') ? 'India' : (pa.country || 'India'),
+                    landmark:     pa.line2   || '',
+                }
+                if (pa._computedShippingRupees != null) {
+                    resolvedDeliveryCharge = pa._computedShippingRupees
+                }
+            }
+        }
+
+        // If still no snapshot (no popup address or not from popup), fall back to DB address
+        if (!delivery_address_snapshot.address_line && !delivery_address_snapshot.name) {
+            const addrDoc = await AddressModel.findById(addressId).lean()
+            delivery_address_snapshot = addrDoc ? {
+                name:         addrDoc.name         || '',
+                mobile:       addrDoc.mobile        || '',
+                address_line: addrDoc.address_line  || '',
+                city:         addrDoc.city          || '',
+                state:        addrDoc.state         || '',
+                pincode:      String(addrDoc.pincode || ''),
+                country:      addrDoc.country       || 'India',
+                landmark:     addrDoc.landmark      || '',
+            } : {}
+        }
 
         const order = await OrderModel.create({
             userId: userId,
@@ -135,7 +165,7 @@ export async function CashOnDeliveryOrderController(request, response) {
             delivery_address: addressId,
             delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
-            deliveryCharge: deliveryCharge,
+            deliveryCharge: resolvedDeliveryCharge,
             totalAmt: finalTotalAmt,
             discountAmt: discountAmt,
             couponCode: finalCouponCode,
@@ -322,16 +352,22 @@ export async function razorpayVerifyController(request, response) {
             loyaltyDiscount = 0,
         } = request.body
 
-        // Fetch actual payment details from Razorpay to reliably detect COD
+        // Fetch actual payment details from Razorpay to reliably detect COD and extract address
         // (Magic Checkout COD passes a signature too, so client-side check is unreliable)
         let isCOD = false
         let rzpCouponCode = couponCode
         let rzpCouponDiscount = couponDiscount
         let rzpTotalAmt = totalAmt
+        let paymentDetails = null
 
         try {
-            const paymentDetails = await Razorpay.payments.fetch(razorpay_payment_id)
+            paymentDetails = await Razorpay.payments.fetch(razorpay_payment_id)
             isCOD = paymentDetails.method === 'cod'
+            // For online (non-COD) payments, use the actual charged amount as source of truth
+            // This handles any adjustments Razorpay made (different delivery fee for popup address, etc.)
+            if (!isCOD && paymentDetails?.amount) {
+                rzpTotalAmt = paymentDetails.amount / 100
+            }
         } catch (fetchErr) {
             if(process.env.NODE_ENV !== 'production') console.log("Razorpay payment fetch error:", fetchErr?.message)
         }
@@ -344,7 +380,12 @@ export async function razorpayVerifyController(request, response) {
             // Popup coupon overrides any UI coupon (customer can only apply one at a time)
             rzpCouponCode     = popupCoupon.code
             rzpCouponDiscount = popupCoupon.discountRupees
-            rzpTotalAmt       = Math.max(0, totalAmt - popupCoupon.discountRupees)
+            // For non-COD: rzpTotalAmt is already the actual charged amount from Razorpay (paymentDetails.amount / 100)
+            // which already includes the coupon deduction — don't subtract again.
+            // For COD (isCOD=true): no paymentDetails.amount, so use the frontend-provided totalAmt minus coupon.
+            if (isCOD) {
+                rzpTotalAmt = Math.max(0, totalAmt - popupCoupon.discountRupees)
+            }
         }
 
         // For online payments, verify signature. Skip for COD (no signature for COD in Magic Checkout)
@@ -378,18 +419,50 @@ export async function razorpayVerifyController(request, response) {
             await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
         }
 
-        // Snapshot address at order time so it never changes even if customer edits/deletes it
-        const addrDocOnline = await AddressModel.findById(addressId).lean()
-        const delivery_address_snapshot = addrDocOnline ? {
-            name:         addrDocOnline.name         || '',
-            mobile:       addrDocOnline.mobile        || '',
-            address_line: addrDocOnline.address_line  || '',
-            city:         addrDocOnline.city          || '',
-            state:        addrDocOnline.state         || '',
-            pincode:      String(addrDocOnline.pincode || ''),
-            country:      addrDocOnline.country       || 'India',
-            landmark:     addrDocOnline.landmark      || '',
-        } : {}
+        // Build delivery_address_snapshot.
+        // Prefer the Razorpay billing address (the address the user actually used in the popup)
+        // because they may have selected a different address inside Magic Checkout.
+        let delivery_address_snapshot = {}
+        let resolvedDeliveryCharge = deliveryCharge  // start with frontend-provided value
+
+        const rzpBilling = paymentDetails?.billing || {}
+        const rzpContact = String(paymentDetails?.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10)
+        const rzpAddr    = rzpBilling?.address || {}
+
+        if (rzpBilling?.name || rzpAddr?.line1 || rzpAddr?.zipcode) {
+            // Use Razorpay's billing address — this is what was confirmed in the popup
+            delivery_address_snapshot = {
+                name:         rzpBilling.name || '',
+                mobile:       rzpContact      || '',
+                address_line: [rzpAddr.line1, rzpAddr.line2].filter(Boolean).join(', ') || '',
+                city:         rzpAddr.city    || '',
+                state:        rzpAddr.state   || '',
+                pincode:      String(rzpAddr.zipcode || ''),
+                country:      (rzpAddr.country === 'IN' || rzpAddr.country === 'in') ? 'India' : (rzpAddr.country || 'India'),
+                landmark:     rzpAddr.line2   || '',
+            }
+            // Try to get the actual delivery charge for this address from our popup map
+            const popupAddresses = getPopupAddresses(razorpay_order_id)
+            if (popupAddresses && rzpAddr.zipcode) {
+                const matchedAddr = popupAddresses.find(a => String(a.zipcode || '') === String(rzpAddr.zipcode || ''))
+                if (matchedAddr?._computedShippingRupees != null) {
+                    resolvedDeliveryCharge = matchedAddr._computedShippingRupees
+                }
+            }
+        } else {
+            // Fallback: use our DB address
+            const addrDocOnline = await AddressModel.findById(addressId).lean()
+            delivery_address_snapshot = addrDocOnline ? {
+                name:         addrDocOnline.name         || '',
+                mobile:       addrDocOnline.mobile        || '',
+                address_line: addrDocOnline.address_line  || '',
+                city:         addrDocOnline.city          || '',
+                state:        addrDocOnline.state         || '',
+                pincode:      String(addrDocOnline.pincode || ''),
+                country:      addrDocOnline.country       || 'India',
+                landmark:     addrDocOnline.landmark      || '',
+            } : {}
+        }
 
         const order = await OrderModel.create({
             userId: userId,
@@ -400,7 +473,7 @@ export async function razorpayVerifyController(request, response) {
             delivery_address: addressId,
             delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
-            deliveryCharge: deliveryCharge,
+            deliveryCharge: resolvedDeliveryCharge,
             totalAmt: rzpTotalAmt,
             discountAmt: discountAmt,
             couponCode: rzpCouponCode,

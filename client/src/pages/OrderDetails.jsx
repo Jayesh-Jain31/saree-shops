@@ -462,7 +462,9 @@ const OrderDetails = () => {
     )
   }
 
-  const addr = order?.delivery_address
+  const addr = (order?.delivery_address_snapshot?.address_line || order?.delivery_address_snapshot?.name)
+    ? order.delivery_address_snapshot
+    : order?.delivery_address
   const items = order?.items || []
   const totalItemCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
   const nonCancellableStatuses = ['Shipped', 'Out for Delivery', 'Delivered', 'Cancelled']
@@ -670,8 +672,12 @@ const OrderDetails = () => {
               <MdLocationOn className='text-red-500' size={16} /> Delivery Address
             </h2>
             <div className='bg-gray-50 rounded-lg p-3'>
+              {addr?.name && (
+                <p className='text-sm font-semibold text-gray-800 mb-0.5'>{addr.name}</p>
+              )}
               <p className='text-sm text-gray-700 leading-relaxed'>
                 {addr?.address_line}
+                {addr?.landmark ? `, ${addr.landmark}` : ''}
               </p>
               <p className='text-sm text-gray-600'>
                 {[addr?.city, addr?.state].filter(Boolean).join(', ')}

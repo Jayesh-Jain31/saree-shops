@@ -24,6 +24,16 @@ export function getPopupCoupon(razorpayOrderId) {
     return entry
 }
 
+// In-memory store: maps Razorpay order_id → addresses sent in shipping-info
+// Razorpay sends the full address details (name, line1, city, state, etc.) when checking serviceability
+const popupAddressMap = new Map()
+export function getPopupAddresses(razorpayOrderId) {
+    const entry = popupAddressMap.get(razorpayOrderId)
+    if (!entry) return null
+    if (Date.now() - entry.ts > 30 * 60 * 1000) { popupAddressMap.delete(razorpayOrderId); return null }
+    return entry.addresses
+}
+
 export function debugController(request, response) {
     response.json({ log: debugLog })
 }
@@ -35,7 +45,14 @@ export function debugController(request, response) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function shippingInfoController(request, response) {
     try {
-        const { addresses = [] } = request.body
+        const { order_id, addresses = [] } = request.body
+
+        // Save full address details to the map keyed by order_id so the verify/COD
+        // controller can later build the correct delivery_address_snapshot
+        if (order_id && addresses.length > 0) {
+            popupAddressMap.set(order_id, { addresses, ts: Date.now() })
+            console.log(`[shipping-info] saved ${addresses.length} addresses for order ${order_id}`)
+        }
 
         // Check global COD toggle from site settings
         const codSetting = await SettingModel.findOne({ key: 'cod_enabled' }).lean()
@@ -51,8 +68,12 @@ export async function shippingInfoController(request, response) {
             const zone = zones.find(z => z.pincodes.includes(zipcode))
 
             const serviceable  = true               // we ship everywhere by default
-            const shippingFee  = zone ? zone.deliveryCharge * 100 : 0   // paise
+            const shippingFeeRupees = zone ? zone.deliveryCharge : 0
+            const shippingFee  = shippingFeeRupees * 100                 // paise
             const codAvailable = globalCodOn        // respect site-wide toggle
+
+            // Annotate each address with its computed fee so we can look it up later
+            addr._computedShippingRupees = shippingFeeRupees
 
             return {
                 id:           addr.id,
@@ -63,6 +84,11 @@ export async function shippingInfoController(request, response) {
                 pickup_available: false,
             }
         }))
+
+        // Re-save with annotated fees after computation
+        if (order_id && addresses.length > 0) {
+            popupAddressMap.set(order_id, { addresses, ts: Date.now() })
+        }
 
         return response.status(200).json({ addresses: result })
 
