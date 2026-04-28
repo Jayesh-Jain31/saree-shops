@@ -466,7 +466,13 @@ const OrderDetails = () => {
 
 const addr = {
   name: rawAddr.name,
-  address_line: rawAddr.address_line || rawAddr.line1 || '',
+  address_line: [
+    rawAddr.address_line,
+    rawAddr.line1,
+    rawAddr.line2,
+    rawAddr.landmark
+  ].filter(Boolean).join(', '),   // 🔥 THIS IS KEY FIX
+
   city: rawAddr.city,
   state: rawAddr.state,
   country: rawAddr.country,
