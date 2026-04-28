@@ -202,6 +202,22 @@ const CheckoutPage = () => {
     }, 1000)
   }
 
+  const buildSuccessState = (serverOrder, fallbackAddr, itemsSnapshot, totalFallback, method) => {
+    const snap = serverOrder?.delivery_address_snapshot
+    const addr = (snap?.address_line || snap?.name) ? snap : fallbackAddr
+    return {
+      text: 'Order',
+      address: addr,
+      items: itemsSnapshot,
+      totalAmount: serverOrder?.totalAmt ?? totalFallback,
+      deliveryCharge: serverOrder?.deliveryCharge ?? deliveryCharge,
+      subTotalAmt: serverOrder?.subTotalAmt ?? totalPrice,
+      paymentMethod: method,
+      estimatedDelivery: deliveryInfo?.estimatedTime,
+      orderDate: new Date().toISOString(),
+    }
+  }
+
   const placeCodOrder = async () => {
     const itemsSnapshot = [...cartItemsList]
     const selectedAddrSnapshot = addressList[selectAddress]
@@ -214,7 +230,7 @@ const CheckoutPage = () => {
       addNotification('Your Cash on Delivery order has been placed successfully!', 'success')
       if (fetchCartItem) fetchCartItem()
       if (fetchOrder) fetchOrder()
-      navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: response.data.data?.totalAmt ?? payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+      navigate('/success', { state: buildSuccessState(response.data.data, selectedAddrSnapshot, itemsSnapshot, payableAmount, 'COD') })
     }
   }
 
@@ -301,7 +317,7 @@ const CheckoutPage = () => {
           addNotification('Your order has been placed using your wallet balance.', 'success')
           if (fetchCartItem) fetchCartItem()
           if (fetchOrder) fetchOrder()
-          navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: response.data.data?.totalAmt ?? 0, deliveryCharge, paymentMethod: 'Wallet', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+          navigate('/success', { state: buildSuccessState(response.data.data, selectedAddrSnapshot, itemsSnapshot, 0, 'Wallet') })
         }
       } catch (error) { AxiosToastError(error) }
       return
@@ -389,7 +405,7 @@ const CheckoutPage = () => {
                 addNotification('Your Cash on Delivery order has been placed!', 'success')
                 if (fetchCartItem) fetchCartItem()
                 if (fetchOrder) fetchOrder()
-                navigate('/success', { state: { text: 'Order', address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: codRes.data.data?.totalAmt ?? payableAmount, deliveryCharge, paymentMethod: 'COD', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+                navigate('/success', { state: buildSuccessState(codRes.data.data, selectedAddrSnapshot, itemsSnapshot, payableAmount, 'COD') })
               } else { toast.error('Failed to place COD order.') }
               return
             }
@@ -408,7 +424,7 @@ const CheckoutPage = () => {
               addNotification('Your order has been placed successfully! Payment received via Razorpay.', 'success')
               if (fetchCartItem) fetchCartItem()
               if (fetchOrder) fetchOrder()
-              navigate('/success', { state: { text: "Order", address: selectedAddrSnapshot, items: itemsSnapshot, totalAmount: verifyRes.data.data?.totalAmt ?? payableAmount, deliveryCharge, paymentMethod: 'Razorpay', estimatedDelivery: deliveryInfo?.estimatedTime, orderDate: new Date().toISOString() } })
+              navigate('/success', { state: buildSuccessState(verifyRes.data.data, selectedAddrSnapshot, itemsSnapshot, payableAmount, 'Razorpay') })
             } else { toast.error('Payment verification failed.') }
           } catch (err) { toast.dismiss(); AxiosToastError(err) }
         },

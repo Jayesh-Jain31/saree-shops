@@ -14,6 +14,7 @@ const Success = () => {
     items,
     totalAmount,
     deliveryCharge = 0,
+    subTotalAmt,
     paymentMethod = 'COD',
     estimatedDelivery,
     orderDate,
@@ -125,7 +126,7 @@ const Success = () => {
               <div className='space-y-1.5 text-xs'>
                 <div className='flex justify-between text-gray-600'>
                   <span>Subtotal</span>
-                  <span>{DisplayPriceInRupees(Math.max(0, totalAmount - deliveryCharge))}</span>
+                  <span>{DisplayPriceInRupees(subTotalAmt ?? Math.max(0, totalAmount - deliveryCharge))}</span>
                 </div>
                 <div className='flex justify-between text-gray-600'>
                   <span>Delivery</span>
