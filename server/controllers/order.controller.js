@@ -124,7 +124,7 @@ export async function CashOnDeliveryOrderController(request, response) {
             // Razorpay sends all addresses for serviceability check; use the first one
             // (most likely the selected one, especially when the user has one saved address)
             if (popupAddresses && popupAddresses.length > 0) {
-                const pa = popupAddresses[0]
+                const pa = popupAddresses.find(a => a.isSelected) || popupAddresses[0]
                 delivery_address_snapshot = {
                     name:         pa.name    || '',
                     mobile:       String(pa.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10) || '',
@@ -162,7 +162,7 @@ export async function CashOnDeliveryOrderController(request, response) {
             items: items,
             paymentId: "",
             payment_status: "CASH ON DELIVERY",
-            delivery_address: addressId,
+            delivery_address: null,
             delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
             deliveryCharge: resolvedDeliveryCharge,
@@ -423,47 +423,45 @@ export async function razorpayVerifyController(request, response) {
         // Build delivery_address_snapshot.
         // Prefer the Razorpay billing address (the address the user actually used in the popup)
         // because they may have selected a different address inside Magic Checkout.
-        let delivery_address_snapshot = {}
-        let resolvedDeliveryCharge = deliveryCharge  // start with frontend-provided value
+        // ✅ ALWAYS USE MAGIC CHECKOUT ADDRESS (FINAL FIX)
+let delivery_address_snapshot = {}
+let resolvedDeliveryCharge = deliveryCharge
 
-        const rzpBilling = paymentDetails?.billing || {}
-        const rzpContact = String(paymentDetails?.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10)
-        const rzpAddr    = rzpBilling?.address || {}
+const popupAddresses = getPopupAddresses(razorpay_order_id)
 
-        if (rzpAddr?.line1 && rzpAddr?.zipcode) {
-            // Use Razorpay's billing address — this is what was confirmed in the popup
-            delivery_address_snapshot = {
-                name:         rzpBilling.name || '',
-                mobile:       rzpContact      || '',
-                address_line: [rzpAddr.line1, rzpAddr.line2].filter(Boolean).join(', ') || '',
-                city:         rzpAddr.city    || '',
-                state:        rzpAddr.state   || '',
-                pincode:      String(rzpAddr.zipcode || ''),
-                country:      (rzpAddr.country === 'IN' || rzpAddr.country === 'in') ? 'India' : (rzpAddr.country || 'India'),
-                landmark:     rzpAddr.line2   || '',
-            }
-            // Try to get the actual delivery charge for this address from our popup map
-            const popupAddresses = getPopupAddresses(razorpay_order_id)
-            if (popupAddresses && rzpAddr.zipcode) {
-                const matchedAddr = popupAddresses.find(a => String(a.zipcode || '') === String(rzpAddr.zipcode || ''))
-                if (matchedAddr?._computedShippingRupees != null) {
-                    resolvedDeliveryCharge = matchedAddr._computedShippingRupees
-                }
-            }
-        } else {
-            // Fallback: use our DB address
-            const addrDocOnline = await AddressModel.findById(addressId).lean()
-            delivery_address_snapshot = addrDocOnline ? {
-                name:         addrDocOnline.name         || '',
-                mobile:       addrDocOnline.mobile        || '',
-                address_line: addrDocOnline.address_line  || '',
-                city:         addrDocOnline.city          || '',
-                state:        addrDocOnline.state         || '',
-                pincode:      String(addrDocOnline.pincode || ''),
-                country:      addrDocOnline.country       || 'India',
-                landmark:     addrDocOnline.landmark      || '',
-            } : {}
-        }
+if (popupAddresses && popupAddresses.length > 0) {
+    const pa = popupAddresses.find(a => a.isSelected) || popupAddresses[0]
+
+    delivery_address_snapshot = {
+        name: pa.name || '',
+        mobile: String(pa.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10),
+        address_line: [pa.line1, pa.line2].filter(Boolean).join(', '),
+        city: pa.city || '',
+        state: pa.state || '',
+        pincode: String(pa.zipcode || ''),
+        country: (pa.country === 'IN' ? 'India' : pa.country) || 'India',
+        landmark: pa.line2 || '',
+    }
+
+    // ✅ correct delivery charge
+    if (pa._computedShippingRupees != null) {
+        resolvedDeliveryCharge = pa._computedShippingRupees
+    }
+
+} else {
+    // fallback (rare)
+    const addrDoc = await AddressModel.findById(addressId).lean()
+    delivery_address_snapshot = addrDoc ? {
+        name: addrDoc.name || '',
+        mobile: addrDoc.mobile || '',
+        address_line: addrDoc.address_line || '',
+        city: addrDoc.city || '',
+        state: addrDoc.state || '',
+        pincode: String(addrDoc.pincode || ''),
+        country: addrDoc.country || 'India',
+        landmark: addrDoc.landmark || '',
+    } : {}
+}
 
         const order = await OrderModel.create({
             userId: userId,
@@ -471,7 +469,7 @@ export async function razorpayVerifyController(request, response) {
             items: items,
             paymentId: razorpay_payment_id,
             payment_status: isCOD ? "CASH ON DELIVERY" : "PAID",
-            delivery_address: addressId,
+            delivery_address: null,
             delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
             deliveryCharge: resolvedDeliveryCharge,
