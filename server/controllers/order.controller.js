@@ -362,6 +362,7 @@ export async function razorpayVerifyController(request, response) {
 
         try {
             paymentDetails = await Razorpay.payments.fetch(razorpay_payment_id)
+            console.log("FULL PAYMENT DETAILS:", JSON.stringify(paymentDetails, null, 2))
             isCOD = paymentDetails.method === 'cod'
             // For online (non-COD) payments, use the actual charged amount as source of truth
             // This handles any adjustments Razorpay made (different delivery fee for popup address, etc.)
@@ -429,7 +430,7 @@ export async function razorpayVerifyController(request, response) {
         const rzpContact = String(paymentDetails?.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10)
         const rzpAddr    = rzpBilling?.address || {}
 
-        if (rzpBilling?.name || rzpAddr?.line1 || rzpAddr?.zipcode) {
+        if (rzpAddr?.line1 && rzpAddr?.zipcode) {
             // Use Razorpay's billing address — this is what was confirmed in the popup
             delivery_address_snapshot = {
                 name:         rzpBilling.name || '',
