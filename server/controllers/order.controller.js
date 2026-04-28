@@ -352,7 +352,7 @@ export async function razorpayVerifyController(request, response) {
             loyaltyDiscount = 0,
         } = request.body
         
-        const popupAddresses = getPopupAddresses(razorpay_order_id)
+        
 
 console.log("POPUP ADDRESSES:", popupAddresses)
 
@@ -431,7 +431,7 @@ console.log("POPUP ADDRESSES:", popupAddresses)
 let delivery_address_snapshot = {}
 let resolvedDeliveryCharge = deliveryCharge
 
-const popupAddresses = getPopupAddresses(razorpay_order_id)
+
 
 if (popupAddresses && popupAddresses.length > 0) {
     const pa = popupAddresses.find(a => a.isSelected) || popupAddresses[0]
