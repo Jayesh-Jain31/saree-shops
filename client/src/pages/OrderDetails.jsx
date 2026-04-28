@@ -462,9 +462,17 @@ const OrderDetails = () => {
     )
   }
 
-  const addr = (order?.delivery_address_snapshot?.address_line || order?.delivery_address_snapshot?.name)
-    ? order.delivery_address_snapshot
-    : order?.delivery_address
+  const rawAddr = order?.delivery_address_snapshot || order?.delivery_address || {}
+
+const addr = {
+  name: rawAddr.name,
+  address_line: rawAddr.address_line || rawAddr.line1 || '',
+  city: rawAddr.city,
+  state: rawAddr.state,
+  country: rawAddr.country,
+  pincode: rawAddr.pincode || rawAddr.zipcode,
+  mobile: rawAddr.mobile || rawAddr.contact
+}
   const items = order?.items || []
   const totalItemCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
   const nonCancellableStatuses = ['Shipped', 'Out for Delivery', 'Delivered', 'Cancelled']
