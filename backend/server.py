@@ -97,7 +97,10 @@ async def proxy(full_path: str, request: Request):
 
     url = "/" + full_path
     body = await request.body()
-    headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
+    headers = {
+        k: v for k, v in request.headers.items()
+        if k.lower() not in ("host", "accept-encoding", "content-length")
+    }
 
     try:
         upstream = await _client.request(
