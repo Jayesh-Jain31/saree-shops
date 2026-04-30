@@ -1,5 +1,5 @@
 import Razorpay from "../config/razorpay.js";
-import { getPopupCoupon, getPopupAddresses } from "./magicCheckout.controller.js";
+import { getPopupCoupon, getPopupAddresses } from "..controller/magicCheckout.controller.js";
 import CartProductModel from "../models/cartproduct.model.js";
 import OrderModel from "../models/order.model.js";
 import UserModel from "../models/user.model.js";
