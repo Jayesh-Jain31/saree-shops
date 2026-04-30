@@ -15,6 +15,8 @@ const Success = () => {
     totalAmount,
     deliveryCharge = 0,
     subTotalAmt,
+    couponCode = '',
+    couponDiscount = 0,
     paymentMethod = 'COD',
     estimatedDelivery,
     orderDate,
@@ -126,8 +128,14 @@ const Success = () => {
               <div className='space-y-1.5 text-xs'>
                 <div className='flex justify-between text-gray-600'>
                   <span>Subtotal</span>
-                  <span>{DisplayPriceInRupees(subTotalAmt ?? Math.max(0, totalAmount - deliveryCharge))}</span>
+                  <span>{DisplayPriceInRupees(subTotalAmt ?? Math.max(0, totalAmount - deliveryCharge + couponDiscount))}</span>
                 </div>
+                {couponDiscount > 0 && (
+                  <div className='flex justify-between text-green-600'>
+                    <span>Coupon {couponCode ? <span className='ml-1 px-1.5 py-0.5 rounded bg-green-50 text-green-700 text-[10px] font-semibold'>{couponCode}</span> : ''}</span>
+                    <span>− {DisplayPriceInRupees(couponDiscount)}</span>
+                  </div>
+                )}
                 <div className='flex justify-between text-gray-600'>
                   <span>Delivery</span>
                   <span className={deliveryCharge === 0 ? 'text-green-600 font-semibold' : ''}>
@@ -135,7 +143,7 @@ const Success = () => {
                   </span>
                 </div>
                 <div className='flex justify-between font-bold text-gray-800 border-t pt-1.5 text-sm'>
-                  <span>Total Paid</span>
+                  <span>{paymentMethod === 'COD' ? 'Amount Payable' : 'Total Paid'}</span>
                   <span>{DisplayPriceInRupees(totalAmount)}</span>
                 </div>
                 <div className='flex items-center gap-1.5 pt-1 text-gray-500'>

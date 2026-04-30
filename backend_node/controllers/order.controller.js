@@ -21,6 +21,7 @@ import {
 } from "../utils/whatsapp.js";
 import SettingModel from "../models/settings.model.js";
 import { earnPointsInternal, redeemPointsInternal, deductPointsInternal } from "./loyalty.controller.js";
+import { buildOrderAddressAndDelivery } from "../utils/orderSnapshot.js";
 
 // Helper: decrement stock for each ordered item + low stock alert
 async function decrementStock(items) {
@@ -71,7 +72,7 @@ export async function CashOnDeliveryOrderController(request, response) {
         let finalCouponDiscount = couponDiscount
         let finalTotalAmt = totalAmt
         if (razorpay_order_id) {
-            const popupCoupon = getPopupCoupon(razorpay_order_id)
+            const popupCoupon = await getPopupCoupon(razorpay_order_id)
             if (popupCoupon) {
                 finalCouponCode     = popupCoupon.code
                 finalCouponDiscount = popupCoupon.discountRupees
@@ -113,48 +114,18 @@ export async function CashOnDeliveryOrderController(request, response) {
             await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
         }
 
-        // Build delivery_address_snapshot.
-        // If this is COD from Magic Checkout popup (razorpay_order_id provided),
-        // use addresses from the popup address map (saved during shipping-info call).
-        let delivery_address_snapshot = {}
-        let resolvedDeliveryCharge = deliveryCharge
-
-        if (razorpay_order_id) {
-            const popupAddresses = getPopupAddresses(razorpay_order_id)
-            // Razorpay sends all addresses for serviceability check; use the first one
-            // (most likely the selected one, especially when the user has one saved address)
-            if (popupAddresses && popupAddresses.length > 0) {
-                const pa = popupAddresses.find(a => a.isSelected) || popupAddresses[0]
-                delivery_address_snapshot = {
-                    name:         pa.name    || '',
-                    mobile:       String(pa.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10) || '',
-                    address_line: [pa.line1, pa.line2].filter(Boolean).join(', ') || '',
-                    city:         pa.city    || '',
-                    state:        pa.state   || '',
-                    pincode:      String(pa.zipcode || ''),
-                    country:      (pa.country === 'IN' || pa.country === 'in') ? 'India' : (pa.country || 'India'),
-                    landmark:     pa.line2   || '',
-                }
-                if (pa._computedShippingRupees != null) {
-                    resolvedDeliveryCharge = pa._computedShippingRupees
-                }
-            }
-        }
-
-        // If still no snapshot (no popup address or not from popup), fall back to DB address
-        if (!delivery_address_snapshot.address_line && !delivery_address_snapshot.name) {
-            const addrDoc = await AddressModel.findById(addressId).lean()
-            delivery_address_snapshot = addrDoc ? {
-                name:         addrDoc.name         || '',
-                mobile:       addrDoc.mobile        || '',
-                address_line: addrDoc.address_line  || '',
-                city:         addrDoc.city          || '',
-                state:        addrDoc.state         || '',
-                pincode:      String(addrDoc.pincode || ''),
-                country:      addrDoc.country       || 'India',
-                landmark:     addrDoc.landmark      || '',
-            } : {}
-        }
+        // Build delivery_address_snapshot + delivery charge via shared helper.
+        // Helper prefers Magic-Checkout popup address, falls back to
+        // AddressModel, then user profile, and recomputes deliveryCharge from
+        // active delivery zones / site default when zero.
+        const popupAddrs = razorpay_order_id ? await getPopupAddresses(razorpay_order_id) : null
+        const { snapshot: delivery_address_snapshot, deliveryCharge: resolvedDeliveryCharge } =
+            await buildOrderAddressAndDelivery({
+                popupAddresses: popupAddrs,
+                addressId,
+                userId,
+                bodyDeliveryCharge: deliveryCharge,
+            })
 
         const order = await OrderModel.create({
             userId: userId,
@@ -353,7 +324,7 @@ export async function razorpayVerifyController(request, response) {
         } = request.body
         
         
-const popupAddresses = getPopupAddresses(razorpay_order_id)
+const popupAddresses = await getPopupAddresses(razorpay_order_id)
 console.log("POPUP ADDRESSES:", popupAddresses)
 
         // Fetch actual payment details from Razorpay to reliably detect COD and extract address
@@ -379,7 +350,7 @@ console.log("POPUP ADDRESSES:", popupAddresses)
 
         // Check if a coupon was applied inside the Razorpay popup
         // (apply-promotion saves the mapping when Razorpay calls that endpoint)
-        const popupCoupon = getPopupCoupon(razorpay_order_id)
+        const popupCoupon = await getPopupCoupon(razorpay_order_id)
         console.log(`[verify] order=${razorpay_order_id} popupCoupon=`, popupCoupon)
         if (popupCoupon) {
             // Popup coupon overrides any UI coupon (customer can only apply one at a time)
@@ -424,48 +395,15 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
         }
 
-        // Build delivery_address_snapshot.
-        // Prefer the Razorpay billing address (the address the user actually used in the popup)
-        // because they may have selected a different address inside Magic Checkout.
-        // ✅ ALWAYS USE MAGIC CHECKOUT ADDRESS (FINAL FIX)
-let delivery_address_snapshot = {}
-let resolvedDeliveryCharge = deliveryCharge
-
-
-
-if (popupAddresses && popupAddresses.length > 0) {
-    const pa = popupAddresses.find(a => a.isSelected) || popupAddresses[0]
-
-    delivery_address_snapshot = {
-        name: pa.name || '',
-        mobile: String(pa.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10),
-        address_line: [pa.line1, pa.line2].filter(Boolean).join(', '),
-        city: pa.city || '',
-        state: pa.state || '',
-        pincode: String(pa.zipcode || ''),
-        country: (pa.country === 'IN' ? 'India' : pa.country) || 'India',
-        landmark: pa.line2 || '',
-    }
-
-    // ✅ correct delivery charge
-    if (pa._computedShippingRupees != null) {
-        resolvedDeliveryCharge = pa._computedShippingRupees
-    }
-
-} else {
-    // fallback (rare)
-    const addrDoc = await AddressModel.findById(addressId).lean()
-    delivery_address_snapshot = addrDoc ? {
-        name: addrDoc.name || '',
-        mobile: addrDoc.mobile || '',
-        address_line: addrDoc.address_line || '',
-        city: addrDoc.city || '',
-        state: addrDoc.state || '',
-        pincode: String(addrDoc.pincode || ''),
-        country: addrDoc.country || 'India',
-        landmark: addrDoc.landmark || '',
-    } : {}
-}
+        // Build delivery_address_snapshot + deliveryCharge using the shared
+        // helper — single source of truth for COD and Razorpay flows.
+        const { snapshot: delivery_address_snapshot, deliveryCharge: resolvedDeliveryCharge } =
+            await buildOrderAddressAndDelivery({
+                popupAddresses,
+                addressId,
+                userId,
+                bodyDeliveryCharge: deliveryCharge,
+            })
 
         const order = await OrderModel.create({
             userId: userId,

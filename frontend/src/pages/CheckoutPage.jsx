@@ -205,6 +205,13 @@ const CheckoutPage = () => {
   const buildSuccessState = (serverOrder, fallbackAddr, itemsSnapshot, totalFallback, method) => {
     const snap = serverOrder?.delivery_address_snapshot
     const addr = (snap?.address_line || snap?.name) ? snap : fallbackAddr
+    // Derive paymentMethod from server-saved payment_status so we never tell the
+    // customer "Paid via Razorpay" when they actually chose COD inside the
+    // Magic-Checkout popup.
+    let resolvedMethod = method
+    const ps = String(serverOrder?.payment_status || '').toUpperCase()
+    if (ps.includes('CASH ON DELIVERY') || ps === 'COD') resolvedMethod = 'COD'
+    else if (ps === 'PAID' && method !== 'Wallet')      resolvedMethod = 'Razorpay'
     return {
       text: 'Order',
       address: addr,
@@ -212,9 +219,12 @@ const CheckoutPage = () => {
       totalAmount: serverOrder?.totalAmt ?? totalFallback,
       deliveryCharge: serverOrder?.deliveryCharge ?? deliveryCharge,
       subTotalAmt: serverOrder?.subTotalAmt ?? totalPrice,
-      paymentMethod: method,
+      couponCode: serverOrder?.couponCode || '',
+      couponDiscount: serverOrder?.couponDiscount || 0,
+      paymentMethod: resolvedMethod,
       estimatedDelivery: deliveryInfo?.estimatedTime,
-      orderDate: new Date().toISOString(),
+      orderDate: serverOrder?.createdAt || new Date().toISOString(),
+      orderId: serverOrder?.orderId || '',
     }
   }
 

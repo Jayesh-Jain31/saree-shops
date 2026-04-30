@@ -3,6 +3,7 @@ import CouponModel       from '../models/coupon.model.js'
 import SettingModel      from '../models/settings.model.js'
 import OrderModel        from '../models/order.model.js'
 import UserModel         from '../models/user.model.js'
+import PopupCheckoutModel from '../models/popupCheckout.model.js'
 import sendEmail         from '../config/sendEmail.js'
 import { sendFreeTextWhatsApp } from '../utils/whatsapp.js'
 import Razorpay          from '../config/razorpay.js'
@@ -14,25 +15,50 @@ function captureDebug(endpoint, headers, body, responseBody) {
     if (debugLog.length > 5) debugLog.pop()
 }
 
-// In-memory store: maps Razorpay order_id → applied popup coupon info
-// Entries expire after 30 minutes to avoid memory bloat
-const popupCouponMap = new Map()
-export function getPopupCoupon(razorpayOrderId) {
-    const entry = popupCouponMap.get(razorpayOrderId)
-    if (!entry) return null
-    if (Date.now() - entry.ts > 30 * 60 * 1000) { popupCouponMap.delete(razorpayOrderId); return null }
-    return entry
+// ─────────────────────────────────────────────────────────────────────────────
+// Popup coupon / popup address lookups
+//
+// Both are persisted in MongoDB (with a TTL of 30 minutes) so that requests
+// which land on different serverless instances (Vercel / Netlify / AWS Lambda)
+// can still read each other's data. The helpers below accept a Razorpay
+// order_id (either the canonical `order_xxx` string or the receipt we created
+// it with) and return the same shape the old in-memory Map used to return.
+// ─────────────────────────────────────────────────────────────────────────────
+export async function getPopupCoupon(razorpayOrderId) {
+    if (!razorpayOrderId) return null
+    try {
+        const doc = await PopupCheckoutModel.findOne({ key: razorpayOrderId, kind: 'coupon' }).lean()
+        return doc?.data || null
+    } catch (err) {
+        console.log('[getPopupCoupon] error:', err.message)
+        return null
+    }
 }
 
-// In-memory store: maps Razorpay order_id → addresses sent in shipping-info
-// Razorpay sends the full address details (name, line1, city, state, etc.) when checking serviceability
-const popupAddressMap = new Map()
-export function getPopupAddresses(razorpayOrderId) {
-    const entry = popupAddressMap.get(razorpayOrderId)
-    if (!entry) return null
-    if (Date.now() - entry.ts > 30 * 60 * 1000) { popupAddressMap.delete(razorpayOrderId); return null }
-    return entry.addresses
+export async function getPopupAddresses(razorpayOrderId) {
+    if (!razorpayOrderId) return null
+    try {
+        const doc = await PopupCheckoutModel.findOne({ key: razorpayOrderId, kind: 'address' }).lean()
+        return doc?.data?.addresses || null
+    } catch (err) {
+        console.log('[getPopupAddresses] error:', err.message)
+        return null
+    }
 }
+
+async function savePopupEntry(key, kind, data) {
+    if (!key) return
+    await PopupCheckoutModel.updateOne(
+        { key, kind },
+        { $set: { key, kind, data, expiresAt: new Date(Date.now() + 30 * 60 * 1000) } },
+        { upsert: true }
+    )
+}
+
+// Lightweight in-process caches for single-node deployments. Kept as a perf
+// optimization; the DB is always the source of truth (see savePopupEntry).
+const popupCouponMap  = new Map()
+const popupAddressMap = new Map()
 
 export function debugController(request, response) {
     response.json({ log: debugLog })
@@ -66,6 +92,7 @@ export async function shippingInfoController(request, response) {
 
     popupAddressMap.set(key, { addresses, ts: Date.now() })
     console.log(`[shipping-info] saved ${addresses.length} addresses for order ${key}`)
+    try { await savePopupEntry(key, 'address', { addresses }) } catch (e) { console.log('[shipping-info] persist err:', e.message) }
 }
 
         // Check global COD toggle from site settings
@@ -117,6 +144,7 @@ export async function shippingInfoController(request, response) {
 
     popupAddressMap.set(key, { addresses, ts: Date.now() })
     console.log(`[shipping-info] saved ${addresses.length} addresses for order ${key}`)
+    try { await savePopupEntry(key, 'address', { addresses }) } catch (e) { console.log('[shipping-info] re-persist err:', e.message) }
 }
 
         return response.status(200).json({ addresses: result })
@@ -288,6 +316,10 @@ export async function applyPromotionController(request, response) {
         }
         if (order_id)         popupCouponMap.set(order_id, couponEntry)
         if (resolvedOrderId && resolvedOrderId !== order_id) popupCouponMap.set(resolvedOrderId, couponEntry)
+        try { await savePopupEntry(order_id, 'coupon', couponEntry) } catch (e) { console.log('[apply-promotion] persist err:', e.message) }
+        if (resolvedOrderId && resolvedOrderId !== order_id) {
+            try { await savePopupEntry(resolvedOrderId, 'coupon', couponEntry) } catch (e) { console.log('[apply-promotion] persist err2:', e.message) }
+        }
         console.log(`[apply-promotion] saved coupon ${coupon.code} discount=${discountPaise/100} keys=[${order_id}, ${resolvedOrderId}]`)
 
         // Exact format per Razorpay docs (from official documentation)
