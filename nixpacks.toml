@@ -8,4 +8,4 @@ cmds = ["npm --prefix server install --production"]
 cmds = []
 
 [start]
-cmd = "node server/index.js"
+cmd = "node index.js"
