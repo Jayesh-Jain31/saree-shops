@@ -467,25 +467,62 @@ if (popupAddresses && popupAddresses.length > 0) {
     } : {}
 }
 
-        const order = await OrderModel.create({
-            userId: userId,
-            orderId: `ORD-${new mongoose.Types.ObjectId()}`,
-            items: items,
-            paymentId: razorpay_payment_id,
-            payment_status: isCOD ? "CASH ON DELIVERY" : "PAID",
-            delivery_address: null,
-            delivery_address_snapshot,
-            subTotalAmt: subTotalAmt,
-            deliveryCharge: resolvedDeliveryCharge,
-            totalAmt: rzpTotalAmt,
-            discountAmt: discountAmt,
-            couponCode: rzpCouponCode,
-            couponDiscount: rzpCouponDiscount,
-            walletDeduction: walletDeduction,
-            loyaltyPointsUsed: loyaltyPointsUsed,
-            loyaltyDiscount: loyaltyDiscount,
-            orderStatus: "Confirmed",
-        })
+      // 🔥 FINAL CALCULATION FIX (single source of truth)
+
+// 1. Calculate subtotal from items
+const calculatedSubTotal = items.reduce((acc, item) => {
+    return acc + (item.price * item.quantity)
+}, 0)
+
+// 2. Delivery charge from popup
+const finalDelivery = resolvedDeliveryCharge || 0
+
+// 3. Coupon discount from popup
+const finalCouponDiscount = rzpCouponDiscount || 0
+
+// 4. Final total
+let finalTotal = 0
+
+if (!isCOD && paymentDetails?.amount) {
+    // Online payment → trust Razorpay
+    finalTotal = paymentDetails.amount / 100
+} else {
+    // COD → calculate manually
+    finalTotal = Math.max(0, calculatedSubTotal + finalDelivery - finalCouponDiscount)
+}
+
+// ✅ CREATE ORDER WITH CORRECT VALUES
+const order = await OrderModel.create({
+    userId: userId,
+    orderId: `ORD-${new mongoose.Types.ObjectId()}`,
+    items: items,
+    paymentId: razorpay_payment_id,
+    payment_status: isCOD ? "CASH ON DELIVERY" : "PAID",
+    delivery_address: null,
+    delivery_address_snapshot,
+
+    subTotalAmt: calculatedSubTotal,
+    deliveryCharge: finalDelivery,
+    totalAmt: finalTotal,
+
+    discountAmt: finalCouponDiscount,
+    couponCode: rzpCouponCode,
+    couponDiscount: finalCouponDiscount,
+
+    walletDeduction: walletDeduction,
+    loyaltyPointsUsed: loyaltyPointsUsed,
+    loyaltyDiscount: loyaltyDiscount,
+
+    orderStatus: "Confirmed",
+})
+
+// 🔍 Debug log (optional but useful)
+console.log("FINAL ORDER DATA:", {
+    subtotal: calculatedSubTotal,
+    delivery: finalDelivery,
+    coupon: finalCouponDiscount,
+    total: finalTotal
+})
 
         earnPointsInternal(userId, subTotalAmt, order.orderId).catch(() => {})
 
