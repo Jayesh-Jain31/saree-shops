@@ -3,6 +3,7 @@ import auth from '../middleware/auth.js'
 import { admin } from '../middleware/Admin.js'
 import {
     getActiveFreeGift,
+    getFreeGiftProgress,
     getAllFreeGifts,
     createFreeGift,
     updateFreeGift,
@@ -13,6 +14,7 @@ import {
 const freeGiftRouter = Router()
 
 freeGiftRouter.get('/active',          getActiveFreeGift)
+freeGiftRouter.get('/progress',        getFreeGiftProgress)
 freeGiftRouter.get('/all',             auth, admin, getAllFreeGifts)
 freeGiftRouter.post('/create',         auth, admin, createFreeGift)
 freeGiftRouter.put('/update/:id',      auth, admin, updateFreeGift)

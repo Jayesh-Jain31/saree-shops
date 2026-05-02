@@ -3,7 +3,7 @@ import { IoClose } from 'react-icons/io5'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGlobalContext } from '../provider/GlobalProvider'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
-import { FaShoppingBag, FaTag, FaShoppingCart } from 'react-icons/fa'
+import { FaShoppingBag, FaTag, FaShoppingCart, FaGift } from 'react-icons/fa'
 import { MdAccountBalanceWallet } from 'react-icons/md'
 import { useSelector } from 'react-redux'
 import AddToCartButton from './AddToCartButton'
@@ -37,6 +37,7 @@ const DisplayCartItem = ({ close }) => {
   const [payLoading, setPayLoading]       = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
   const [dataLoading, setDataLoading]     = useState(false)
+  const [giftProgress, setGiftProgress]   = useState(null)
 
   const savings = notDiscountTotalPrice - totalPrice
 
@@ -58,6 +59,17 @@ const DisplayCartItem = ({ close }) => {
     }
     fetchData()
   }, [user?._id])
+
+  // Fetch free gift progress whenever cart total changes
+  useEffect(() => {
+    const fetchProgress = async () => {
+      try {
+        const res = await Axios({ ...SummaryApi.getFreeGiftProgress, params: { cartAmount: totalPrice } })
+        setGiftProgress(res.data.data || null)
+      } catch { setGiftProgress(null) }
+    }
+    fetchProgress()
+  }, [totalPrice])
 
   const handleCheckout = async () => {
     if (!user?._id) { toast('Please Login'); return }
@@ -233,6 +245,65 @@ const DisplayCartItem = ({ close }) => {
         <div className='flex-1 overflow-y-auto'>
           {cartItem.length > 0 ? (
             <div className='p-4 space-y-3'>
+
+              {/* Free Gift Progress Bar */}
+              {giftProgress && (
+                <div className={`rounded-xl overflow-hidden border ${giftProgress.isQualified ? 'border-rose-200 bg-gradient-to-r from-rose-50 to-pink-50' : 'border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50'}`}>
+                  {giftProgress.isQualified ? (
+                    /* Unlocked state */
+                    <div className='p-3'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <FaGift className='text-rose-500 flex-shrink-0' size={14} />
+                        <p className='text-xs font-bold text-rose-700 leading-tight'>🎉 Free Gift Unlocked!</p>
+                      </div>
+                      <div className='flex items-center gap-2.5'>
+                        {giftProgress.productId?.image?.[0] && (
+                          <div className='w-10 h-10 rounded-lg bg-white border border-rose-100 overflow-hidden flex-shrink-0'>
+                            <img src={giftProgress.productId.image[0]} alt={giftProgress.productId.name} className='w-full h-full object-contain p-0.5' />
+                          </div>
+                        )}
+                        <div className='flex-1 min-w-0'>
+                          <p className='text-xs font-semibold text-gray-800 line-clamp-1'>{giftProgress.productId?.name}</p>
+                          <p className='text-[10px] text-rose-500 font-medium mt-0.5'>Added to your order for free!</p>
+                        </div>
+                        <span className='flex-shrink-0 text-sm font-bold text-rose-600 bg-white border border-rose-200 px-2 py-0.5 rounded-lg'>FREE</span>
+                      </div>
+                      {/* Full progress bar */}
+                      <div className='mt-2.5 h-1.5 bg-rose-100 rounded-full overflow-hidden'>
+                        <div className='h-full bg-rose-500 rounded-full w-full transition-all duration-500' />
+                      </div>
+                    </div>
+                  ) : (
+                    /* Not yet unlocked — show progress toward threshold */
+                    <div className='p-3'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <FaGift className='text-orange-400 flex-shrink-0' size={13} />
+                        <p className='text-xs font-semibold text-orange-700 leading-tight'>
+                          Add <span className='font-bold text-orange-800'>{DisplayPriceInRupees(giftProgress.shortfall)}</span> more to get a free gift!
+                        </p>
+                      </div>
+                      {/* Progress bar track */}
+                      <div className='h-2 bg-orange-100 rounded-full overflow-hidden'>
+                        <div
+                          className='h-full bg-gradient-to-r from-orange-400 to-rose-500 rounded-full transition-all duration-500'
+                          style={{ width: `${giftProgress.progress}%` }}
+                        />
+                      </div>
+                      <div className='flex items-center gap-2 mt-2'>
+                        {giftProgress.productId?.image?.[0] && (
+                          <div className='w-8 h-8 rounded-lg bg-white border border-orange-100 overflow-hidden flex-shrink-0 opacity-60'>
+                            <img src={giftProgress.productId.image[0]} alt={giftProgress.productId.name} className='w-full h-full object-contain p-0.5' />
+                          </div>
+                        )}
+                        <p className='text-[10px] text-orange-600 line-clamp-1 flex-1'>
+                          {giftProgress.productId?.name} · <span className='font-semibold'>₹0 after ₹{(giftProgress.minOrderAmount || 0).toLocaleString('en-IN')}</span>
+                        </p>
+                        <span className='flex-shrink-0 text-[10px] font-bold text-orange-500'>{giftProgress.progress}%</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Savings Banner */}
               {savings > 0 && (
