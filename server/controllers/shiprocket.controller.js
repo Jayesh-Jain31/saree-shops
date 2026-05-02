@@ -110,7 +110,7 @@ async function handleStatusUpdate(order, mappedStatus, rawStatus, awb, shipmentI
         'Cancelled':        `Your order ${order.orderId} has been cancelled.`,
     }
     if (shipNotifMap[mappedStatus] && mappedStatus !== prevStatus) {
-        createNotification(order.userId, shipNotifMap[mappedStatus], mappedStatus === 'Cancelled' ? 'warning' : 'success', '/dashboard/myorder').catch(() => {})
+        createNotification(order.userId, shipNotifMap[mappedStatus], mappedStatus === 'Cancelled' ? 'warning' : 'success', '/dashboard/myorders').catch(() => {})
     }
 
     return response.status(200).json({ success: true, message: `Order ${order.orderId} updated to ${mappedStatus}` })

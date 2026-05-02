@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useGlobalContext } from '../provider/GlobalProvider'
 import BackButton from '../components/BackButton'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
+import { pricewithDiscount } from '../utils/PriceWithDiscount'
 import AddAddress from '../components/AddAddress'
 import { useSelector } from 'react-redux'
 import AxiosToastError from '../utils/AxiosToastError'
@@ -730,7 +731,7 @@ const CheckoutPage = () => {
                       <p className='text-xs text-gray-500'>Qty: {item?.quantity}</p>
                     </div>
                     <p className='text-xs font-bold text-gray-900 flex-shrink-0'>
-                      {DisplayPriceInRupees(item?.productId?.price * item?.quantity)}
+                      {DisplayPriceInRupees(pricewithDiscount(item?.productId?.price, item?.productId?.discount) * item?.quantity)}
                     </p>
                   </div>
                 ))}

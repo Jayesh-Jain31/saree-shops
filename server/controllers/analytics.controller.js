@@ -181,7 +181,7 @@ export async function updateOrderStatusAdminController(request, response) {
             'Cancelled':        `Your order ${order.orderId} has been cancelled.`,
         }
         if (statusMsgMap[status]) {
-            createNotification(order.userId, statusMsgMap[status], status === 'Cancelled' ? 'warning' : 'success', '/dashboard/myorder').catch(() => {})
+            createNotification(order.userId, statusMsgMap[status], status === 'Cancelled' ? 'warning' : 'success', '/dashboard/myorders').catch(() => {})
         }
 
         return response.json({ message: "Order status updated", data: order, error: false, success: true })

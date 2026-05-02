@@ -248,7 +248,7 @@ export const updateReturnStatus = async (req, res) => {
                 'Refund Initiated':  `Refund for order ${returnReq.orderDisplayId} has been initiated and will reflect shortly.`,
             }
             if (retNotifMap[returnReq.status]) {
-                createNotification(returnReq.userId, retNotifMap[returnReq.status], returnReq.status === 'Rejected' ? 'warning' : 'success', '/dashboard/myorder').catch(() => {})
+                createNotification(returnReq.userId, retNotifMap[returnReq.status], returnReq.status === 'Rejected' ? 'warning' : 'success', '/dashboard/my-returns').catch(() => {})
             }
         }
 
