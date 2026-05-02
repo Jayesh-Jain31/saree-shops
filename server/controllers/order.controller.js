@@ -12,6 +12,7 @@ import orderConfirmationTemplate from "../utils/orderConfirmationTemplate.js";
 import FraudFlagModel from "../models/fraudFlag.model.js";
 import { assessOrderRisk } from "../utils/fraudDetection.js";
 import WalletModel from "../models/wallet.model.js";
+import { debitWalletInternal } from "./wallet.controller.js";
 import { createNotification } from '../utils/notificationHelper.js'
 import {
     sendOrderConfirmationWhatsApp,
@@ -210,6 +211,15 @@ export async function CashOnDeliveryOrderController(request, response) {
                 reasons: fraud.reasons,
                 snapshot: { orderId: order.orderId, totalAmt, paymentMethod: 'COD' }
             }).catch(() => {})
+        }
+
+        // Debit wallet server-side (safe for all order flows)
+        if (walletDeduction > 0) {
+            try {
+                await debitWalletInternal(userId, walletDeduction, `Payment for order ${order.orderId}`, order.orderId)
+            } catch (walletErr) {
+                console.error(`[COD] Wallet debit failed for order ${order.orderId}:`, walletErr.message)
+            }
         }
 
         await CartProductModel.deleteMany({ userId: userId })
@@ -632,6 +642,15 @@ console.log("POPUP ADDRESSES:", popupAddresses)
         })
 
         console.log(`[Verify] ${order.loyaltyPointsPending} loyalty pts pending for order ${order.orderId} (credited to wallet after return period)`)
+
+        // Debit wallet server-side (safe for all order flows)
+        if (walletDeduction > 0) {
+            try {
+                await debitWalletInternal(userId, walletDeduction, `Payment for order ${order.orderId}`, order.orderId)
+            } catch (walletErr) {
+                console.error(`[Verify] Wallet debit failed for order ${order.orderId}:`, walletErr.message)
+            }
+        }
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })

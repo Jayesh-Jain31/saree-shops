@@ -164,15 +164,6 @@ const CheckoutPage = () => {
     return `${c.discountValue}% off`
   }
 
-  const debitWalletIfNeeded = async () => {
-    if (walletDeduction <= 0) return true
-    try {
-      const res = await Axios({ ...SummaryApi.debitWallet, data: { amount: walletDeduction, description: 'Order payment via wallet' } })
-      if (res.data.success) { setWalletBalance(prev => prev - walletDeduction); return true }
-      toast.error('Failed to debit wallet. Please try again.'); return false
-    } catch (err) { AxiosToastError(err); return false }
-  }
-
   const startOtpResendTimer = () => {
     setOtpResendTimer(30)
     const interval = setInterval(() => {
@@ -261,8 +252,6 @@ const CheckoutPage = () => {
   const handleOtpVerify = async () => {
     const otp = otpDigits.join('')
     if (otp.length !== 6) { toast.error('Please enter the 6-digit OTP'); return }
-    const walletOk = await debitWalletIfNeeded()
-    if (!walletOk) return
     setOtpVerifyLoading(true)
     try {
       const res = await Axios({ ...SummaryApi.verifyCodOtp, data: { mobile: otpMobile, otp } })
@@ -289,8 +278,6 @@ const CheckoutPage = () => {
     const selectedAddr = addressList[selectAddress]
     if (!selectedAddr?._id || !selectedAddr?.status) { setShowAddressPopup(true); return }
     if (payableAmount <= 0) {
-      const walletOk = await debitWalletIfNeeded()
-      if (!walletOk) return
       try {
         const response = await Axios({
           ...SummaryApi.CashOnDeliveryOrder,
@@ -395,8 +382,6 @@ const CheckoutPage = () => {
             }
 
             // Online payment — verify signature
-            const walletOk = await debitWalletIfNeeded()
-            if (!walletOk) return
             const verifyToastId = toast.loading('Verifying payment...')
             const verifyRes = await Axios({
               ...SummaryApi.razorpayVerify,

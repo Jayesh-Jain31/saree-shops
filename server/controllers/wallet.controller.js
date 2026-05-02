@@ -37,6 +37,21 @@ export const creditWallet = async (req, res) => {
     }
 }
 
+export const debitWalletInternal = async (userId, amount, description, reference = '') => {
+    if (!amount || amount <= 0) return
+    const wallet = await WalletModel.findOne({ userId })
+    if (!wallet || wallet.balance < amount) throw new Error('Insufficient wallet balance')
+    wallet.balance = parseFloat((wallet.balance - amount).toFixed(2))
+    wallet.transactions.unshift({
+        type: 'debit',
+        amount,
+        description: description || 'Order payment',
+        reference,
+        balanceAfter: wallet.balance
+    })
+    await wallet.save()
+}
+
 export const debitWallet = async (req, res) => {
     try {
         const userId = req.userId
