@@ -20,6 +20,7 @@ import {
     sendAdminLowStockAlert
 } from "../utils/whatsapp.js";
 import SettingModel from "../models/settings.model.js";
+import DeliveryZoneModel from "../models/deliveryZone.model.js";
 import { earnPointsInternal, redeemPointsInternal, deductPointsInternal } from "./loyalty.controller.js";
 
 // Helper: decrement stock for each ordered item + low stock alert
@@ -458,9 +459,10 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             }
         }
 
-        // ── Step 2: For online payments, Razorpay's billing object is the most reliable ───
+        // ── Step 2: Razorpay billing object is the most reliable address source ─────────
         // It reflects the exact address the customer confirmed at payment time.
-        if (!isCOD && paymentDetails?.billing) {
+        // Apply for ALL payment types (online AND COD from Magic Checkout).
+        if (paymentDetails?.billing) {
             const ba    = paymentDetails.billing
             const bAddr = ba.address || {}
             if (ba.name || bAddr.line1 || bAddr.city) {
@@ -474,6 +476,57 @@ console.log("POPUP ADDRESSES:", popupAddresses)
                     country:      (bAddr.country === 'IN' ? 'India' : (bAddr.country || '')) || delivery_address_snapshot.country || 'India',
                     landmark:     bAddr.line2 || delivery_address_snapshot.landmark || '',
                 }
+                // Re-derive delivery charge from the billing address pincode.
+                // This ensures the popup-selected address delivery charge is correct
+                // even when the in-memory address map was wiped (e.g. server restart).
+                const billingPincode = String(bAddr.zipcode || '').trim()
+                if (billingPincode) {
+                    try {
+                        const matchedZones = await DeliveryZoneModel.find({
+                            isActive: true,
+                            pincodes: billingPincode
+                        }).lean()
+                        resolvedDeliveryCharge = matchedZones.length > 0 ? matchedZones[0].deliveryCharge : 0
+                    } catch (zoneErr) {
+                        console.log("[verify] delivery zone lookup failed:", zoneErr.message)
+                    }
+                }
+            }
+        }
+
+        // ── Step 2.5: For COD, fetch Razorpay order to get customer shipping address ────
+        // paymentDetails.billing is null for COD; the order's customer_details.shipping_address
+        // is the authoritative address that Razorpay confirmed with the customer.
+        if (isCOD && !delivery_address_snapshot.name) {
+            try {
+                const rzpOrder = await Razorpay.orders.fetch(razorpay_order_id)
+                const custDetails = rzpOrder?.customer_details || {}
+                const shipAddr    = custDetails.shipping_address || custDetails.billing_address || {}
+                const addrName    = shipAddr.name || custDetails.name || ''
+                const addrContact = shipAddr.contact || custDetails.contact || ''
+                if (addrName || shipAddr.line1 || shipAddr.city) {
+                    delivery_address_snapshot = {
+                        name:         addrName,
+                        mobile:       String(addrContact).replace(/^\+91/, '').replace(/\D/g, '').slice(-10),
+                        address_line: [shipAddr.line1, shipAddr.line2].filter(Boolean).join(', '),
+                        city:         shipAddr.city  || '',
+                        state:        shipAddr.state || '',
+                        pincode:      String(shipAddr.zipcode || ''),
+                        country:      (['in','IN'].includes(shipAddr.country) ? 'India' : (shipAddr.country || 'India')),
+                        landmark:     shipAddr.line2 || '',
+                    }
+                    // Re-derive delivery charge from confirmed shipping pincode
+                    const shipPincode = String(shipAddr.zipcode || '').trim()
+                    if (shipPincode) {
+                        const matchedZones = await DeliveryZoneModel.find({
+                            isActive: true, pincodes: shipPincode
+                        }).lean()
+                        resolvedDeliveryCharge = matchedZones.length > 0 ? matchedZones[0].deliveryCharge : 0
+                    }
+                    console.log(`[verify] COD address from rzp order: ${delivery_address_snapshot.city}, delivery=₹${resolvedDeliveryCharge}`)
+                }
+            } catch (orderFetchErr) {
+                console.log("[verify] COD order fetch failed:", orderFetchErr.message)
             }
         }
 
@@ -495,15 +548,31 @@ console.log("POPUP ADDRESSES:", popupAddresses)
         // ── Amounts ──────────────────────────────────────────────────────────────────────
         // Use frontend subTotalAmt (which is the discounted product total) as the source of truth.
         // Do NOT recalculate from item.price — those are the full/original prices, not discounted.
-        const finalSubTotal       = subTotalAmt || 0
-        const finalDelivery       = resolvedDeliveryCharge || 0
-        const finalCouponDiscount = rzpCouponDiscount || 0
+        const finalSubTotal = subTotalAmt || 0
+        const finalDelivery = resolvedDeliveryCharge || 0
+
+        // Coupon: popup map is primary source. If map was wiped (server restart), derive
+        // discount from the difference between subTotal+delivery and Razorpay's charged amount.
+        let finalCouponDiscount = rzpCouponDiscount || 0
+        let finalCouponCode     = rzpCouponCode || ''
+        if (!finalCouponDiscount && paymentDetails?.amount) {
+            const rzpCharged = paymentDetails.amount / 100  // what Razorpay actually charged/recorded
+            const derivedDiscount = Math.round(
+                (finalSubTotal + finalDelivery) - rzpCharged - (walletDeduction || 0) - (loyaltyDiscount || 0)
+            )
+            if (derivedDiscount > 0) {
+                finalCouponDiscount = derivedDiscount
+                // Code is unknown when derived — keep whatever the frontend sent (pre-checkout coupon)
+                if (!finalCouponCode) finalCouponCode = couponCode || ''
+                console.log(`[verify] coupon derived from Razorpay amount: ₹${derivedDiscount}`)
+            }
+        }
 
         // Final total:
-        // • Online → trust Razorpay's actual charged amount (already includes all adjustments)
-        // • COD via popup → recalculate from scratch with resolved delivery + popup coupon
+        // • Online + COD via Magic Checkout → trust Razorpay's actual recorded amount
+        // • Fallback → recalculate from scratch
         let finalTotal = 0
-        if (!isCOD && paymentDetails?.amount) {
+        if (paymentDetails?.amount) {
             finalTotal = paymentDetails.amount / 100
         } else {
             finalTotal = Math.max(0, finalSubTotal + finalDelivery - finalCouponDiscount - (walletDeduction || 0) - (loyaltyDiscount || 0))
@@ -512,7 +581,7 @@ console.log("POPUP ADDRESSES:", popupAddresses)
         console.log("[verify] ORDER AMOUNTS:", {
             subTotal: finalSubTotal, delivery: finalDelivery, coupon: finalCouponDiscount,
             wallet: walletDeduction, loyalty: loyaltyDiscount, total: finalTotal,
-            couponCode: rzpCouponCode, address: delivery_address_snapshot.address_line,
+            couponCode: finalCouponCode, address: delivery_address_snapshot.address_line,
         })
 
         const order = await OrderModel.create({
@@ -529,7 +598,7 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             totalAmt:       finalTotal,
 
             discountAmt:     finalCouponDiscount,
-            couponCode:      rzpCouponCode,
+            couponCode:      finalCouponCode,
             couponDiscount:  finalCouponDiscount,
 
             walletDeduction:    walletDeduction,

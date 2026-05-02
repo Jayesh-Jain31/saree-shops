@@ -65,6 +65,7 @@ export async function shippingInfoController(request, response) {
     }
 
     popupAddressMap.set(key, { addresses, ts: Date.now() })
+    if (order_id !== key) popupAddressMap.set(order_id, { addresses, ts: Date.now() })
     console.log(`[shipping-info] saved ${addresses.length} addresses for order ${key}`)
 }
 
@@ -116,7 +117,8 @@ export async function shippingInfoController(request, response) {
     }
 
     popupAddressMap.set(key, { addresses, ts: Date.now() })
-    console.log(`[shipping-info] saved ${addresses.length} addresses for order ${key}`)
+    if (order_id !== key) popupAddressMap.set(order_id, { addresses, ts: Date.now() })
+    console.log(`[shipping-info] re-saved ${addresses.length} addresses for order ${key}`)
 }
 
         return response.status(200).json({ addresses: result })
