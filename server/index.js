@@ -34,6 +34,7 @@ import otpRouter from './route/otp.route.js'
 import loyaltyRouter from './route/loyalty.route.js'
 import bundleRouter from './route/bundle.route.js'
 import magicCheckoutRouter from './route/magicCheckout.route.js'
+import { startLoyaltyCron } from './utils/loyaltyCron.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -139,5 +140,6 @@ app.get('/', (req, res) => {
 connectDB().then(() => {
     app.listen(PORT, () => {
         console.log('Server is running', PORT)
+        startLoyaltyCron()
     })
 })

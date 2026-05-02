@@ -21,7 +21,7 @@ import {
 } from "../utils/whatsapp.js";
 import SettingModel from "../models/settings.model.js";
 import DeliveryZoneModel from "../models/deliveryZone.model.js";
-import { earnPointsInternal, redeemPointsInternal, deductPointsInternal } from "./loyalty.controller.js";
+import { getPendingPointsCount, redeemPointsInternal, deductPointsInternal } from "./loyalty.controller.js";
 
 // Helper: decrement stock for each ordered item + low stock alert
 async function decrementStock(items) {
@@ -170,6 +170,8 @@ export async function CashOnDeliveryOrderController(request, response) {
             couponCode: finalCouponCode, address: delivery_address_snapshot.address_line,
         })
 
+        const pendingLoyaltyPoints = await getPendingPointsCount(subTotalAmt).catch(() => 0)
+
         const order = await OrderModel.create({
             userId: userId,
             orderId: `ORD-${new mongoose.Types.ObjectId()}`,
@@ -190,9 +192,11 @@ export async function CashOnDeliveryOrderController(request, response) {
             orderStatus: "Confirmed",
             fraudRiskScore: fraud.riskScore,
             fraudRiskLevel: fraud.riskLevel,
+            loyaltyPointsPending: pendingLoyaltyPoints,
+            loyaltyPointsProcessed: false,
         })
 
-        earnPointsInternal(userId, subTotalAmt, order.orderId).catch(() => {})
+        console.log(`[COD] ${pendingLoyaltyPoints} loyalty pts pending for order ${order.orderId} (credited to wallet after return period)`)
 
         // Flag suspicious orders (score >= 30) for admin review
         if (fraud.riskScore >= 30) {
@@ -597,6 +601,8 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             couponCode: finalCouponCode, address: delivery_address_snapshot.address_line,
         })
 
+        const pendingLoyaltyPts = await getPendingPointsCount(finalSubTotal).catch(() => 0)
+
         const order = await OrderModel.create({
             userId:    userId,
             orderId:   `ORD-${new mongoose.Types.ObjectId()}`,
@@ -619,9 +625,11 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             loyaltyDiscount:    loyaltyDiscount,
 
             orderStatus: "Confirmed",
+            loyaltyPointsPending:  pendingLoyaltyPts,
+            loyaltyPointsProcessed: false,
         })
 
-        earnPointsInternal(userId, subTotalAmt, order.orderId).catch(() => {})
+        console.log(`[Verify] ${order.loyaltyPointsPending} loyalty pts pending for order ${order.orderId} (credited to wallet after return period)`)
 
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })

@@ -63,6 +63,13 @@ export const redeemPreview = async (req, res) => {
     }
 }
 
+export const getPendingPointsCount = async (orderAmount) => {
+    try {
+        const settings = await getLoyaltySettings()
+        return Math.floor((orderAmount / 100) * settings.earnPer100)
+    } catch { return Math.floor(orderAmount / 10) }
+}
+
 export const earnPointsInternal = async (userId, orderAmount, orderId) => {
     try {
         const settings = await getLoyaltySettings()

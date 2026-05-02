@@ -112,6 +112,14 @@ const orderSchema = new mongoose.Schema({
     deliveredAt: {
         type: Date,
         default: null
+    },
+    loyaltyPointsPending: {
+        type: Number,
+        default: 0
+    },
+    loyaltyPointsProcessed: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true
