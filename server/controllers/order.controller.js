@@ -494,12 +494,17 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             }
         }
 
-        // ── Step 2.5: For COD, fetch Razorpay order to get customer shipping address ────
-        // paymentDetails.billing is null for COD; the order's customer_details.shipping_address
-        // is the authoritative address that Razorpay confirmed with the customer.
-        if (isCOD && !delivery_address_snapshot.name) {
-            try {
-                const rzpOrder = await Razorpay.orders.fetch(razorpay_order_id)
+        // ── Step 2.5: Fetch Razorpay order for COD address + coupon code from notes ───────
+        // For COD: paymentDetails.billing is null; get address from customer_details.
+        // For all payment types: read popup_coupon_code from order notes (set by apply-promotion)
+        // so we can recover the coupon code even if the in-memory map was wiped.
+        let rzpOrderNotes = {}
+        try {
+            const rzpOrder    = await Razorpay.orders.fetch(razorpay_order_id)
+            rzpOrderNotes     = rzpOrder?.notes || {}
+
+            // COD address from Razorpay order (only needed when address not already resolved)
+            if (isCOD && !delivery_address_snapshot.name) {
                 const custDetails = rzpOrder?.customer_details || {}
                 const shipAddr    = custDetails.shipping_address || custDetails.billing_address || {}
                 const addrName    = shipAddr.name || custDetails.name || ''
@@ -515,7 +520,6 @@ console.log("POPUP ADDRESSES:", popupAddresses)
                         country:      (['in','IN'].includes(shipAddr.country) ? 'India' : (shipAddr.country || 'India')),
                         landmark:     shipAddr.line2 || '',
                     }
-                    // Re-derive delivery charge from confirmed shipping pincode
                     const shipPincode = String(shipAddr.zipcode || '').trim()
                     if (shipPincode) {
                         const matchedZones = await DeliveryZoneModel.find({
@@ -525,9 +529,9 @@ console.log("POPUP ADDRESSES:", popupAddresses)
                     }
                     console.log(`[verify] COD address from rzp order: ${delivery_address_snapshot.city}, delivery=₹${resolvedDeliveryCharge}`)
                 }
-            } catch (orderFetchErr) {
-                console.log("[verify] COD order fetch failed:", orderFetchErr.message)
             }
+        } catch (orderFetchErr) {
+            console.log("[verify] Razorpay order fetch failed:", orderFetchErr.message)
         }
 
         // ── Step 3: Fallback to saved DB address if nothing found above ─────────────────
@@ -553,8 +557,17 @@ console.log("POPUP ADDRESSES:", popupAddresses)
 
         // Coupon: popup map is primary source. If map was wiped (server restart), derive
         // discount from the difference between subTotal+delivery and Razorpay's charged amount.
+        // Also try Razorpay order notes (set by apply-promotion) as a persistent fallback for code.
         let finalCouponDiscount = rzpCouponDiscount || 0
         let finalCouponCode     = rzpCouponCode || ''
+
+        // Notes fallback: if popup map is empty, try to get coupon from Razorpay order notes
+        if (!finalCouponCode && rzpOrderNotes.popup_coupon_code) {
+            finalCouponCode     = rzpOrderNotes.popup_coupon_code
+            finalCouponDiscount = finalCouponDiscount || Number(rzpOrderNotes.popup_coupon_discount) || 0
+            console.log(`[verify] coupon recovered from rzp notes: ${finalCouponCode} ₹${finalCouponDiscount}`)
+        }
+
         if (!finalCouponDiscount && paymentDetails?.amount) {
             const rzpCharged = paymentDetails.amount / 100  // what Razorpay actually charged/recorded
             const derivedDiscount = Math.round(
@@ -562,7 +575,7 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             )
             if (derivedDiscount > 0) {
                 finalCouponDiscount = derivedDiscount
-                // Code is unknown when derived — keep whatever the frontend sent (pre-checkout coupon)
+                // Code already set from notes above, or keep whatever the frontend sent
                 if (!finalCouponCode) finalCouponCode = couponCode || ''
                 console.log(`[verify] coupon derived from Razorpay amount: ₹${derivedDiscount}`)
             }

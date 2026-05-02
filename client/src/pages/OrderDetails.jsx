@@ -601,24 +601,32 @@ const addr = {
               <span className='text-gray-500'>Subtotal</span>
               <span className='text-gray-700'>{DisplayPriceInRupees(order?.subTotalAmt)}</span>
             </div>
-            {order?.couponCode && order?.couponDiscount > 0 && (
+            {order?.couponDiscount > 0 && (
               <div className='flex justify-between text-sm'>
                 <span className='text-gray-500 flex items-center gap-1'>
-                  <span className='text-xs bg-green-100 text-green-700 font-mono px-1.5 py-0.5 rounded'>
-                    {order.couponCode}
-                  </span>
-                  Coupon
+                  {order.couponCode && (
+                    <span className='text-xs bg-green-100 text-green-700 font-mono px-1.5 py-0.5 rounded'>
+                      {order.couponCode}
+                    </span>
+                  )}
+                  {order.couponCode ? 'Coupon' : 'Coupon Discount'}
                 </span>
                 <span className='text-green-600 font-medium'>- {DisplayPriceInRupees(order.couponDiscount)}</span>
               </div>
             )}
-            {order?.walletDeduction > 0 && (
+            {!order?.couponDiscount && order?.walletDeduction > 0 && (
               <div className='flex justify-between text-sm'>
                 <span className='text-gray-500'>Wallet used</span>
                 <span className='text-green-600 font-medium'>- {DisplayPriceInRupees(order.walletDeduction)}</span>
               </div>
             )}
-            {!order?.couponCode && !order?.walletDeduction && order?.discountAmt > 0 && (
+            {order?.walletDeduction > 0 && order?.couponDiscount > 0 && (
+              <div className='flex justify-between text-sm'>
+                <span className='text-gray-500'>Wallet used</span>
+                <span className='text-green-600 font-medium'>- {DisplayPriceInRupees(order.walletDeduction)}</span>
+              </div>
+            )}
+            {!order?.couponDiscount && !order?.walletDeduction && order?.discountAmt > 0 && (
               <div className='flex justify-between text-sm'>
                 <span className='text-gray-500'>Discount</span>
                 <span className='text-green-600 font-medium'>- {DisplayPriceInRupees(order.discountAmt)}</span>

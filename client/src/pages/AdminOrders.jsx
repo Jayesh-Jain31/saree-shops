@@ -390,12 +390,14 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                   <div className='flex justify-between text-xs text-gray-500'>
                     <span>Subtotal</span><span>{DisplayPriceInRupees(order.subTotalAmt)}</span>
                   </div>
-                  {order.couponCode && order.couponDiscount > 0 && (
+                  {order.couponDiscount > 0 && (
                     <div className='flex justify-between text-xs text-green-600 font-medium'>
                       <span className='flex items-center gap-1'>
                         <FaTag size={9} />
-                        Coupon
-                        <span className='font-mono bg-green-50 border border-green-200 px-1 rounded text-[10px]'>{order.couponCode}</span>
+                        {order.couponCode
+                          ? <><span>Coupon</span><span className='font-mono bg-green-50 border border-green-200 px-1 rounded text-[10px]'>{order.couponCode}</span></>
+                          : <span>Coupon Discount</span>
+                        }
                       </span>
                       <span>- {DisplayPriceInRupees(order.couponDiscount)}</span>
                     </div>
@@ -408,7 +410,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                       <span>- {DisplayPriceInRupees(order.walletDeduction)}</span>
                     </div>
                   )}
-                  {!order.couponCode && !order.walletDeduction && order.discountAmt > 0 && (
+                  {!order.couponDiscount && !order.walletDeduction && order.discountAmt > 0 && (
                     <div className='flex justify-between text-xs text-green-600 font-medium'>
                       <span className='flex items-center gap-1'><FaTag size={9} />Discount</span>
                       <span>- {DisplayPriceInRupees(order.discountAmt)}</span>

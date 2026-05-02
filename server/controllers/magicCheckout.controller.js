@@ -292,6 +292,22 @@ export async function applyPromotionController(request, response) {
         if (resolvedOrderId && resolvedOrderId !== order_id) popupCouponMap.set(resolvedOrderId, couponEntry)
         console.log(`[apply-promotion] saved coupon ${coupon.code} discount=${discountPaise/100} keys=[${order_id}, ${resolvedOrderId}]`)
 
+        // Also persist in Razorpay order notes so verify can recover the coupon code
+        // even if the in-memory map is wiped (e.g. nodemon server restart)
+        if (resolvedOrderId && resolvedOrderId.startsWith('order_')) {
+            try {
+                await Razorpay.orders.edit(resolvedOrderId, {
+                    notes: {
+                        popup_coupon_code:     coupon.code,
+                        popup_coupon_discount: String(Math.round(discountPaise / 100)),
+                    }
+                })
+                console.log(`[apply-promotion] saved coupon to rzp notes for ${resolvedOrderId}`)
+            } catch (notesErr) {
+                console.warn('[apply-promotion] Could not update order notes:', notesErr.message)
+            }
+        }
+
         // Exact format per Razorpay docs (from official documentation)
         const applyResult = {
             promotion: {
