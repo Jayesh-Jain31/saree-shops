@@ -353,17 +353,18 @@ export async function razorpayOrderController(request, response) {
             return sum + discountedPrice * (item.quantity || 1)
         }, 0)
 
-        // Check for active free gift and append as promotional line item
+        // Check for active free gift and prepend as the FIRST promotional line item
         const freeGiftRzp = await getActiveFreeGiftInternal(rawSubTotal)
         let freeGiftData = null
         if (freeGiftRzp) {
             const gp = freeGiftRzp.productId
             const originalPaise = Math.round((gp.price || 0) * 100)
-            line_items.push({
+            // Unshift so the free gift always appears at the top of the Magic Checkout order summary
+            line_items.unshift({
                 sku:         String(gp._id || ''),
                 variant_id:  String(gp._id || ''),
-                price:       originalPaise,
-                offer_price: 0,
+                price:       originalPaise,   // original price — shown as strikethrough by Razorpay
+                offer_price: 0,               // ₹0 — shown as the actual price
                 quantity:    1,
                 name:        gp.name || 'Free Gift',
                 ...(gp.image?.[0] && { image_url: gp.image[0] }),
@@ -377,13 +378,19 @@ export async function razorpayOrderController(request, response) {
 
         const amountPaise = Math.round(totalAmt * 100)
 
+        // line_items_total MUST equal the sum of (offer_price × quantity) for every line item.
+        // Razorpay uses this to validate the order summary and compute "Discount on price".
+        // Setting it to amountPaise (after wallet/coupon) causes a mismatch that hides the ₹0 display.
+        const lineItemsTotal = line_items.reduce(
+            (sum, li) => sum + (li.offer_price * (li.quantity || 1)), 0
+        )
+
         const options = {
             amount: amountPaise,
             currency: "INR",
             receipt: `receipt_${new mongoose.Types.ObjectId()}`,
-            // Magic Checkout: line_items_total must equal amount to avoid mismatch in popup
             ...(line_items.length > 0 && {
-                line_items_total: amountPaise,
+                line_items_total: lineItemsTotal,
                 line_items,
             })
         }
