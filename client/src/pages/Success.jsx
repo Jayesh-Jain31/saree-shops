@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { FaCheckCircle, FaMapMarkerAlt, FaTruck, FaBox, FaCreditCard } from 'react-icons/fa'
+import { FaCheckCircle, FaMapMarkerAlt, FaTruck, FaBox, FaCreditCard, FaTag } from 'react-icons/fa'
 import { MdCreditCard, MdLocalShipping } from 'react-icons/md'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
@@ -15,6 +15,8 @@ const Success = () => {
     totalAmount,
     deliveryCharge = 0,
     subTotalAmt,
+    couponCode = '',
+    couponDiscount = 0,
     paymentMethod = 'COD',
     estimatedDelivery,
     orderDate,
@@ -134,6 +136,15 @@ const Success = () => {
                     {deliveryCharge === 0 ? 'FREE' : DisplayPriceInRupees(deliveryCharge)}
                   </span>
                 </div>
+                {couponDiscount > 0 && (
+                  <div className='flex justify-between text-green-600'>
+                    <span className='flex items-center gap-1'>
+                      <FaTag size={10} />
+                      {couponCode ? `Coupon (${couponCode})` : 'Coupon Discount'}
+                    </span>
+                    <span className='font-semibold'>- {DisplayPriceInRupees(couponDiscount)}</span>
+                  </div>
+                )}
                 <div className='flex justify-between font-bold text-gray-800 border-t pt-1.5 text-sm'>
                   <span>Total Paid</span>
                   <span>{DisplayPriceInRupees(totalAmount)}</span>

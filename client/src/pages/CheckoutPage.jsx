@@ -205,6 +205,10 @@ const CheckoutPage = () => {
   const buildSuccessState = (serverOrder, fallbackAddr, itemsSnapshot, totalFallback, method) => {
     const snap = serverOrder?.delivery_address_snapshot
     const addr = (snap?.address_line || snap?.name) ? snap : fallbackAddr
+    const status = serverOrder?.payment_status || ''
+    const resolvedMethod = status === 'CASH ON DELIVERY' ? 'COD'
+      : status === 'PAID' ? 'Razorpay'
+      : method
     return {
       text: 'Order',
       address: addr,
@@ -212,9 +216,11 @@ const CheckoutPage = () => {
       totalAmount: serverOrder?.totalAmt ?? totalFallback,
       deliveryCharge: serverOrder?.deliveryCharge ?? deliveryCharge,
       subTotalAmt: serverOrder?.subTotalAmt ?? totalPrice,
-      paymentMethod: method,
+      couponCode: serverOrder?.couponCode || '',
+      couponDiscount: serverOrder?.couponDiscount || 0,
+      paymentMethod: resolvedMethod,
       estimatedDelivery: deliveryInfo?.estimatedTime,
-      orderDate: new Date().toISOString(),
+      orderDate: serverOrder?.createdAt || new Date().toISOString(),
     }
   }
 
