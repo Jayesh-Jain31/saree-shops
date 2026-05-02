@@ -297,6 +297,13 @@ const OrderDetails = () => {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   }
 
+  const fmtRs = (amount) => {
+    const num = Number(amount) || 0
+    const parts = num.toFixed(2).split('.')
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    return '\u20B9' + parts.join('.')
+  }
+
   const handleDownloadInvoice = () => {
     const invoiceHtml = `
       <!DOCTYPE html>
@@ -378,7 +385,7 @@ const OrderDetails = () => {
                   <td>${i + 1}</td>
                   <td>${esc(item.product_details?.name || 'Product')}</td>
                   <td class="text-right">${item.quantity || 1}</td>
-                  <td class="text-right">${DisplayPriceInRupees(item.price || 0)}</td>
+                  <td class="text-right">${fmtRs(item.price || 0)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -388,24 +395,24 @@ const OrderDetails = () => {
         <div class="totals">
           <div class="total-row">
             <span>Subtotal</span>
-            <span>${DisplayPriceInRupees(order?.subTotalAmt)}</span>
+            <span>${fmtRs(order?.subTotalAmt)}</span>
           </div>
           ${order?.discountAmt > 0 ? `
           <div class="total-row">
             <span>Discount</span>
-            <span style="color:#16a34a">- ${DisplayPriceInRupees(order.discountAmt)}</span>
+            <span style="color:#16a34a">- ${fmtRs(order.discountAmt)}</span>
           </div>
           ` : ''}
           <div class="total-row">
             <span>Delivery</span>
             ${order?.deliveryCharge > 0
-              ? `<span>${DisplayPriceInRupees(order.deliveryCharge)}</span>`
+              ? `<span>${fmtRs(order.deliveryCharge)}</span>`
               : `<span style="color:#16a34a">FREE</span>`
             }
           </div>
           <div class="total-row grand">
             <span>Grand Total</span>
-            <span>${DisplayPriceInRupees(order?.totalAmt)}</span>
+            <span>${fmtRs(order?.totalAmt)}</span>
           </div>
         </div>
 

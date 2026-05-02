@@ -57,7 +57,7 @@ const Header = () => {
             <div className='lg:hidden'>
                 {/* Row 1: Logo + Icons */}
                 {!isSearchPage && (
-                    <div className='flex items-center justify-between px-3 pt-2.5 pb-1 w-full overflow-hidden'>
+                    <div className='flex items-center justify-between px-3 pt-2.5 pb-1 w-full'>
                         {/* Logo — flex-shrink so it yields space to right icons */}
                         <Link to="/" className='flex items-center gap-2 min-w-0 flex-1 overflow-hidden mr-2'>
                             {showLogo && (
