@@ -13,7 +13,6 @@ import toast from 'react-hot-toast'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import AxiosToastError from '../utils/AxiosToastError'
-import { addNotification } from './NotificationBell'
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -89,7 +88,6 @@ const DisplayCartItem = ({ close }) => {
         })
         if (res.data.success) {
           toast.success('Order placed using wallet balance!')
-          addNotification('Your order has been placed using your wallet balance!', 'success')
           if (fetchCartItem) fetchCartItem()
           if (fetchOrder) fetchOrder()
           if (close) close()
@@ -173,7 +171,6 @@ const DisplayCartItem = ({ close }) => {
               toast.dismiss(codToastId)
               if (codRes.data.success) {
                 toast.success('COD order placed!')
-                addNotification('Your Cash on Delivery order has been placed!', 'success')
                 if (fetchCartItem) fetchCartItem()
                 if (fetchOrder) fetchOrder()
                 if (close) close()
@@ -195,7 +192,6 @@ const DisplayCartItem = ({ close }) => {
             toast.dismiss(verifyToastId)
             if (verifyRes.data.success) {
               toast.success('Payment successful! Order placed.')
-              addNotification('Your order has been placed successfully!', 'success')
               if (fetchCartItem) fetchCartItem()
               if (fetchOrder) fetchOrder()
               if (close) close()

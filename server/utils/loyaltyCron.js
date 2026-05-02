@@ -1,6 +1,7 @@
 import OrderModel from '../models/order.model.js'
 import SettingModel from '../models/settings.model.js'
 import WalletModel from '../models/wallet.model.js'
+import { createNotification } from './notificationHelper.js'
 
 const getReturnPeriodDays = async () => {
     try {
@@ -62,6 +63,7 @@ export const processLoyaltyRewards = async () => {
                 await wallet.save()
 
                 await OrderModel.updateOne({ _id: order._id }, { $set: { loyaltyPointsProcessed: true } })
+                createNotification(order.userId, `₹${rupeeValue} loyalty reward credited to your wallet for order ${order.orderId}! 🎁`, 'success', '/dashboard/wallet').catch(() => {})
                 console.log(`[LoyaltyCron] ✓ ₹${rupeeValue} → wallet for order ${order.orderId}`)
             } catch (e) {
                 console.error(`[LoyaltyCron] Failed for order ${order.orderId}:`, e.message)

@@ -5,6 +5,7 @@ import Razorpay from "../config/razorpay.js"
 import UserModel from "../models/user.model.js"
 import SettingModel from "../models/settings.model.js"
 import { sendReturnStatusWhatsApp, sendAdminNewReturnAlert } from "../utils/whatsapp.js"
+import { createNotification } from '../utils/notificationHelper.js'
 
 const creditWalletInternal = async (userId, amount, description, reference) => {
     let wallet = await WalletModel.findOne({ userId })
@@ -237,6 +238,19 @@ export const updateReturnStatus = async (req, res) => {
         }
 
         await returnReq.save()
+
+        // In-app notification for return status
+        if (returnReq.status !== prevStatus) {
+            const retNotifMap = {
+                'Approved':          `Your return request for order ${returnReq.orderDisplayId} has been approved! ✅`,
+                'Rejected':          `Your return request for order ${returnReq.orderDisplayId} was not approved.`,
+                'Refunded':          `₹${returnReq.refundAmount} refund for order ${returnReq.orderDisplayId} has been credited to your wallet! 💰`,
+                'Refund Initiated':  `Refund for order ${returnReq.orderDisplayId} has been initiated and will reflect shortly.`,
+            }
+            if (retNotifMap[returnReq.status]) {
+                createNotification(returnReq.userId, retNotifMap[returnReq.status], returnReq.status === 'Rejected' ? 'warning' : 'success', '/dashboard/myorder').catch(() => {})
+            }
+        }
 
         // WhatsApp notification for return status update
         try {

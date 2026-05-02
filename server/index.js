@@ -35,6 +35,7 @@ import loyaltyRouter from './route/loyalty.route.js'
 import bundleRouter from './route/bundle.route.js'
 import magicCheckoutRouter from './route/magicCheckout.route.js'
 import { startLoyaltyCron } from './utils/loyaltyCron.js'
+import notificationRouter from './route/notification.route.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -125,6 +126,7 @@ app.use('/api/qa', qaRouter)
 app.use('/api/otp', otpRouter)
 app.use('/api/loyalty', loyaltyRouter)
 app.use('/api/bundle', bundleRouter)
+app.use('/api/notification', notificationRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })

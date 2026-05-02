@@ -1,6 +1,7 @@
 import { shiprocketPost, shiprocketGet } from '../config/shiprocket.js'
 import OrderModel from '../models/order.model.js'
 import sendEmail from '../config/sendEmail.js'
+import { createNotification } from '../utils/notificationHelper.js'
 import { sendFreeTextWhatsApp } from '../utils/whatsapp.js'
 
 // Map Shiprocket status strings → our order status enum
@@ -100,6 +101,16 @@ async function handleStatusUpdate(order, mappedStatus, rawStatus, awb, shipmentI
                 </div>`
             }).catch(() => {})
         }
+    }
+
+    const shipNotifMap = {
+        'Shipped':          `Your order ${order.orderId} has been shipped! 🚚`,
+        'Out for Delivery': `Your order ${order.orderId} is out for delivery! 📦`,
+        'Delivered':        `Your order ${order.orderId} has been delivered! 🎉`,
+        'Cancelled':        `Your order ${order.orderId} has been cancelled.`,
+    }
+    if (shipNotifMap[mappedStatus] && mappedStatus !== prevStatus) {
+        createNotification(order.userId, shipNotifMap[mappedStatus], mappedStatus === 'Cancelled' ? 'warning' : 'success', '/dashboard/myorder').catch(() => {})
     }
 
     return response.status(200).json({ success: true, message: `Order ${order.orderId} updated to ${mappedStatus}` })

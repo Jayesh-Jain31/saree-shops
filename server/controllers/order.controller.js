@@ -12,6 +12,7 @@ import orderConfirmationTemplate from "../utils/orderConfirmationTemplate.js";
 import FraudFlagModel from "../models/fraudFlag.model.js";
 import { assessOrderRisk } from "../utils/fraudDetection.js";
 import WalletModel from "../models/wallet.model.js";
+import { createNotification } from '../utils/notificationHelper.js'
 import {
     sendOrderConfirmationWhatsApp,
     sendCODVerificationWhatsApp,
@@ -215,6 +216,7 @@ export async function CashOnDeliveryOrderController(request, response) {
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
         await decrementStock(order.items)
         creditReferralReward(userId).catch(() => {})
+        createNotification(userId, `Your COD order ${order.orderId} has been placed successfully! 🛍️`, 'success', '/dashboard/myorder').catch(() => {})
 
         try {
             const user = await UserModel.findById(userId)
@@ -635,6 +637,7 @@ console.log("POPUP ADDRESSES:", popupAddresses)
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
         await decrementStock(order.items)
         creditReferralReward(userId).catch(() => {})
+        createNotification(userId, `Your order ${order.orderId} has been placed & payment confirmed! 🎉`, 'success', '/dashboard/myorder').catch(() => {})
 
         try {
             const user = await UserModel.findById(userId)

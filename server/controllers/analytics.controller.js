@@ -5,6 +5,7 @@ import WalletModel from "../models/wallet.model.js";
 import ReturnModel from "../models/return.model.js";
 import sendEmail from "../config/sendEmail.js";
 import orderStatusTemplate from "../utils/orderStatusTemplate.js";
+import { createNotification } from '../utils/notificationHelper.js'
 import { sendOrderStatusWhatsApp, sendFreeTextWhatsApp } from "../utils/whatsapp.js";
 
 export async function getAnalyticsController(request, response) {
@@ -170,6 +171,17 @@ export async function updateOrderStatusAdminController(request, response) {
             }
         } catch (emailErr) {
             console.log('Order status email failed:', emailErr.message)
+        }
+
+        const statusMsgMap = {
+            'Confirmed':        `Your order ${order.orderId} has been confirmed! ✅`,
+            'Shipped':          `Your order ${order.orderId} has been shipped! 🚚`,
+            'Out for Delivery': `Your order ${order.orderId} is out for delivery! 📦`,
+            'Delivered':        `Your order ${order.orderId} has been delivered! 🎉`,
+            'Cancelled':        `Your order ${order.orderId} has been cancelled.`,
+        }
+        if (statusMsgMap[status]) {
+            createNotification(order.userId, statusMsgMap[status], status === 'Cancelled' ? 'warning' : 'success', '/dashboard/myorder').catch(() => {})
         }
 
         return response.json({ message: "Order status updated", data: order, error: false, success: true })

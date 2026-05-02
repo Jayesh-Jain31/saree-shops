@@ -15,7 +15,6 @@ import {
 } from 'react-icons/fa'
 import { MdAccountBalanceWallet, MdDeliveryDining } from 'react-icons/md'
 import { SiRazorpay } from 'react-icons/si'
-import { addNotification } from '../components/NotificationBell'
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -215,7 +214,6 @@ const CheckoutPage = () => {
     })
     if (response.data.success) {
       toast.success(response.data.message)
-      addNotification('Your Cash on Delivery order has been placed successfully!', 'success')
       if (fetchCartItem) fetchCartItem()
       if (fetchOrder) fetchOrder()
       navigate('/success', { state: buildSuccessState(response.data.data, selectedAddrSnapshot, itemsSnapshot, payableAmount, 'COD') })
@@ -302,7 +300,6 @@ const CheckoutPage = () => {
           const itemsSnapshot = [...cartItemsList]
           const selectedAddrSnapshot = addressList[selectAddress]
           toast.success('Order placed using wallet balance!')
-          addNotification('Your order has been placed using your wallet balance.', 'success')
           if (fetchCartItem) fetchCartItem()
           if (fetchOrder) fetchOrder()
           navigate('/success', { state: buildSuccessState(response.data.data, selectedAddrSnapshot, itemsSnapshot, 0, 'Wallet') })
@@ -390,7 +387,6 @@ const CheckoutPage = () => {
               toast.dismiss(codToastId)
               if (codRes.data.success) {
                 toast.success('COD order placed successfully!')
-                addNotification('Your Cash on Delivery order has been placed!', 'success')
                 if (fetchCartItem) fetchCartItem()
                 if (fetchOrder) fetchOrder()
                 navigate('/success', { state: buildSuccessState(codRes.data.data, selectedAddrSnapshot, itemsSnapshot, payableAmount, 'COD') })
@@ -409,7 +405,6 @@ const CheckoutPage = () => {
             toast.dismiss(verifyToastId)
             if (verifyRes.data.success) {
               toast.success('Payment successful! Order placed.')
-              addNotification('Your order has been placed successfully! Payment received via Razorpay.', 'success')
               if (fetchCartItem) fetchCartItem()
               if (fetchOrder) fetchOrder()
               navigate('/success', { state: buildSuccessState(verifyRes.data.data, selectedAddrSnapshot, itemsSnapshot, payableAmount, 'Razorpay') })
