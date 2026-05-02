@@ -3,7 +3,7 @@ import { IoClose } from 'react-icons/io5'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGlobalContext } from '../provider/GlobalProvider'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
-import { FaShoppingBag, FaTag, FaShoppingCart, FaGift } from 'react-icons/fa'
+import { FaShoppingBag, FaTag, FaShoppingCart } from 'react-icons/fa'
 import { MdAccountBalanceWallet } from 'react-icons/md'
 import { useSelector } from 'react-redux'
 import AddToCartButton from './AddToCartButton'
@@ -37,49 +37,23 @@ const DisplayCartItem = ({ close }) => {
 
   const [payLoading, setPayLoading]       = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
-  const [useWallet, setUseWallet]         = useState(false)
-  const [loyaltyData, setLoyaltyData]     = useState(null)
-  const [useLoyalty, setUseLoyalty]       = useState(false)
   const [dataLoading, setDataLoading]     = useState(false)
 
   const savings = notDiscountTotalPrice - totalPrice
 
-  // Wallet deduction
-  const walletDeduction = useWallet ? Math.min(walletBalance, totalPrice) : 0
+  const walletDeduction   = Math.min(walletBalance, totalPrice)
+  const loyaltyPointsUsed = 0
+  const loyaltyDiscount   = 0
+  const payableAmount     = Math.max(0, totalPrice - walletDeduction)
 
-  // Loyalty deduction
-  const loyaltyPointsUsed = (() => {
-    if (!useLoyalty || !loyaltyData) return 0
-    const { pointValue, maxRedeemPct } = loyaltyData.settings
-    const base     = totalPrice - walletDeduction
-    const maxByPct = Math.floor((base * maxRedeemPct) / 100 / pointValue)
-    return Math.min(loyaltyData.points, maxByPct)
-  })()
-  const loyaltyDiscount = loyaltyPointsUsed > 0
-    ? parseFloat((loyaltyPointsUsed * (loyaltyData?.settings?.pointValue || 0)).toFixed(2))
-    : 0
-
-  const payableAmount = Math.max(0, totalPrice - walletDeduction - loyaltyDiscount)
-
-  // Fetch wallet & loyalty when cart opens
+  // Fetch wallet when cart opens
   useEffect(() => {
     if (!user?._id) return
     const fetchData = async () => {
       setDataLoading(true)
       try {
-        const [walletRes, loyaltyRes] = await Promise.all([
-          Axios({ ...SummaryApi.getWallet }),
-          Axios({ ...SummaryApi.getMyLoyalty }),
-        ])
-        if (walletRes.data.success) {
-          const bal = walletRes.data.data.balance || 0
-          setWalletBalance(bal)
-          if (bal > 0) setUseWallet(true)
-        }
-        if (loyaltyRes.data.success) {
-          setLoyaltyData(loyaltyRes.data.data)
-          if ((loyaltyRes.data.data.points || 0) > 0) setUseLoyalty(true)
-        }
+        const walletRes = await Axios({ ...SummaryApi.getWallet })
+        if (walletRes.data.success) setWalletBalance(walletRes.data.data.balance || 0)
       } catch {}
       finally { setDataLoading(false) }
     }
@@ -114,8 +88,8 @@ const DisplayCartItem = ({ close }) => {
           }
         })
         if (res.data.success) {
-          toast.success('Order placed using wallet/points!')
-          addNotification('Your order has been placed using wallet/loyalty points!', 'success')
+          toast.success('Order placed using wallet balance!')
+          addNotification('Your order has been placed using your wallet balance!', 'success')
           if (fetchCartItem) fetchCartItem()
           if (fetchOrder) fetchOrder()
           if (close) close()
@@ -300,43 +274,20 @@ const DisplayCartItem = ({ close }) => {
                 })}
               </div>
 
-              {/* ── Wallet & Loyalty ── */}
-              {user?._id && !dataLoading && (walletBalance > 0 || (loyaltyData?.points > 0)) && (
-                <div className='space-y-2'>
-                  {walletBalance > 0 && (
-                    <div onClick={() => setUseWallet(v => !v)} className={`flex items-center justify-between rounded-xl px-4 py-3 border cursor-pointer transition-all ${useWallet ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'}`}>
-                      <div className='flex items-center gap-2.5'>
-                        <MdAccountBalanceWallet className={useWallet ? 'text-blue-600' : 'text-gray-400'} size={20} />
-                        <div>
-                          <p className='text-sm font-semibold text-gray-800'>Wallet Balance</p>
-                          <p className='text-xs text-gray-500'>{DisplayPriceInRupees(walletBalance)} available</p>
-                        </div>
-                      </div>
-                      <div className='flex items-center gap-2'>
-                        {useWallet && <span className='text-xs font-bold text-blue-600'>-{DisplayPriceInRupees(walletDeduction)}</span>}
-                        <div className={`w-10 h-5 rounded-full transition-all ${useWallet ? 'bg-blue-500' : 'bg-gray-300'} relative`}>
-                          <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${useWallet ? 'right-0.5' : 'left-0.5'}`} />
-                        </div>
-                      </div>
+              {/* ── Wallet (auto-applied) ── */}
+              {user?._id && !dataLoading && walletBalance > 0 && (
+                <div className='flex items-center justify-between rounded-xl px-4 py-3 border bg-green-50 border-green-200'>
+                  <div className='flex items-center gap-2.5'>
+                    <MdAccountBalanceWallet className='text-green-600' size={20} />
+                    <div>
+                      <p className='text-sm font-semibold text-gray-800'>Wallet Balance</p>
+                      <p className='text-xs text-gray-500'>{DisplayPriceInRupees(walletBalance)} available</p>
                     </div>
-                  )}
-                  {loyaltyData?.points > 0 && (
-                    <div onClick={() => setUseLoyalty(v => !v)} className={`flex items-center justify-between rounded-xl px-4 py-3 border cursor-pointer transition-all ${useLoyalty ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'}`}>
-                      <div className='flex items-center gap-2.5'>
-                        <FaGift className={useLoyalty ? 'text-yellow-600' : 'text-gray-400'} size={17} />
-                        <div>
-                          <p className='text-sm font-semibold text-gray-800'>Reward Points</p>
-                          <p className='text-xs text-gray-500'>{loyaltyData.points} pts = {DisplayPriceInRupees(loyaltyData.rupeeValue || 0)}</p>
-                        </div>
-                      </div>
-                      <div className='flex items-center gap-2'>
-                        {useLoyalty && loyaltyDiscount > 0 && <span className='text-xs font-bold text-yellow-600'>-{DisplayPriceInRupees(loyaltyDiscount)}</span>}
-                        <div className={`w-10 h-5 rounded-full transition-all ${useLoyalty ? 'bg-yellow-400' : 'bg-gray-300'} relative`}>
-                          <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${useLoyalty ? 'right-0.5' : 'left-0.5'}`} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <span className='text-xs font-bold text-green-600'>-{DisplayPriceInRupees(walletDeduction)}</span>
+                    <span className='text-[10px] font-semibold text-green-600 bg-green-100 px-2 py-0.5 rounded-full'>Auto</span>
+                  </div>
                 </div>
               )}
 
@@ -358,12 +309,6 @@ const DisplayCartItem = ({ close }) => {
                     <div className='flex justify-between text-blue-600'>
                       <span>Wallet</span>
                       <span>- {DisplayPriceInRupees(walletDeduction)}</span>
-                    </div>
-                  )}
-                  {loyaltyDiscount > 0 && (
-                    <div className='flex justify-between text-yellow-600'>
-                      <span>Reward Points ({loyaltyPointsUsed} pts)</span>
-                      <span>- {DisplayPriceInRupees(loyaltyDiscount)}</span>
                     </div>
                   )}
                   <div className='flex justify-between text-gray-600'>
