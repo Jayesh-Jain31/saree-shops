@@ -8,6 +8,9 @@ export async function getMyNotifications(req, res) {
             .limit(30)
             .lean()
         const unreadCount = notifications.filter(n => !n.read).length
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+        res.set('Pragma', 'no-cache')
+        res.set('Expires', '0')
         return res.json({ success: true, data: { notifications, unreadCount } })
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message })

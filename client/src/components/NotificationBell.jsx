@@ -43,8 +43,12 @@ const NotificationBell = () => {
   const fetchNotifications = useCallback(async () => {
     if (!user?._id) return
     try {
-      const res = await Axios({ ...SummaryApi.getMyNotifications })
-      if (res.data.success) {
+      const res = await Axios({
+        ...SummaryApi.getMyNotifications,
+        params: { _t: Date.now() },
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+      })
+      if (res.data?.success) {
         setNotifications(res.data.data.notifications || [])
         setUnread(res.data.data.unreadCount || 0)
       }
