@@ -53,6 +53,7 @@ const SiteSettings = () => {
   const [loyaltyPointValue, setLoyaltyPointValue] = useState('0.25')
   const [loyaltyMinRedeem, setLoyaltyMinRedeem] = useState('50')
   const [loyaltyMaxRedeemPct, setLoyaltyMaxRedeemPct] = useState('50')
+  const [loyaltyReturnPeriodDays, setLoyaltyReturnPeriodDays] = useState('7')
   const [savingLoyalty, setSavingLoyalty] = useState(false)
   const [cartHoursThreshold, setCartHoursThreshold] = useState('2')
   const [cartRecoveryMessage, setCartRecoveryMessage] = useState('')
@@ -117,6 +118,7 @@ const SiteSettings = () => {
           if (s.loyalty_point_value) setLoyaltyPointValue(s.loyalty_point_value)
           if (s.loyalty_min_redeem) setLoyaltyMinRedeem(s.loyalty_min_redeem)
           if (s.loyalty_max_redeem_pct) setLoyaltyMaxRedeemPct(s.loyalty_max_redeem_pct)
+          if (s.loyalty_return_period_days) setLoyaltyReturnPeriodDays(s.loyalty_return_period_days)
           setAnnouncementText(s.announcement_text || 'Free delivery above ₹999')
           setAnnouncementEnabled(s.announcement_enabled === 'true')
           setOutsideDeliveryTime(s.outside_delivery_time || '3-4 days')
@@ -399,6 +401,7 @@ const SiteSettings = () => {
         saveSetting('loyalty_point_value', String(parseFloat(loyaltyPointValue) || 0.25)),
         saveSetting('loyalty_min_redeem', String(parseInt(loyaltyMinRedeem) || 50)),
         saveSetting('loyalty_max_redeem_pct', String(parseInt(loyaltyMaxRedeemPct) || 50)),
+        saveSetting('loyalty_return_period_days', String(parseInt(loyaltyReturnPeriodDays) || 7)),
       ])
       toast.success('Loyalty settings saved!')
     } catch { toast.error('Failed to save loyalty settings') }
@@ -1178,10 +1181,27 @@ const SiteSettings = () => {
                 />
                 <p className='text-[10px] text-gray-400 mt-1'>e.g. 50 = redeem up to 50% of order</p>
               </div>
+              <div className='col-span-2'>
+                <label className='block text-xs font-semibold text-gray-600 mb-1'>
+                  Wallet credit delay (days after delivery)
+                </label>
+                <input
+                  type='number' min='1' max='60' step='1'
+                  value={loyaltyReturnPeriodDays}
+                  onChange={e => setLoyaltyReturnPeriodDays(e.target.value)}
+                  className='w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400'
+                />
+                <p className='text-[10px] text-gray-400 mt-1'>
+                  Earned points are converted to wallet balance after this many days (return window). Default: 7 days.
+                </p>
+              </div>
             </div>
-            <div className='bg-yellow-50 rounded-xl p-3 text-xs text-yellow-700'>
-              <strong>Example:</strong> ₹1000 order → {Math.floor(1000 / 100) * (parseFloat(loyaltyEarnPer100) || 10)} pts earned.
-              Redeem {Math.floor((parseFloat(loyaltyMinRedeem) || 50))} pts → ₹{((parseFloat(loyaltyMinRedeem) || 50) * (parseFloat(loyaltyPointValue) || 0.25)).toFixed(2)} discount.
+            <div className='bg-yellow-50 rounded-xl p-3 text-xs text-yellow-700 space-y-0.5'>
+              <p><strong>How it works:</strong> Points are earned on every order but held for the return window.</p>
+              <p>
+                ₹1000 order → <strong>{Math.floor(1000 / 100) * (parseFloat(loyaltyEarnPer100) || 10)} pts</strong> earned.
+                After {parseInt(loyaltyReturnPeriodDays) || 7} days → <strong>₹{(Math.floor(1000 / 100) * (parseFloat(loyaltyEarnPer100) || 10) * (parseFloat(loyaltyPointValue) || 0.25)).toFixed(2)}</strong> credited to customer's wallet automatically.
+              </p>
             </div>
             <button
               onClick={handleSaveLoyalty}

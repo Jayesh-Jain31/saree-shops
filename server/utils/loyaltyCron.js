@@ -1,7 +1,6 @@
 import OrderModel from '../models/order.model.js'
 import SettingModel from '../models/settings.model.js'
 import WalletModel from '../models/wallet.model.js'
-import LoyaltyModel from '../models/loyalty.model.js'
 
 const getReturnPeriodDays = async () => {
     try {
