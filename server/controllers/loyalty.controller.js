@@ -1,5 +1,6 @@
 import LoyaltyModel from '../models/loyalty.model.js'
 import SettingModel from '../models/settings.model.js'
+import OrderModel from '../models/order.model.js'
 
 const getLoyaltySettings = async () => {
     const keys = ['loyalty_earn_per_100', 'loyalty_point_value', 'loyalty_min_redeem', 'loyalty_max_redeem_pct']
@@ -56,6 +57,48 @@ export const redeemPreview = async (req, res) => {
         return res.json({
             eligible: true,
             data: { availablePoints, toRedeem, discount, maxRedeemable, pointValue: settings.pointValue },
+            error: false, success: true
+        })
+    } catch (e) {
+        return res.status(500).json({ message: e.message, error: true, success: false })
+    }
+}
+
+export const getMyPendingLoyalty = async (req, res) => {
+    try {
+        const userId = req.userId
+        const settings = await getLoyaltySettings()
+
+        const returnPeriodSetting = await SettingModel.findOne({ key: 'loyalty_return_period_days' }).lean()
+        const returnPeriodDays = parseInt(returnPeriodSetting?.value) || 7
+
+        const pendingOrders = await OrderModel.find({
+            userId,
+            loyaltyPointsPending: { $gt: 0 },
+            loyaltyPointsProcessed: { $ne: true }
+        }).select('orderId loyaltyPointsPending orderStatus deliveredAt createdAt totalAmt').sort({ createdAt: -1 }).lean()
+
+        const now = Date.now()
+        const items = pendingOrders.map(o => {
+            const baseDate = o.deliveredAt ? new Date(o.deliveredAt) : new Date(new Date(o.createdAt).getTime() + 15 * 24 * 60 * 60 * 1000)
+            const creditDate = new Date(baseDate.getTime() + returnPeriodDays * 24 * 60 * 60 * 1000)
+            const daysLeft = Math.max(0, Math.ceil((creditDate - now) / (24 * 60 * 60 * 1000)))
+            const rupeeValue = parseFloat((o.loyaltyPointsPending * settings.pointValue).toFixed(2))
+            return {
+                orderId: o.orderId,
+                points: o.loyaltyPointsPending,
+                rupeeValue,
+                orderStatus: o.orderStatus,
+                creditDate: creditDate.toISOString(),
+                daysLeft,
+                ready: daysLeft === 0
+            }
+        })
+
+        const totalPendingRupees = parseFloat(items.reduce((s, i) => s + i.rupeeValue, 0).toFixed(2))
+
+        return res.json({
+            data: { items, totalPendingRupees, returnPeriodDays, pointValue: settings.pointValue },
             error: false, success: true
         })
     } catch (e) {
