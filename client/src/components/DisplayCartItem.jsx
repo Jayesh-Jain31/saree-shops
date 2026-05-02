@@ -123,6 +123,7 @@ const DisplayCartItem = ({ close }) => {
       if (!orderRes.data.success) { toast.error('Failed to create payment order.'); setPayLoading(false); return }
 
       const razorpayOrder  = orderRes.data.data
+      const rzpFreeGift    = orderRes.data.freeGift || null
       const defaultAddr    = activeAddresses[0]
       const customerMobile = user?.mobile || defaultAddr?.mobile || ''
       const customerName   = user?.name   || defaultAddr?.name   || ''
@@ -142,6 +143,10 @@ const DisplayCartItem = ({ close }) => {
           name:    customerName,
           email:   customerEmail,
           contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
+          // Razorpay Magic Checkout: tag the free gift line_item so it shows "free gift item" badge + ₹0
+          ...(rzpFreeGift && {
+            promotional_tag: [{ tag: 'free gift item', variant_id: rzpFreeGift.productId }]
+          }),
         },
         customer_details: {
           name:    customerName,

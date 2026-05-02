@@ -343,8 +343,18 @@ export async function razorpayOrderController(request, response) {
             }
         })
 
+        // Compute raw cart subtotal from items (before wallet/coupon deductions)
+        // so gift eligibility is based on what's actually in the cart, not the discounted payable amount
+        const rawSubTotal = list_items.reduce((sum, item) => {
+            const p = item.productId || {}
+            const price    = p.price || 0
+            const discount = p.discount || 0
+            const discountedPrice = price * (1 - discount / 100)
+            return sum + discountedPrice * (item.quantity || 1)
+        }, 0)
+
         // Check for active free gift and append as promotional line item
-        const freeGiftRzp = await getActiveFreeGiftInternal(totalAmt)
+        const freeGiftRzp = await getActiveFreeGiftInternal(rawSubTotal)
         let freeGiftData = null
         if (freeGiftRzp) {
             const gp = freeGiftRzp.productId
