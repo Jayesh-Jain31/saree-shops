@@ -5,7 +5,6 @@ import { setAllCategory } from '../store/productSlice'
 import { valideURLConvert } from '../utils/valideURLConvert'
 import { Link, useNavigate } from 'react-router-dom'
 import CategoryWiseProductDisplay from '../components/CategoryWiseProductDisplay'
-import RecentlyViewed from '../components/RecentlyViewed'
 import FlashSaleCountdown from '../components/FlashSaleCountdown'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
@@ -237,7 +236,6 @@ const Home = () => {
         <CategoryWiseProductDisplay key={c._id + 'CategorywiseProduct'} id={c._id} name={c.name} />
       ))}
 
-      <RecentlyViewed />
     </section>
   )
 }

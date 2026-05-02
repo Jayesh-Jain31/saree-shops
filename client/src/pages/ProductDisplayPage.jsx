@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import BackButton from '../components/BackButton'
 import ProductQA from '../components/ProductQA'
 import YouMayAlsoLike from '../components/YouMayAlsoLike'
+import RecentlyViewed from '../components/RecentlyViewed'
 import SummaryApi from '../common/SummaryApi'
 import Axios from '../utils/Axios'
 import AxiosToastError from '../utils/AxiosToastError'
@@ -595,6 +596,9 @@ const ProductDisplayPage = () => {
 
       {/* You May Also Like */}
       {data?._id && <YouMayAlsoLike productId={data._id} />}
+
+      {/* Recently Viewed */}
+      <RecentlyViewed />
 
       {/* Q&A Section */}
       {data?._id && (
