@@ -23,7 +23,8 @@ import {
 } from "../utils/whatsapp.js";
 import SettingModel from "../models/settings.model.js";
 import DeliveryZoneModel from "../models/deliveryZone.model.js";
-import { getPendingPointsCount, redeemPointsInternal, deductPointsInternal } from "./loyalty.controller.js";
+import { getPendingPointsCount, redeemPointsInternal, deductPointsInternal } from "./loyalty.controller.js"
+import { getActiveFreeGiftInternal } from "./freeGift.controller.js";
 
 // Helper: decrement stock for each ordered item + low stock alert
 async function decrementStock(items) {
@@ -91,6 +92,18 @@ export async function CashOnDeliveryOrderController(request, response) {
             quantity: el.quantity || 1,
             price: el.productId.price || 0,
         }))
+
+        // Auto-append active free gift if cart qualifies
+        const freeGift = await getActiveFreeGiftInternal(subTotalAmt || 0)
+        if (freeGift) {
+            items.push({
+                productId: freeGift.productId._id,
+                product_details: { name: freeGift.productId.name, image: freeGift.productId.image },
+                quantity: 1,
+                price: 0,
+                isFreeGift: true,
+            })
+        }
 
         // Check if COD is restricted for this customer
         const userCheck = await UserModel.findById(userId).select('codRestricted')
@@ -330,6 +343,28 @@ export async function razorpayOrderController(request, response) {
             }
         })
 
+        // Check for active free gift and append as promotional line item
+        const freeGiftRzp = await getActiveFreeGiftInternal(totalAmt)
+        let freeGiftData = null
+        if (freeGiftRzp) {
+            const gp = freeGiftRzp.productId
+            const originalPaise = Math.round((gp.price || 0) * 100)
+            line_items.push({
+                sku:         String(gp._id || ''),
+                variant_id:  String(gp._id || ''),
+                price:       originalPaise,
+                offer_price: 0,
+                quantity:    1,
+                name:        gp.name || 'Free Gift',
+                ...(gp.image?.[0] && { image_url: gp.image[0] }),
+            })
+            freeGiftData = {
+                productId: String(gp._id),
+                name:      gp.name,
+                image:     gp.image?.[0] || '',
+            }
+        }
+
         const amountPaise = Math.round(totalAmt * 100)
 
         const options = {
@@ -349,7 +384,8 @@ export async function razorpayOrderController(request, response) {
             message: "Razorpay order created",
             error: false,
             success: true,
-            data: razorpayOrder
+            data: razorpayOrder,
+            freeGift: freeGiftData,
         })
 
     } catch (error) {
@@ -449,6 +485,18 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             quantity: el.quantity || 1,
             price: el.productId.price || 0,
         }))
+
+        // Auto-append active free gift if cart qualifies
+        const freeGiftVerify = await getActiveFreeGiftInternal(subTotalAmt || 0)
+        if (freeGiftVerify) {
+            items.push({
+                productId: freeGiftVerify.productId._id,
+                product_details: { name: freeGiftVerify.productId.name, image: freeGiftVerify.productId.image },
+                quantity: 1,
+                price: 0,
+                isFreeGift: true,
+            })
+        }
 
         if (loyaltyPointsUsed > 0) {
             await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')

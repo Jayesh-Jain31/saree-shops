@@ -15,7 +15,7 @@ import {
 } from 'react-icons/md'
 import { HiDocumentText } from 'react-icons/hi'
 import { FiPackage, FiHeart, FiMapPin, FiLogOut, FiUser, FiRefreshCw } from 'react-icons/fi'
-import { FaShieldAlt, FaBoxOpen } from 'react-icons/fa'
+import { FaShieldAlt, FaBoxOpen, FaGift } from 'react-icons/fa'
 import { MdAccountBalanceWallet } from 'react-icons/md'
 import { GiDiamondTrophy } from 'react-icons/gi'
 import isAdmin from '../utils/isAdmin'
@@ -91,6 +91,7 @@ const UserMenu = ({ close }) => {
             <MenuItem to="/dashboard/fraud-detection" icon={FaShieldAlt} label="Fraud Detection" color="text-red-500" />
             <MenuItem to="/dashboard/admin-loyalty" icon={GiDiamondTrophy} label="Loyalty Points" color="text-yellow-500" />
             <MenuItem to="/dashboard/admin-bundles" icon={FaBoxOpen} label="Bundle Deals" color="text-purple-500" />
+            <MenuItem to="/dashboard/free-gifts" icon={FaGift} label="Free Gifts" color="text-rose-500" />
             <MenuItem to="/dashboard/policy-pages" icon={HiDocumentText} label="Policy Pages" color="text-indigo-400" />
             <MenuItem to="/dashboard/site-settings" icon={MdSettings} label="Site Settings" color="text-gray-500" />
           </div>

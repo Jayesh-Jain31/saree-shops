@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import {
   FaTag, FaTimes, FaCheckCircle, FaMapMarkerAlt,
-  FaPlus, FaMobileAlt, FaHome, FaBuilding
+  FaPlus, FaMobileAlt, FaHome, FaBuilding, FaGift
 } from 'react-icons/fa'
 import { MdAccountBalanceWallet, MdDeliveryDining } from 'react-icons/md'
 import { SiRazorpay } from 'react-icons/si'
@@ -56,6 +56,7 @@ const CheckoutPage = () => {
   const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()]
   const [activeCoupons, setActiveCoupons] = useState([])
   const [showCoupons, setShowCoupons] = useState(false)
+  const [freeGift, setFreeGift] = useState(null)
   const siteSettings = useSelector(state => state.site.settings)
   const codEnabled = siteSettings?.cod_enabled !== 'false'
 
@@ -94,6 +95,18 @@ const CheckoutPage = () => {
     }
     fetchActiveCoupons()
   }, [])
+
+  // Fetch free gift whenever cart total changes
+  useEffect(() => {
+    if (totalPrice <= 0) { setFreeGift(null); return }
+    const fetchFreeGift = async () => {
+      try {
+        const res = await Axios({ ...SummaryApi.getActiveFreeGift, params: { cartAmount: totalPrice } })
+        setFreeGift(res.data.data || null)
+      } catch { setFreeGift(null) }
+    }
+    fetchFreeGift()
+  }, [totalPrice])
 
   // Auto-apply best eligible coupon
   useEffect(() => {
@@ -330,6 +343,13 @@ const CheckoutPage = () => {
           email:        customerEmail,
           contact:      customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
           coupon_code:  appliedCoupon?.code || '',
+          // Magic Checkout promotional_tag — show FREE GIFT badge next to gift product
+          ...(response.data.freeGift && {
+            promotional_tag: [{
+              tag: 'free gift item',
+              variant_id: response.data.freeGift.productId,
+            }]
+          }),
         },
 
         // Shipping address for Magic Checkout
@@ -717,6 +737,35 @@ const CheckoutPage = () => {
               </p>
             </div>
 
+            {/* Free Gift Banner */}
+            {freeGift && (
+              <div className='bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-2xl overflow-hidden'>
+                <div className='flex items-center gap-2 bg-rose-500 px-4 py-1.5'>
+                  <FaGift className='text-white' size={11} />
+                  <p className='text-white text-[11px] font-bold uppercase tracking-wider'>Free Gift Unlocked!</p>
+                </div>
+                <div className='flex items-center gap-3 px-4 py-3'>
+                  <div className='w-12 h-12 rounded-xl bg-white border border-rose-100 overflow-hidden flex-shrink-0'>
+                    {freeGift.productId?.image?.[0]
+                      ? <img src={freeGift.productId.image[0]} alt={freeGift.productId.name} className='w-full h-full object-contain p-0.5' />
+                      : <FaGift className='m-auto mt-3 text-rose-300' size={20} />
+                    }
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                    <p className='text-xs font-semibold text-rose-700 line-clamp-1'>{freeGift.title}</p>
+                    <p className='text-xs text-gray-600 line-clamp-1 mt-0.5'>{freeGift.productId?.name}</p>
+                    {freeGift.minOrderAmount > 0 && (
+                      <p className='text-[10px] text-rose-400 mt-0.5'>On orders above ₹{freeGift.minOrderAmount.toLocaleString('en-IN')}</p>
+                    )}
+                  </div>
+                  <div className='flex-shrink-0 text-right'>
+                    <span className='line-through text-xs text-gray-400'>₹{freeGift.productId?.price || '—'}</span>
+                    <p className='text-sm font-bold text-rose-600'>FREE</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Cart Items Preview */}
             <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
               <p className='px-4 py-3 font-bold text-gray-800 text-sm border-b'>Items in Order</p>
@@ -735,6 +784,25 @@ const CheckoutPage = () => {
                     </p>
                   </div>
                 ))}
+                {/* Free gift row */}
+                {freeGift && (
+                  <div className='flex items-center gap-3 px-4 py-3 bg-rose-50'>
+                    <div className='w-12 h-12 rounded-xl bg-white border border-rose-100 overflow-hidden flex-shrink-0'>
+                      {freeGift.productId?.image?.[0]
+                        ? <img src={freeGift.productId.image[0]} alt={freeGift.productId.name} className='w-full h-full object-contain p-0.5' />
+                        : <FaGift className='m-auto mt-3 text-rose-300' size={18} />
+                      }
+                    </div>
+                    <div className='flex-1 min-w-0'>
+                      <div className='flex items-center gap-1.5 mb-0.5'>
+                        <span className='text-[9px] font-bold uppercase bg-rose-500 text-white px-1.5 py-0.5 rounded-full tracking-wide'>Free Gift</span>
+                      </div>
+                      <p className='text-xs font-medium text-gray-800 line-clamp-1'>{freeGift.productId?.name}</p>
+                      <p className='text-xs text-gray-400'>Qty: 1</p>
+                    </div>
+                    <p className='text-xs font-bold text-rose-600 flex-shrink-0'>₹0</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

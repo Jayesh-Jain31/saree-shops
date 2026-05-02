@@ -50,6 +50,7 @@ const SiteSettings       = lazy(() => import("../pages/SiteSettings"));
 const AdminFraud         = lazy(() => import("../pages/AdminFraud"));
 const AdminCustomerDetail = lazy(() => import("../pages/AdminCustomerDetail"));
 const PolicyAdmin        = lazy(() => import("../pages/PolicyAdmin"));
+const AdminFreeGifts     = lazy(() => import("../pages/AdminFreeGifts"));
 
 // ── Spinner shown while a lazy page loads ────────────────────────────────────
 const PageLoader = () => (
@@ -101,6 +102,7 @@ const router = createBrowserRouter([
                     { path : "policy-pages",     element : <AdminPermision><Lazy><PolicyAdmin/></Lazy></AdminPermision> },
                     { path : "fraud-detection", element : <AdminPermision><Lazy><AdminFraud/></Lazy></AdminPermision> },
                     { path : "customer/:userId", element : <AdminPermision><Lazy><AdminCustomerDetail/></Lazy></AdminPermision> },
+                    { path : "free-gifts",      element : <AdminPermision><Lazy><AdminFreeGifts/></Lazy></AdminPermision> },
                 ]
             },
             {
