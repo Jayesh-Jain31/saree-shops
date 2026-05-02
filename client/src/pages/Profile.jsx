@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { FaRegUserCircle, FaCrown, FaMedal, FaShare, FaCopy } from "react-icons/fa"
+import { MdAccountBalanceWallet } from 'react-icons/md'
+import { GiDiamondTrophy } from 'react-icons/gi'
+import { Link } from 'react-router-dom'
 import UserProfileAvatarEdit from '../components/UserProfileAvatarEdit'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
@@ -9,6 +12,7 @@ import toast from 'react-hot-toast'
 import { setUserDetails } from '../store/userSlice'
 import fetchUserDetails from '../utils/fetchUserDetails'
 import BackButton from '../components/BackButton'
+import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 
 const TIER_CONFIG = {
     Gold: { color: '#f59e0b', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700', icon: <FaCrown className='text-amber-500' size={18} /> },
@@ -23,6 +27,8 @@ const Profile = () => {
     const [loading, setLoading] = useState(false)
     const [loyalty, setLoyalty] = useState(null)
     const [referral, setReferral] = useState(null)
+    const [walletBalance, setWalletBalance] = useState(null)
+    const [pendingRewards, setPendingRewards] = useState(null)
     const dispatch = useDispatch()
 
     useEffect(() => {
@@ -33,12 +39,16 @@ const Profile = () => {
         if (!user?._id) return
         const fetchExtras = async () => {
             try {
-                const [loyaltyRes, referralRes] = await Promise.allSettled([
+                const [loyaltyRes, referralRes, walletRes, pendingRes] = await Promise.allSettled([
                     Axios({ ...SummaryApi.getMyLoyalty }),
                     Axios({ ...SummaryApi.getMyReferral }),
+                    Axios({ ...SummaryApi.getWallet }),
+                    Axios({ ...SummaryApi.getMyPendingLoyalty }),
                 ])
                 if (loyaltyRes.status === 'fulfilled' && loyaltyRes.value.data.success) setLoyalty(loyaltyRes.value.data.data)
                 if (referralRes.status === 'fulfilled' && referralRes.value.data.success) setReferral(referralRes.value.data.data)
+                if (walletRes.status === 'fulfilled' && walletRes.value.data.success) setWalletBalance(walletRes.value.data.data.balance || 0)
+                if (pendingRes.status === 'fulfilled' && pendingRes.value.data.success) setPendingRewards(pendingRes.value.data.data)
             } catch {}
         }
         fetchExtras()
@@ -109,6 +119,43 @@ const Profile = () => {
                                 />
                             </div>
                         </div>
+                    )}
+                </div>
+            )}
+
+            {/* Wallet & Rewards Summary */}
+            {walletBalance !== null && (
+                <div className='mt-3 border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4'>
+                    <div className='flex items-center justify-between mb-3'>
+                        <div className='flex items-center gap-2'>
+                            <MdAccountBalanceWallet className='text-green-600' size={20} />
+                            <span className='font-bold text-sm text-green-800'>My Wallet & Rewards</span>
+                        </div>
+                        <Link to='/dashboard/wallet' className='text-xs text-green-600 font-medium underline underline-offset-2'>View</Link>
+                    </div>
+                    <div className='flex gap-3'>
+                        <div className='flex-1 bg-white rounded-lg p-3 border border-green-100 text-center'>
+                            <p className='text-[10px] text-gray-500 mb-1'>Available Balance</p>
+                            <p className='text-lg font-bold text-green-700'>{DisplayPriceInRupees(walletBalance)}</p>
+                            <p className='text-[10px] text-gray-400'>Auto-applied at checkout</p>
+                        </div>
+                        <div className='flex-1 bg-white rounded-lg p-3 border border-amber-100 text-center'>
+                            <p className='text-[10px] text-gray-500 mb-1'>Pending Rewards</p>
+                            <p className='text-lg font-bold text-amber-600'>
+                                {DisplayPriceInRupees(pendingRewards?.totalPendingValue || 0)}
+                            </p>
+                            <p className='text-[10px] text-gray-400'>
+                                {pendingRewards?.orders?.length > 0
+                                    ? `${pendingRewards.orders.length} order${pendingRewards.orders.length > 1 ? 's' : ''} processing`
+                                    : 'No pending rewards'}
+                            </p>
+                        </div>
+                    </div>
+                    {pendingRewards?.orders?.length > 0 && (
+                        <Link to='/dashboard/loyalty' className='mt-2 flex items-center justify-center gap-1.5 text-xs text-green-700 font-medium py-1.5'>
+                            <GiDiamondTrophy size={12} />
+                            View upcoming reward credits →
+                        </Link>
                     )}
                 </div>
             )}
