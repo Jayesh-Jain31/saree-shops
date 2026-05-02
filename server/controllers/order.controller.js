@@ -67,15 +67,15 @@ export async function CashOnDeliveryOrderController(request, response) {
         const { list_items, totalAmt, addressId, subTotalAmt, deliveryCharge = 0, discountAmt = 0, couponCode = "", couponDiscount = 0, walletDeduction = 0, loyaltyPointsUsed = 0, loyaltyDiscount = 0, razorpay_order_id = "" } = request.body
 
         // If this COD came from inside the Razorpay popup, check for a popup-applied coupon
+        // NOTE: Do NOT recalculate totalAmt here — wait until delivery charge is resolved below,
+        // because the popup may have a different address/delivery charge than the pre-checkout selection.
         let finalCouponCode = couponCode
         let finalCouponDiscount = couponDiscount
-        let finalTotalAmt = totalAmt
         if (razorpay_order_id) {
             const popupCoupon = getPopupCoupon(razorpay_order_id)
             if (popupCoupon) {
                 finalCouponCode     = popupCoupon.code
                 finalCouponDiscount = popupCoupon.discountRupees
-                finalTotalAmt       = Math.max(0, totalAmt - popupCoupon.discountRupees)
             }
         }
 
@@ -156,6 +156,19 @@ export async function CashOnDeliveryOrderController(request, response) {
             } : {}
         }
 
+        // Recalculate total from authoritative resolved values.
+        // Do NOT use frontend totalAmt directly — it was computed before the popup ran and
+        // may have a different coupon / delivery charge than what the user actually confirmed.
+        const finalTotalAmt = Math.max(
+            0,
+            subTotalAmt + resolvedDeliveryCharge - finalCouponDiscount - (walletDeduction || 0) - (loyaltyDiscount || 0)
+        )
+
+        console.log("[COD] ORDER AMOUNTS:", {
+            subTotalAmt, resolvedDeliveryCharge, finalCouponDiscount, walletDeduction, loyaltyDiscount, finalTotalAmt,
+            couponCode: finalCouponCode, address: delivery_address_snapshot.address_line,
+        })
+
         const order = await OrderModel.create({
             userId: userId,
             orderId: `ORD-${new mongoose.Types.ObjectId()}`,
@@ -167,7 +180,7 @@ export async function CashOnDeliveryOrderController(request, response) {
             subTotalAmt: subTotalAmt,
             deliveryCharge: resolvedDeliveryCharge,
             totalAmt: finalTotalAmt,
-            discountAmt: discountAmt,
+            discountAmt: finalCouponDiscount,
             couponCode: finalCouponCode,
             couponDiscount: finalCouponDiscount,
             walletDeduction: walletDeduction,
@@ -424,105 +437,107 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
         }
 
-        // Build delivery_address_snapshot.
-        // Prefer the Razorpay billing address (the address the user actually used in the popup)
-        // because they may have selected a different address inside Magic Checkout.
-        // ✅ ALWAYS USE MAGIC CHECKOUT ADDRESS (FINAL FIX)
-let delivery_address_snapshot = {}
-let resolvedDeliveryCharge = deliveryCharge
+        // ── Step 1: Address from popup map (saved during Razorpay shipping-info call) ───────
+        let delivery_address_snapshot = {}
+        let resolvedDeliveryCharge = deliveryCharge
 
+        if (popupAddresses && popupAddresses.length > 0) {
+            const pa = popupAddresses.find(a => a.isSelected) || popupAddresses[0]
+            delivery_address_snapshot = {
+                name:         pa.name || '',
+                mobile:       String(pa.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10),
+                address_line: [pa.line1, pa.line2].filter(Boolean).join(', '),
+                city:         pa.city  || '',
+                state:        pa.state || '',
+                pincode:      String(pa.zipcode || ''),
+                country:      (pa.country === 'IN' ? 'India' : pa.country) || 'India',
+                landmark:     pa.line2 || '',
+            }
+            if (pa._computedShippingRupees != null) {
+                resolvedDeliveryCharge = pa._computedShippingRupees
+            }
+        }
 
+        // ── Step 2: For online payments, Razorpay's billing object is the most reliable ───
+        // It reflects the exact address the customer confirmed at payment time.
+        if (!isCOD && paymentDetails?.billing) {
+            const ba    = paymentDetails.billing
+            const bAddr = ba.address || {}
+            if (ba.name || bAddr.line1 || bAddr.city) {
+                delivery_address_snapshot = {
+                    name:         ba.name || delivery_address_snapshot.name || '',
+                    mobile:       String(ba.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10) || delivery_address_snapshot.mobile || '',
+                    address_line: [bAddr.line1, bAddr.line2].filter(Boolean).join(', ') || delivery_address_snapshot.address_line || '',
+                    city:         bAddr.city  || delivery_address_snapshot.city  || '',
+                    state:        bAddr.state || delivery_address_snapshot.state || '',
+                    pincode:      String(bAddr.zipcode || '') || delivery_address_snapshot.pincode || '',
+                    country:      (bAddr.country === 'IN' ? 'India' : (bAddr.country || '')) || delivery_address_snapshot.country || 'India',
+                    landmark:     bAddr.line2 || delivery_address_snapshot.landmark || '',
+                }
+            }
+        }
 
-if (popupAddresses && popupAddresses.length > 0) {
-    const pa = popupAddresses.find(a => a.isSelected) || popupAddresses[0]
+        // ── Step 3: Fallback to saved DB address if nothing found above ─────────────────
+        if (!delivery_address_snapshot.address_line && !delivery_address_snapshot.name) {
+            const addrDoc = await AddressModel.findById(addressId).lean()
+            delivery_address_snapshot = addrDoc ? {
+                name:         addrDoc.name         || '',
+                mobile:       addrDoc.mobile        || '',
+                address_line: addrDoc.address_line  || '',
+                city:         addrDoc.city          || '',
+                state:        addrDoc.state         || '',
+                pincode:      String(addrDoc.pincode || ''),
+                country:      addrDoc.country       || 'India',
+                landmark:     addrDoc.landmark      || '',
+            } : {}
+        }
 
-    delivery_address_snapshot = {
-        name: pa.name || '',
-        mobile: String(pa.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10),
-        address_line: [pa.line1, pa.line2].filter(Boolean).join(', '),
-        city: pa.city || '',
-        state: pa.state || '',
-        pincode: String(pa.zipcode || ''),
-        country: (pa.country === 'IN' ? 'India' : pa.country) || 'India',
-        landmark: pa.line2 || '',
-    }
+        // ── Amounts ──────────────────────────────────────────────────────────────────────
+        // Use frontend subTotalAmt (which is the discounted product total) as the source of truth.
+        // Do NOT recalculate from item.price — those are the full/original prices, not discounted.
+        const finalSubTotal       = subTotalAmt || 0
+        const finalDelivery       = resolvedDeliveryCharge || 0
+        const finalCouponDiscount = rzpCouponDiscount || 0
 
-    // ✅ correct delivery charge
-    if (pa._computedShippingRupees != null) {
-        resolvedDeliveryCharge = pa._computedShippingRupees
-    }
+        // Final total:
+        // • Online → trust Razorpay's actual charged amount (already includes all adjustments)
+        // • COD via popup → recalculate from scratch with resolved delivery + popup coupon
+        let finalTotal = 0
+        if (!isCOD && paymentDetails?.amount) {
+            finalTotal = paymentDetails.amount / 100
+        } else {
+            finalTotal = Math.max(0, finalSubTotal + finalDelivery - finalCouponDiscount - (walletDeduction || 0) - (loyaltyDiscount || 0))
+        }
 
-} else {
-    // fallback (rare)
-    const addrDoc = await AddressModel.findById(addressId).lean()
-    delivery_address_snapshot = addrDoc ? {
-        name: addrDoc.name || '',
-        mobile: addrDoc.mobile || '',
-        address_line: addrDoc.address_line || '',
-        city: addrDoc.city || '',
-        state: addrDoc.state || '',
-        pincode: String(addrDoc.pincode || ''),
-        country: addrDoc.country || 'India',
-        landmark: addrDoc.landmark || '',
-    } : {}
-}
+        console.log("[verify] ORDER AMOUNTS:", {
+            subTotal: finalSubTotal, delivery: finalDelivery, coupon: finalCouponDiscount,
+            wallet: walletDeduction, loyalty: loyaltyDiscount, total: finalTotal,
+            couponCode: rzpCouponCode, address: delivery_address_snapshot.address_line,
+        })
 
-      // 🔥 FINAL CALCULATION FIX (single source of truth)
+        const order = await OrderModel.create({
+            userId:    userId,
+            orderId:   `ORD-${new mongoose.Types.ObjectId()}`,
+            items:     items,
+            paymentId: razorpay_payment_id,
+            payment_status: isCOD ? "CASH ON DELIVERY" : "PAID",
+            delivery_address: null,
+            delivery_address_snapshot,
 
-// 1. Calculate subtotal from items
-const calculatedSubTotal = items.reduce((acc, item) => {
-    return acc + (item.price * item.quantity)
-}, 0)
+            subTotalAmt:   finalSubTotal,
+            deliveryCharge: finalDelivery,
+            totalAmt:       finalTotal,
 
-// 2. Delivery charge from popup
-const finalDelivery = resolvedDeliveryCharge || 0
+            discountAmt:     finalCouponDiscount,
+            couponCode:      rzpCouponCode,
+            couponDiscount:  finalCouponDiscount,
 
-// 3. Coupon discount from popup
-const finalCouponDiscount = rzpCouponDiscount || 0
+            walletDeduction:    walletDeduction,
+            loyaltyPointsUsed:  loyaltyPointsUsed,
+            loyaltyDiscount:    loyaltyDiscount,
 
-// 4. Final total
-let finalTotal = 0
-
-if (!isCOD && paymentDetails?.amount) {
-    // Online payment → trust Razorpay
-    finalTotal = paymentDetails.amount / 100
-} else {
-    // COD → calculate manually
-    finalTotal = Math.max(0, calculatedSubTotal + finalDelivery - finalCouponDiscount)
-}
-
-// ✅ CREATE ORDER WITH CORRECT VALUES
-const order = await OrderModel.create({
-    userId: userId,
-    orderId: `ORD-${new mongoose.Types.ObjectId()}`,
-    items: items,
-    paymentId: razorpay_payment_id,
-    payment_status: isCOD ? "CASH ON DELIVERY" : "PAID",
-    delivery_address: null,
-    delivery_address_snapshot,
-
-    subTotalAmt: calculatedSubTotal,
-    deliveryCharge: finalDelivery,
-    totalAmt: finalTotal,
-
-    discountAmt: finalCouponDiscount,
-    couponCode: rzpCouponCode,
-    couponDiscount: finalCouponDiscount,
-
-    walletDeduction: walletDeduction,
-    loyaltyPointsUsed: loyaltyPointsUsed,
-    loyaltyDiscount: loyaltyDiscount,
-
-    orderStatus: "Confirmed",
-})
-
-// 🔍 Debug log (optional but useful)
-console.log("FINAL ORDER DATA:", {
-    subtotal: calculatedSubTotal,
-    delivery: finalDelivery,
-    coupon: finalCouponDiscount,
-    total: finalTotal
-})
+            orderStatus: "Confirmed",
+        })
 
         earnPointsInternal(userId, subTotalAmt, order.orderId).catch(() => {})
 
