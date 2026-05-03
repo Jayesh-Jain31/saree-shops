@@ -11,6 +11,7 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import AxiosToastError from '../utils/AxiosToastError'
 import successAlert from '../utils/SuccessAlert'
+import toast from 'react-hot-toast'
 import { useEffect } from 'react'
 
 const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
@@ -29,6 +30,7 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
     variants: propsData.variants || [],
   })
   const [imageLoading, setImageLoading] = useState(false)
+  const [aiGeneratingIndex, setAiGeneratingIndex] = useState(null)
   const [ViewImageURL, setViewImageURL] = useState('')
   const allCategory = useSelector(state => state.product.allCategory)
   const [selectCategory, setSelectCategory] = useState('')
@@ -59,6 +61,22 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
     const newImages = [...data.image]
     newImages.splice(index, 1)
     setData(prev => ({ ...prev, image: newImages }))
+  }
+
+  const handleAiModelImage = async (imgUrl, index) => {
+    setAiGeneratingIndex(index)
+    const toastId = toast.loading('✨ AI is generating model image...')
+    try {
+      const res = await Axios({ ...SummaryApi.generateAiModelImage, data: { imageUrl: imgUrl } })
+      if (res.data.success) {
+        setData(prev => ({ ...prev, image: [...prev.image, res.data.data.url] }))
+        toast.success('AI model image added!', { id: toastId })
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'AI generation failed', { id: toastId })
+    } finally {
+      setAiGeneratingIndex(null)
+    }
   }
 
   const handleRemoveCategory = (index) => {
@@ -155,11 +173,27 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
               </label>
               <div className='flex flex-wrap gap-3 mt-1'>
                 {data.image.map((img, index) => (
-                  <div key={img + index} className='h-20 w-20 bg-blue-50 border rounded-xl relative group overflow-hidden'>
-                    <img src={img} alt={img} className='w-full h-full object-cover cursor-pointer' onClick={() => setViewImageURL(img)} />
-                    <button type='button' onClick={() => handleDeleteImage(index)}
-                      className='absolute bottom-0 right-0 p-1 bg-red-600 text-white rounded-tl-lg hidden group-hover:block'>
-                      <MdDelete size={14} />
+                  <div key={img + index} className='bg-blue-50 border rounded-xl relative group overflow-hidden flex flex-col'>
+                    <div className='h-20 w-20 relative'>
+                      <img src={img} alt={img} className='w-full h-full object-cover cursor-pointer' onClick={() => setViewImageURL(img)} />
+                      <button type='button' onClick={() => handleDeleteImage(index)}
+                        className='absolute bottom-0 right-0 p-1 bg-red-600 text-white rounded-tl-lg hidden group-hover:block'>
+                        <MdDelete size={14} />
+                      </button>
+                      {aiGeneratingIndex === index && (
+                        <div className='absolute inset-0 bg-white/80 flex flex-col items-center justify-center rounded-xl'>
+                          <div className='w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin' />
+                          <p className='text-[9px] text-purple-600 font-bold mt-1'>AI Working</p>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type='button'
+                      onClick={() => handleAiModelImage(img, index)}
+                      disabled={aiGeneratingIndex !== null}
+                      className='w-20 text-[9px] font-bold py-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 text-white flex items-center justify-center transition'
+                    >
+                      ✨ AI Model
                     </button>
                   </div>
                 ))}

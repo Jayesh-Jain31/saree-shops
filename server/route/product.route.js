@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import auth from '../middleware/auth.js'
 import { createProductController, deleteProductDetails, getProductByCategory, getProductByCategoryAndSubCategory, getProductController, getProductDetails, searchProduct, updateProductDetails, bulkImportProductController, getRecommendations } from '../controllers/product.controller.js'
+import { generateAiModelImage } from '../controllers/aiModelImage.controller.js'
 import { admin } from '../middleware/Admin.js'
 
 const productRouter = Router()
@@ -25,5 +26,8 @@ productRouter.post('/bulk-import',auth,admin,bulkImportProductController)
 
 // recommendations
 productRouter.get('/recommendations/:productId', getRecommendations)
+
+// AI model image generation
+productRouter.post('/ai-model-image', auth, admin, generateAiModelImage)
 
 export default productRouter

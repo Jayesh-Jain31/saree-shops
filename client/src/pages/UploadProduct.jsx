@@ -11,6 +11,7 @@ import Axios from '../utils/Axios';
 import SummaryApi from '../common/SummaryApi';
 import AxiosToastError from '../utils/AxiosToastError';
 import successAlert from '../utils/SuccessAlert';
+import toast from 'react-hot-toast';
 import { useEffect } from 'react';
 
 const UploadProduct = () => {
@@ -27,6 +28,7 @@ const UploadProduct = () => {
       more_details : {},
   })
   const [imageLoading,setImageLoading] = useState(false)
+  const [aiGeneratingIndex, setAiGeneratingIndex] = useState(null)
   const [ViewImageURL,setViewImageURL] = useState("")
   const allCategory = useSelector(state => state.product.allCategory)
   const [selectCategory,setSelectCategory] = useState("")
@@ -76,6 +78,22 @@ const UploadProduct = () => {
             ...preve
         }
       })
+  }
+
+  const handleAiModelImage = async (imgUrl, index) => {
+    setAiGeneratingIndex(index)
+    const toastId = toast.loading('✨ AI is generating model image...')
+    try {
+      const res = await Axios({ ...SummaryApi.generateAiModelImage, data: { imageUrl: imgUrl } })
+      if (res.data.success) {
+        setData(prev => ({ ...prev, image: [...prev.image, res.data.data.url] }))
+        toast.success('AI model image added!', { id: toastId })
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'AI generation failed', { id: toastId })
+    } finally {
+      setAiGeneratingIndex(null)
+    }
   }
 
   const handleRemoveCategory = async(index)=>{
@@ -208,16 +226,32 @@ const UploadProduct = () => {
                         {
                           data.image.map((img,index) =>{
                               return(
-                                <div key={img+index} className='h-20 mt-1 w-20 min-w-20 bg-blue-50 border relative group'>
-                                  <img
-                                    src={img}
-                                    alt={img}
-                                    className='w-full h-full object-scale-down cursor-pointer' 
-                                    onClick={()=>setViewImageURL(img)}
-                                  />
-                                  <div onClick={()=>handleDeleteImage(index)} className='absolute bottom-0 right-0 p-1 bg-red-600 hover:bg-red-600 rounded text-white hidden group-hover:block cursor-pointer'>
-                                    <MdDelete/>
+                                <div key={img+index} className='mt-1 bg-blue-50 border relative group rounded overflow-hidden flex flex-col'>
+                                  <div className='h-20 w-20 min-w-20 relative'>
+                                    <img
+                                      src={img}
+                                      alt={img}
+                                      className='w-full h-full object-scale-down cursor-pointer' 
+                                      onClick={()=>setViewImageURL(img)}
+                                    />
+                                    <div onClick={()=>handleDeleteImage(index)} className='absolute bottom-0 right-0 p-1 bg-red-600 hover:bg-red-600 rounded text-white hidden group-hover:block cursor-pointer'>
+                                      <MdDelete/>
+                                    </div>
+                                    {aiGeneratingIndex === index && (
+                                      <div className='absolute inset-0 bg-white/80 flex flex-col items-center justify-center'>
+                                        <div className='w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin' />
+                                        <p className='text-[9px] text-purple-600 font-bold mt-1'>AI Working</p>
+                                      </div>
+                                    )}
                                   </div>
+                                  <button
+                                    type='button'
+                                    onClick={() => handleAiModelImage(img, index)}
+                                    disabled={aiGeneratingIndex !== null}
+                                    className='w-20 text-[9px] font-bold py-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 text-white flex items-center justify-center gap-0.5 transition'
+                                  >
+                                    ✨ AI Model
+                                  </button>
                                 </div>
                               )
                           })
