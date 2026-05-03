@@ -366,15 +366,15 @@ export async function razorpayOrderController(request, response) {
             // The promotional_tag on the frontend must use the same id.
             const giftVariantId = 'GIFT'
 
-            // price: originalPaise → Razorpay shows this as struck-through (~~₹X~~)
-            // offer_price: 0      → Razorpay shows this as ₹0 (the price customer pays)
-            // Together with promotional_tag { tag:"free gift item", variant_id:"GIFT" }
-            // this produces the display:  ₹ 0  (above)  ~~₹X~~ (below, smaller)
+            // Razorpay always renders the `price` field as the displayed item price.
+            // offer_price only affects the "Discount on price" row, not the per-item display.
+            // Setting price:0 → Razorpay shows ₹0 next to the gift item.
+            // The "free gift item" badge comes from promotional_tag on the frontend.
             line_items.unshift({
                 sku:         giftVariantId,
                 variant_id:  giftVariantId,
-                price:       originalPaise,  // MRP — shown struck-through below ₹0
-                offer_price: 0,             // ₹0 — what customer pays
+                price:       0,
+                offer_price: 0,
                 quantity:    1,
                 name:        gp.name || 'Free Gift',
                 ...(gp.image?.[0] && { image_url: gp.image[0] }),
