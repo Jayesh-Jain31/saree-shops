@@ -129,6 +129,8 @@ getProduct : { url : '/api/product/get', method : 'get' },
     sendCodOtp : { url : '/api/otp/send', method : 'post' },
     verifyCodOtp : { url : '/api/otp/verify', method : 'post' },
     resendCodOtp : { url : '/api/otp/resend', method : 'post' },
+    whatsappTestConnection : { url : '/api/settings/whatsapp-test-connection', method : 'post' },
+    whatsappTestSend : { url : '/api/settings/test-whatsapp', method : 'post' },
 }
 
 export default SummaryApi

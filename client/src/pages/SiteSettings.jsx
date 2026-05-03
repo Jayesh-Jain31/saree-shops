@@ -30,6 +30,14 @@ const SiteSettings = () => {
   const [whatsapp, setWhatsapp] = useState('')
   const [adminWhatsapp, setAdminWhatsapp] = useState('')
   const [savingAdminWa, setSavingAdminWa] = useState(false)
+  const [waAccessToken, setWaAccessToken] = useState('')
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState('')
+  const [savingWaApi, setSavingWaApi] = useState(false)
+  const [testingWaConn, setTestingWaConn] = useState(false)
+  const [waConnStatus, setWaConnStatus] = useState(null)
+  const [testWaPhone, setTestWaPhone] = useState('')
+  const [sendingTestWa, setSendingTestWa] = useState(false)
+  const [showWaToken, setShowWaToken] = useState(false)
   const [lowStockThreshold, setLowStockThreshold] = useState('5')
   const [savingLowStock, setSavingLowStock] = useState(false)
   const [broadcastMessage, setBroadcastMessage] = useState('')
@@ -105,6 +113,8 @@ const SiteSettings = () => {
           const s = res.data.data
           setWhatsapp(s.whatsapp_number || '')
           setAdminWhatsapp(s.admin_whatsapp_number || '')
+          if (s.whatsapp_access_token) setWaAccessToken(s.whatsapp_access_token)
+          if (s.whatsapp_phone_number_id) setWaPhoneNumberId(s.whatsapp_phone_number_id)
           setLowStockThreshold(s.low_stock_threshold || '5')
           setEnabled(s.whatsapp_enabled !== 'false')
           if (s.theme_color) setThemeColor(s.theme_color)
@@ -748,6 +758,138 @@ const SiteSettings = () => {
               {savingSocial ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={18} />}
               {savingSocial ? 'Saving...' : 'Save Store Info & Links'}
             </button>
+          </div>
+        </div>
+
+        {/* ── WhatsApp API Credentials Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-green-100'>
+              <FaWhatsapp className='text-green-600' size={20} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>WhatsApp API Credentials</h2>
+              <p className='text-xs text-gray-500'>Meta Business API — required for automatic customer notifications</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div className='bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700 space-y-1'>
+              <p className='font-semibold'>How to get these:</p>
+              <p>1. Go to <span className='font-mono'>developers.facebook.com</span> → Your App → WhatsApp → API Setup</p>
+              <p>2. Copy the <strong>Phone Number ID</strong> and <strong>Access Token</strong> from that page</p>
+              <p>3. Paste them below and click Save & Test Connection</p>
+            </div>
+
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Phone Number ID</label>
+              <input
+                type='text'
+                value={waPhoneNumberId}
+                onChange={e => setWaPhoneNumberId(e.target.value.trim())}
+                placeholder='e.g. 123456789012345'
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition'
+              />
+            </div>
+
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Access Token</label>
+              <div className='relative'>
+                <input
+                  type={showWaToken ? 'text' : 'password'}
+                  value={waAccessToken}
+                  onChange={e => setWaAccessToken(e.target.value.trim())}
+                  placeholder='EAAxxxxxxxxxxxxxxxx...'
+                  className='w-full border border-gray-200 rounded-xl px-4 py-3 pr-20 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition'
+                />
+                <button
+                  type='button'
+                  onClick={() => setShowWaToken(v => !v)}
+                  className='absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600'
+                >
+                  {showWaToken ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <p className='text-[11px] text-gray-400 mt-1'>For test mode: use the temporary token from Meta developers page. For live: generate a permanent token.</p>
+            </div>
+
+            <div className='flex gap-2'>
+              <button
+                onClick={async () => {
+                  if (!waPhoneNumberId.trim() || !waAccessToken.trim()) return toast.error('Enter both Phone Number ID and Access Token')
+                  setSavingWaApi(true)
+                  try {
+                    await saveSetting('whatsapp_phone_number_id', waPhoneNumberId.trim())
+                    await saveSetting('whatsapp_access_token', waAccessToken.trim())
+                    toast.success('WhatsApp API credentials saved!')
+                  } catch { toast.error('Failed to save') }
+                  finally { setSavingWaApi(false) }
+                }}
+                disabled={savingWaApi}
+                className='flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold rounded-xl py-3 transition-colors text-sm'
+              >
+                {savingWaApi ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <MdSave size={16} />}
+                {savingWaApi ? 'Saving...' : 'Save Credentials'}
+              </button>
+
+              <button
+                onClick={async () => {
+                  setTestingWaConn(true)
+                  setWaConnStatus(null)
+                  try {
+                    const res = await Axios({ ...SummaryApi.whatsappTestConnection })
+                    setWaConnStatus({ ok: true, msg: res.data.message })
+                    toast.success('Connection successful!')
+                  } catch (e) {
+                    const msg = e.response?.data?.message || 'Connection failed'
+                    setWaConnStatus({ ok: false, msg })
+                    toast.error(msg)
+                  } finally { setTestingWaConn(false) }
+                }}
+                disabled={testingWaConn}
+                className='flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-semibold rounded-xl py-3 transition-colors text-sm'
+              >
+                {testingWaConn ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <FaWhatsapp size={16} />}
+                {testingWaConn ? 'Testing...' : 'Test Connection'}
+              </button>
+            </div>
+
+            {waConnStatus && (
+              <div className={`rounded-xl p-3 text-xs font-medium ${waConnStatus.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                {waConnStatus.ok ? '✅ ' : '❌ '}{waConnStatus.msg}
+              </div>
+            )}
+
+            {waPhoneNumberId && waAccessToken && (
+              <div className='border-t pt-4 space-y-3'>
+                <p className='text-xs font-semibold text-gray-600'>Send a Test Message</p>
+                <div className='flex gap-2'>
+                  <input
+                    type='tel'
+                    value={testWaPhone}
+                    onChange={e => setTestWaPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder='919876543210'
+                    className='flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition'
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!testWaPhone.trim()) return toast.error('Enter a phone number')
+                      setSendingTestWa(true)
+                      try {
+                        const res = await Axios({ ...SummaryApi.whatsappTestSend, data: { mobile: testWaPhone, template: 'order_confirmation' } })
+                        toast.success(res.data.message)
+                      } catch (e) { toast.error(e.response?.data?.message || 'Send failed') }
+                      finally { setSendingTestWa(false) }
+                    }}
+                    disabled={sendingTestWa}
+                    className='px-4 flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-semibold rounded-xl py-2 transition-colors text-sm whitespace-nowrap'
+                  >
+                    {sendingTestWa ? <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> : <FaWhatsapp size={14} />}
+                    Send Test
+                  </button>
+                </div>
+                <p className='text-[11px] text-gray-400'>Sends an order_confirmation template message to the number above</p>
+              </div>
+            )}
           </div>
         </div>
 

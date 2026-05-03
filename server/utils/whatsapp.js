@@ -1,3 +1,5 @@
+import SettingsModel from '../models/settings.model.js'
+
 const formatPhone = (mobile) => {
     if (!mobile) return null
     const cleaned = String(mobile).replace(/\D/g, '')
@@ -7,12 +9,21 @@ const formatPhone = (mobile) => {
     return null
 }
 
+const getCredentials = async () => {
+    const [tokenDoc, phoneIdDoc] = await Promise.all([
+        SettingsModel.findOne({ key: 'whatsapp_access_token' }),
+        SettingsModel.findOne({ key: 'whatsapp_phone_number_id' }),
+    ])
+    const token = tokenDoc?.value || process.env.WHATSAPP_ACCESS_TOKEN
+    const phoneNumberId = phoneIdDoc?.value || process.env.WHATSAPP_PHONE_NUMBER_ID
+    return { token, phoneNumberId }
+}
+
 const sendWhatsApp = async (to, payload) => {
-    const token = process.env.WHATSAPP_ACCESS_TOKEN
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+    const { token, phoneNumberId } = await getCredentials()
 
     if (!token || !phoneNumberId) {
-        console.log('[WhatsApp] Missing credentials — WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not set')
+        console.log('[WhatsApp] Missing credentials — set them in Admin → Site Settings → WhatsApp API')
         return
     }
 
@@ -24,10 +35,9 @@ const sendWhatsApp = async (to, payload) => {
 
     const bodyObj = { messaging_product: 'whatsapp', to: phone, ...payload }
     const bodyStr = JSON.stringify(bodyObj)
-    const apiUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+    const apiUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`
 
     console.log('[WhatsApp] Sending → phone:', phone, '| template:', payload?.template?.name || 'free-text')
-    console.log('[WhatsApp] Payload:', bodyStr)
 
     try {
         const res = await fetch(apiUrl, {
@@ -112,7 +122,7 @@ export const sendFreeTextWhatsApp = async (phone, message) => {
 export const sendOrderConfirmationWhatsApp = async ({ mobile, name, orderId }) => {
     const phone = formatPhone(mobile)
     if (!phone) return
-    return sendTemplate(phone, 'order_confirmations', 'en_US', [
+    return sendTemplate(phone, 'order_confirmation', 'en_US', [
         name || 'Customer',
         orderId,
     ])
@@ -155,4 +165,20 @@ export const sendReturnStatusWhatsApp = async ({ mobile, name, orderId, status, 
         status,
         rupees(refundAmount || 0),
     ])
+}
+
+// ─── Test connection ─────────────────────────────────────────────────────────
+export const testWhatsAppConnection = async () => {
+    const { token, phoneNumberId } = await getCredentials()
+    if (!token || !phoneNumberId) return { ok: false, error: 'No credentials saved' }
+    try {
+        const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (!res.ok) return { ok: false, error: data?.error?.message || 'Invalid credentials' }
+        return { ok: true, displayPhoneNumber: data?.display_phone_number, verifiedName: data?.verified_name }
+    } catch (err) {
+        return { ok: false, error: err.message }
+    }
 }
