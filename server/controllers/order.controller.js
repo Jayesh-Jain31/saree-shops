@@ -364,16 +364,15 @@ export async function razorpayOrderController(request, response) {
             // The promotional_tag on the frontend must use the same prefixed id.
             const giftVariantId = `gift_${String(gp._id)}`
 
-            // Razorpay Magic Checkout displays:
-            //   - `offer_price` prominently on the left  → ₹0  (what customer pays)
-            //   - `price` struck-through on the right    → ₹X  (original MRP)
-            // The promotional_tag on the frontend (tag:"free gift item", variant_id: giftVariantId)
-            // triggers the green "free gift item" badge and the ~~price~~ ₹0 layout.
+            // Razorpay renders the `price` field as the displayed amount next to the item name.
+            // Setting price:0 makes Razorpay show ₹0 for the gift.
+            // The promotional_tag on the frontend adds the "free gift item" green badge.
+            // originalPaise is preserved in freeGiftData for invoice / order-record display.
             line_items.unshift({
                 sku:         giftVariantId,
                 variant_id:  giftVariantId,
-                price:       originalPaise,   // MRP — shown as struck-through on the right
-                offer_price: 0,              // ₹0  — shown prominently on the left
+                price:       0,              // displayed as ₹0 in Razorpay order summary
+                offer_price: 0,
                 quantity:    1,
                 name:        gp.name || 'Free Gift',
                 ...(gp.image?.[0] && { image_url: gp.image[0] }),
