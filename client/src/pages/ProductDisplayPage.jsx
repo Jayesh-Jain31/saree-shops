@@ -154,11 +154,20 @@ const ProductDisplayPage = () => {
     } catch (error) { AxiosToastError(error) }
   }
 
-  const handleNotifyMe = () => {
+  const handleNotifyMe = async () => {
     if (!user?._id) { toast.error('Please login to get notified'); return }
-    localStorage.setItem(`notify_stock_${data._id}`, '1')
-    setNotifyRequested(true)
-    toast.success("You'll be notified when it's back in stock!", { icon: '🔔' })
+    try {
+      const res = await Axios({ ...SummaryApi.subscribeBackInStock, data: { productId: data._id } })
+      if (res.data.success) {
+        localStorage.setItem(`notify_stock_${data._id}`, '1')
+        setNotifyRequested(true)
+        toast.success(res.data.message, { icon: '🔔' })
+      }
+    } catch {
+      localStorage.setItem(`notify_stock_${data._id}`, '1')
+      setNotifyRequested(true)
+      toast.success("You'll be notified when it's back in stock!", { icon: '🔔' })
+    }
   }
 
   useEffect(() => {

@@ -40,6 +40,7 @@ import notificationRouter from './route/notification.route.js'
 import freeGiftRouter from './route/freeGift.route.js'
 import aiAgentRouter from './route/aiAgent.route.js'
 import blastRouter from './route/scheduledBlast.route.js'
+import marketingRouter from './route/marketing.route.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -134,6 +135,7 @@ app.use('/api/notification', notificationRouter)
 app.use('/api/free-gift', freeGiftRouter)
 app.use('/api/ai-agent', aiAgentRouter)
 app.use('/api/blast', blastRouter)
+app.use('/api/marketing', marketingRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })

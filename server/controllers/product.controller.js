@@ -236,7 +236,16 @@ export const updateProductDetails = async(request,response)=>{
         if (publish !== undefined) allowedUpdates.publish = publish
         if (variants !== undefined) allowedUpdates.variants = variants
         if (moreDetails !== undefined) allowedUpdates.moreDetails = moreDetails
+        const oldProduct = stock !== undefined ? await ProductModel.findById(_id).select('stock').lean() : null
         const updateProduct = await ProductModel.updateOne({ _id : _id }, allowedUpdates)
+
+        if (oldProduct && stock > 0 && (oldProduct.stock === 0 || oldProduct.stock === null)) {
+            try {
+                const product = await ProductModel.findById(_id).select('name').lean()
+                const { notifyBackInStockSubscribers } = await import('./marketing.controller.js')
+                notifyBackInStockSubscribers(_id, product?.name || 'Product').catch(() => {})
+            } catch {}
+        }
 
         return response.json({
             message : "updated successfully",

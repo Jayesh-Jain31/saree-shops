@@ -125,6 +125,10 @@ const orderSchema = new mongoose.Schema({
     loyaltyPointsProcessed: {
         type: Boolean,
         default: false
+    },
+    reviewRequested: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

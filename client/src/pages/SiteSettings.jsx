@@ -47,6 +47,20 @@ const SiteSettings = () => {
   const [blastMessage, setBlastMessage] = useState('')
   const [blastLoading, setBlastLoading] = useState(false)
   const [blastResult, setBlastResult] = useState(null)
+  const [newsletterSubject, setNewsletterSubject] = useState('')
+  const [newsletterHtml, setNewsletterHtml] = useState('')
+  const [newsletterLoading, setNewsletterLoading] = useState(false)
+  const [newsletterResult, setNewsletterResult] = useState(null)
+  const [winBackDays, setWinBackDays] = useState('30')
+  const [winBackMessage, setWinBackMessage] = useState('')
+  const [winBackLoading, setWinBackLoading] = useState(false)
+  const [winBackResult, setWinBackResult] = useState(null)
+  const [reviewDays, setReviewDays] = useState('3')
+  const [reviewMessage, setReviewMessage] = useState('')
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewResult, setReviewResult] = useState(null)
+  const [bisProducts, setBisProducts] = useState([])
+  const [loadingBis, setLoadingBis] = useState(false)
   const [schedCoupon, setSchedCoupon] = useState(null)
   const [schedMessage, setSchedMessage] = useState('')
   const [schedAt, setSchedAt] = useState('')
@@ -175,7 +189,16 @@ const SiteSettings = () => {
       if (res.data.success) setActiveCoupons(res.data.data || [])
     }).catch(() => {})
     loadScheduledBlasts()
+    loadBisProducts()
   }, [])
+
+  const loadBisProducts = async () => {
+    setLoadingBis(true)
+    try {
+      const res = await Axios({ ...SummaryApi.backInStockSubscribers })
+      if (res.data.success) setBisProducts(res.data.data || [])
+    } catch {} finally { setLoadingBis(false) }
+  }
 
   const loadScheduledBlasts = async () => {
     setLoadingBlasts(true)
@@ -1800,6 +1823,263 @@ const SiteSettings = () => {
               <MdSave size={16} />
               {savingFlashSale ? 'Saving...' : 'Save Flash Sale Settings'}
             </button>
+          </div>
+        </div>
+
+        {/* ── Email Newsletter Blast Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b bg-gradient-to-r from-blue-50 to-indigo-50'>
+            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
+              <span className='text-blue-600 text-xl'>📧</span>
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Email Newsletter Blast</h2>
+              <p className='text-xs text-gray-500'>Send a marketing email to all active customers</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Subject Line</label>
+              <input
+                type='text'
+                value={newsletterSubject}
+                onChange={e => setNewsletterSubject(e.target.value)}
+                placeholder='e.g. New arrivals just for you! 🎉'
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition'
+              />
+            </div>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Email Body</label>
+              <textarea
+                rows={6}
+                value={newsletterHtml}
+                onChange={e => setNewsletterHtml(e.target.value)}
+                placeholder={`Hi {{name}},\n\nCheck out our latest collection...`}
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none'
+              />
+              <p className='text-[11px] text-gray-400 mt-1'><span className='font-mono'>{'{{name}}'}</span> = customer name. HTML is supported.</p>
+            </div>
+            {newsletterResult && (
+              <div className='bg-blue-50 rounded-xl p-3 text-sm text-blue-700'>
+                {newsletterResult}
+              </div>
+            )}
+            <button
+              onClick={async () => {
+                if (!newsletterSubject.trim()) return toast.error('Enter a subject line')
+                if (!newsletterHtml.trim()) return toast.error('Enter email body')
+                if (!window.confirm(`Send this newsletter to all active customers?`)) return
+                setNewsletterLoading(true)
+                try {
+                  const res = await Axios({ ...SummaryApi.emailNewsletter, data: { subject: newsletterSubject, html: newsletterHtml } })
+                  if (res.data.success) {
+                    setNewsletterResult(res.data.message)
+                    toast.success('Newsletter sent!')
+                  }
+                } catch (e) { toast.error(e.response?.data?.message || 'Failed to send') }
+                finally { setNewsletterLoading(false) }
+              }}
+              disabled={newsletterLoading}
+              className='w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-semibold rounded-xl py-3 transition-colors'
+            >
+              {newsletterLoading
+                ? <><div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> Sending...</>
+                : '📧 Send Newsletter to All Customers'
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* ── Win-Back Campaign Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b bg-gradient-to-r from-pink-50 to-rose-50'>
+            <div className='w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center'>
+              <span className='text-pink-600 text-xl'>💖</span>
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Win-Back Campaign</h2>
+              <p className='text-xs text-gray-500'>Re-engage customers who haven't ordered in a while via WhatsApp + email</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Inactive for (days)</label>
+              <input
+                type='number' min='7' max='365'
+                value={winBackDays}
+                onChange={e => setWinBackDays(e.target.value)}
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 transition'
+              />
+            </div>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Message <span className='text-gray-400 font-normal'>(optional)</span></label>
+              <textarea
+                rows={4}
+                value={winBackMessage}
+                onChange={e => setWinBackMessage(e.target.value)}
+                placeholder={`💖 Hi {{name}}, we miss you at our store!\n\nCome back and discover our latest saree collection...`}
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none'
+              />
+              <p className='text-[11px] text-gray-400 mt-1'><span className='font-mono'>{'{{name}}'}</span> = customer name. Leave blank for default message.</p>
+            </div>
+            {winBackResult && (
+              <div className='grid grid-cols-3 gap-3'>
+                <div className='bg-green-50 rounded-xl p-3 text-center'>
+                  <p className='text-2xl font-black text-green-600'>{winBackResult.sent}</p>
+                  <p className='text-xs text-green-700'>Reached</p>
+                </div>
+                <div className='bg-gray-50 rounded-xl p-3 text-center'>
+                  <p className='text-2xl font-black text-gray-500'>{winBackResult.total}</p>
+                  <p className='text-xs text-gray-500'>Total</p>
+                </div>
+                <div className='bg-red-50 rounded-xl p-3 text-center'>
+                  <p className='text-2xl font-black text-red-400'>{winBackResult.failed}</p>
+                  <p className='text-xs text-red-400'>Failed</p>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={async () => {
+                if (!window.confirm(`Send win-back messages to customers inactive for ${winBackDays}+ days?`)) return
+                setWinBackLoading(true)
+                setWinBackResult(null)
+                try {
+                  const res = await Axios({ ...SummaryApi.winBackCampaign, data: { days: parseInt(winBackDays), message: winBackMessage } })
+                  if (res.data.success) { setWinBackResult(res.data.data); toast.success(res.data.message) }
+                } catch (e) { toast.error(e.response?.data?.message || 'Failed') }
+                finally { setWinBackLoading(false) }
+              }}
+              disabled={winBackLoading}
+              className='w-full flex items-center justify-center gap-2 bg-pink-500 hover:bg-pink-600 disabled:bg-pink-300 text-white font-semibold rounded-xl py-3 transition-colors'
+            >
+              {winBackLoading
+                ? <><div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> Running...</>
+                : '💖 Run Win-Back Campaign'
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* ── Review Request Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b bg-gradient-to-r from-yellow-50 to-amber-50'>
+            <div className='w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center'>
+              <span className='text-yellow-600 text-xl'>⭐</span>
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Review Request</h2>
+              <p className='text-xs text-gray-500'>Ask customers to review their delivered orders via WhatsApp + email</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Days after delivery</label>
+              <input
+                type='number' min='1' max='30'
+                value={reviewDays}
+                onChange={e => setReviewDays(e.target.value)}
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition'
+              />
+              <p className='text-[11px] text-gray-400 mt-1'>Only contacts orders delivered at least this many days ago (and not already asked).</p>
+            </div>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Message <span className='text-gray-400 font-normal'>(optional)</span></label>
+              <textarea
+                rows={4}
+                value={reviewMessage}
+                onChange={e => setReviewMessage(e.target.value)}
+                placeholder={`⭐ Hi {{name}}, how was your recent order?\n\nLeave a review: {{link}}`}
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none'
+              />
+              <p className='text-[11px] text-gray-400 mt-1'><span className='font-mono'>{'{{name}}'}</span> = name, <span className='font-mono'>{'{{link}}'}</span> = orders page, <span className='font-mono'>{'{{orderId}}'}</span> = order ID.</p>
+            </div>
+            {reviewResult && (
+              <div className='grid grid-cols-3 gap-3'>
+                <div className='bg-green-50 rounded-xl p-3 text-center'>
+                  <p className='text-2xl font-black text-green-600'>{reviewResult.sent}</p>
+                  <p className='text-xs text-green-700'>Sent</p>
+                </div>
+                <div className='bg-gray-50 rounded-xl p-3 text-center'>
+                  <p className='text-2xl font-black text-gray-500'>{reviewResult.total}</p>
+                  <p className='text-xs text-gray-500'>Eligible</p>
+                </div>
+                <div className='bg-red-50 rounded-xl p-3 text-center'>
+                  <p className='text-2xl font-black text-red-400'>{reviewResult.failed}</p>
+                  <p className='text-xs text-red-400'>Failed</p>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={async () => {
+                if (!window.confirm('Send review request messages to eligible customers?')) return
+                setReviewLoading(true)
+                setReviewResult(null)
+                try {
+                  const res = await Axios({ ...SummaryApi.reviewRequest, data: { daysAfterDelivery: parseInt(reviewDays), message: reviewMessage } })
+                  if (res.data.success) { setReviewResult(res.data.data); toast.success(res.data.message) }
+                } catch (e) { toast.error(e.response?.data?.message || 'Failed') }
+                finally { setReviewLoading(false) }
+              }}
+              disabled={reviewLoading}
+              className='w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-300 text-white font-semibold rounded-xl py-3 transition-colors'
+            >
+              {reviewLoading
+                ? <><div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> Sending...</>
+                : '⭐ Send Review Requests'
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* ── Back-in-Stock Subscribers Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b bg-gradient-to-r from-teal-50 to-cyan-50'>
+            <div className='w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center'>
+              <span className='text-teal-600 text-xl'>🔔</span>
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Back-in-Stock Alerts</h2>
+              <p className='text-xs text-gray-500'>Customers get auto-notified when you restock an out-of-stock product</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div className='bg-teal-50 rounded-xl p-3 text-xs text-teal-700'>
+              💡 When you update a product's stock from 0 to any quantity, all subscribers are automatically notified via WhatsApp & email. You can also trigger manually below.
+            </div>
+            <div className='flex items-center justify-between'>
+              <p className='text-xs font-semibold text-gray-600'>Products with subscribers (pending notification)</p>
+              <button onClick={loadBisProducts} className='text-xs text-teal-500 hover:text-teal-700'>Refresh</button>
+            </div>
+            {loadingBis ? (
+              <div className='flex justify-center py-4'><div className='w-5 h-5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin' /></div>
+            ) : bisProducts.length === 0 ? (
+              <p className='text-xs text-gray-400 text-center py-3'>No pending back-in-stock subscribers</p>
+            ) : (
+              <div className='space-y-2 max-h-64 overflow-y-auto'>
+                {bisProducts.map(item => (
+                  <div key={item._id} className='flex items-center justify-between gap-3 bg-gray-50 rounded-xl p-3'>
+                    <div className='flex items-center gap-2 flex-1 min-w-0'>
+                      {item.product?.image?.[0] && (
+                        <img src={item.product.image[0]} alt='' className='w-8 h-8 object-cover rounded-lg flex-shrink-0' />
+                      )}
+                      <div className='min-w-0'>
+                        <p className='text-xs font-semibold text-gray-800 truncate'>{item.product?.name || 'Unknown product'}</p>
+                        <p className='text-[11px] text-gray-500'>Stock: {item.product?.stock ?? 'N/A'} · <strong>{item.count}</strong> subscriber{item.count !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await Axios({ ...SummaryApi.triggerBackInStock, data: { productId: item._id } })
+                          if (res.data.success) { toast.success(res.data.message); loadBisProducts() }
+                        } catch (e) { toast.error(e.response?.data?.message || 'Failed') }
+                      }}
+                      className='text-xs bg-teal-500 hover:bg-teal-600 text-white font-semibold px-3 py-1.5 rounded-lg transition shrink-0'
+                    >Notify Now</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
