@@ -359,10 +359,15 @@ export async function razorpayOrderController(request, response) {
         if (freeGiftRzp) {
             const gp = freeGiftRzp.productId
             const originalPaise = Math.round((gp.price || 0) * 100)
+            // Use a prefixed variant_id so Razorpay never merges the free gift
+            // with an existing cart item that has the same product id.
+            // The promotional_tag on the frontend must use the same prefixed id.
+            const giftVariantId = `gift_${String(gp._id)}`
+
             // Unshift so the free gift always appears at the top of the Magic Checkout order summary
             line_items.unshift({
-                sku:         String(gp._id || ''),
-                variant_id:  String(gp._id || ''),
+                sku:         giftVariantId,
+                variant_id:  giftVariantId,
                 price:       originalPaise,   // original price — shown as strikethrough by Razorpay
                 offer_price: 0,               // ₹0 — shown as the actual price
                 quantity:    1,
@@ -370,9 +375,10 @@ export async function razorpayOrderController(request, response) {
                 ...(gp.image?.[0] && { image_url: gp.image[0] }),
             })
             freeGiftData = {
-                productId: String(gp._id),
-                name:      gp.name,
-                image:     gp.image?.[0] || '',
+                productId:    String(gp._id),
+                giftVariantId,               // send prefixed id so frontend promotional_tag matches
+                name:         gp.name,
+                image:        gp.image?.[0] || '',
             }
         }
 

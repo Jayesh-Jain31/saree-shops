@@ -144,8 +144,9 @@ const DisplayCartItem = ({ close }) => {
           email:   customerEmail,
           contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
           // Razorpay Magic Checkout: tag the free gift line_item so it shows "free gift item" badge + ₹0
+          // Must use giftVariantId (prefixed) to match the line_item and avoid merging with cart item
           ...(rzpFreeGift && {
-            promotional_tag: [{ tag: 'free gift item', variant_id: rzpFreeGift.productId }]
+            promotional_tag: [{ tag: 'free gift item', variant_id: rzpFreeGift.giftVariantId }]
           }),
         },
         customer_details: {

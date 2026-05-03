@@ -343,11 +343,12 @@ const CheckoutPage = () => {
           email:        customerEmail,
           contact:      customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
           coupon_code:  appliedCoupon?.code || '',
-          // Magic Checkout promotional_tag — show FREE GIFT badge next to gift product
+          // Magic Checkout promotional_tag — show FREE GIFT badge + ₹0 next to gift product
+          // variant_id must match the prefixed gift_<id> used in line_items to avoid merging
           ...(response.data.freeGift && {
             promotional_tag: [{
               tag: 'free gift item',
-              variant_id: response.data.freeGift.productId,
+              variant_id: response.data.freeGift.giftVariantId,
             }]
           }),
         },

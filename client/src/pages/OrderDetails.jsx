@@ -331,6 +331,9 @@ const OrderDetails = () => {
           .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
           .badge-green { background: #dcfce7; color: #16a34a; }
           .badge-amber { background: #fef3c7; color: #d97706; }
+          .badge-gift { background: #fce7f3; color: #be185d; font-size: 10px; padding: 2px 7px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
+          .price-free { color: #be185d; font-weight: 700; }
+          .price-original { text-decoration: line-through; color: #9ca3af; font-size: 12px; margin-right: 4px; }
           @media print { body { padding: 20px; } }
         </style>
       </head>
@@ -383,9 +386,17 @@ const OrderDetails = () => {
               ${items.map((item, i) => `
                 <tr>
                   <td>${i + 1}</td>
-                  <td>${esc(item.product_details?.name || 'Product')}</td>
+                  <td>
+                    ${esc(item.product_details?.name || 'Product')}
+                    ${item.isFreeGift ? '<span class="badge-gift">🎁 FREE GIFT</span>' : ''}
+                  </td>
                   <td class="text-right">${item.quantity || 1}</td>
-                  <td class="text-right">${fmtRs(item.price || 0)}</td>
+                  <td class="text-right">
+                    ${item.isFreeGift
+                      ? `<span class="price-original">${fmtRs(item.product_details?.price || 0)}</span><span class="price-free">₹0</span>`
+                      : fmtRs(item.price || 0)
+                    }
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -540,17 +551,31 @@ const addr = {
                     
                   </div>
                   <div className='flex-1 min-w-0'>
-                    <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-2'>
-                      {item.product_details?.name}
-                    </p>
+                    <div className='flex items-center gap-1.5 flex-wrap'>
+                      <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-2'>
+                        {item.product_details?.name}
+                      </p>
+                      {item.isFreeGift && (
+                        <span className='text-[9px] font-bold uppercase bg-rose-500 text-white px-1.5 py-0.5 rounded-full tracking-wide flex-shrink-0'>
+                          🎁 Free Gift
+                        </span>
+                      )}
+                    </div>
                     <p className='text-xs text-gray-400 mt-1'>
                       Qty: {item.quantity || 1}
                     </p>
-                    {item.price > 0 && (
+                    {item.isFreeGift ? (
+                      <div className='flex items-center gap-1.5 mt-1'>
+                        <span className='text-xs line-through text-gray-400'>
+                          {DisplayPriceInRupees(item.product_details?.price || 0)}
+                        </span>
+                        <span className='text-sm font-bold text-rose-600'>₹0</span>
+                      </div>
+                    ) : item.price > 0 ? (
                       <p className='text-sm font-semibold text-gray-700 mt-1'>
                         {DisplayPriceInRupees(item.price)}
                       </p>
-                    )}
+                    ) : null}
                     {order?.orderStatus === 'Delivered' && (
                       <ItemRating
                         orderId={String(order._id)}
