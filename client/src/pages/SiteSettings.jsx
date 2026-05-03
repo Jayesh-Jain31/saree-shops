@@ -42,6 +42,11 @@ const SiteSettings = () => {
   const [savingLowStock, setSavingLowStock] = useState(false)
   const [broadcastMessage, setBroadcastMessage] = useState('')
   const [broadcastLoading, setBroadcastLoading] = useState(false)
+  const [activeCoupons, setActiveCoupons] = useState([])
+  const [selectedCoupon, setSelectedCoupon] = useState(null)
+  const [blastMessage, setBlastMessage] = useState('')
+  const [blastLoading, setBlastLoading] = useState(false)
+  const [blastResult, setBlastResult] = useState(null)
   const [enabled, setEnabled] = useState(true)
   const [themeColor, setThemeColor] = useState('green')
   const [policyContent, setPolicyContent] = useState({})
@@ -159,6 +164,9 @@ const SiteSettings = () => {
       }
     }
     fetchSettings()
+    Axios({ ...SummaryApi.getActiveCoupons }).then(res => {
+      if (res.data.success) setActiveCoupons(res.data.data || [])
+    }).catch(() => {})
   }, [])
 
   const saveSetting = async (key, value) => {
@@ -1033,6 +1041,119 @@ const SiteSettings = () => {
             >
               {broadcastLoading ? <><div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> Sending...</> : <><FaWhatsapp size={16} /> Send Broadcast</>}
             </button>
+          </div>
+        </div>
+
+        {/* ── Coupon Offer Blast Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-pink-100'>
+              <FaWhatsapp className='text-pink-600' size={20} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Coupon Offer Blast</h2>
+              <p className='text-xs text-gray-500'>Send an offer with a coupon code to all your customers via WhatsApp</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div className='bg-pink-50 border border-pink-200 rounded-xl p-3 text-xs text-pink-700 space-y-1'>
+              <p className='font-semibold'>💡 How it works:</p>
+              <p>Pick a coupon → edit the message → blast to all customers. Use <span className='font-mono bg-pink-100 px-1 rounded'>{'{{name}}'}</span> for customer name and <span className='font-mono bg-pink-100 px-1 rounded'>{'{{code}}'}</span> for coupon code.</p>
+            </div>
+
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Select Coupon</label>
+              <select
+                value={selectedCoupon?.code || ''}
+                onChange={e => {
+                  const c = activeCoupons.find(cp => cp.code === e.target.value)
+                  setSelectedCoupon(c || null)
+                  setBlastResult(null)
+                  if (c) {
+                    const discount = c.discountType === 'percentage'
+                      ? `${c.discountValue}% off`
+                      : c.discountType === 'flat'
+                        ? `₹${c.discountValue} off`
+                        : c.discountType === 'free_shipping'
+                          ? 'free shipping'
+                          : `${c.discountValue}% off`
+                    const minOrder = c.minOrderAmount > 0 ? ` on orders above ₹${c.minOrderAmount}` : ''
+                    const expiry = c.expiresAt ? ` Valid till ${new Date(c.expiresAt).toLocaleDateString('en-IN')}.` : ''
+                    setBlastMessage(`🎉 Hi {{name}}! Special offer just for you!\n\nUse code *{{code}}* to get *${discount}*${minOrder} on your next order.${expiry}\n\nShop now and enjoy the savings! 🛍️`)
+                  } else {
+                    setBlastMessage('')
+                  }
+                }}
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 transition bg-white'
+              >
+                <option value=''>-- Select a coupon --</option>
+                {activeCoupons.map(c => (
+                  <option key={c._id} value={c.code}>
+                    {c.code} — {c.discountType === 'percentage' ? `${c.discountValue}%` : c.discountType === 'flat' ? `₹${c.discountValue}` : c.discountType} off
+                    {c.minOrderAmount > 0 ? ` (min ₹${c.minOrderAmount})` : ''}
+                  </option>
+                ))}
+              </select>
+              {activeCoupons.length === 0 && (
+                <p className='text-xs text-gray-400 mt-1'>No active coupons found. Create one in Coupons section first.</p>
+              )}
+            </div>
+
+            {selectedCoupon && (
+              <>
+                <div>
+                  <label className='block text-xs font-semibold text-gray-600 mb-1'>WhatsApp Message</label>
+                  <textarea
+                    rows={6}
+                    value={blastMessage}
+                    onChange={e => setBlastMessage(e.target.value)}
+                    className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 resize-none'
+                    maxLength={1000}
+                  />
+                  <p className='text-[11px] text-gray-400 mt-1'>{blastMessage.length}/1000 — <span className='font-mono'>{'{{name}}'}</span> = customer name, <span className='font-mono'>{'{{code}}'}</span> = coupon code</p>
+                </div>
+
+                <div className='bg-gray-50 border rounded-xl p-3 text-xs text-gray-600 space-y-1'>
+                  <p className='font-semibold text-gray-700'>Preview (your message will look like this):</p>
+                  <p className='whitespace-pre-wrap text-gray-500'>{blastMessage.replace(/{{name}}/gi, 'Priya').replace(/{{code}}/gi, selectedCoupon.code)}</p>
+                </div>
+
+                <button
+                  onClick={async () => {
+                    if (!blastMessage.trim()) return toast.error('Please enter a message')
+                    if (!window.confirm(`Send this offer to ALL active customers with WhatsApp numbers?`)) return
+                    setBlastLoading(true)
+                    setBlastResult(null)
+                    try {
+                      const res = await Axios({
+                        ...SummaryApi.couponOfferBlast,
+                        data: { couponCode: selectedCoupon.code, message: blastMessage }
+                      })
+                      if (res.data.success) {
+                        setBlastResult(res.data.data)
+                        toast.success(res.data.message)
+                      }
+                    } catch (e) {
+                      toast.error(e.response?.data?.message || 'Blast failed')
+                    } finally { setBlastLoading(false) }
+                  }}
+                  disabled={blastLoading || !blastMessage.trim()}
+                  className='w-full flex items-center justify-center gap-2 bg-pink-500 hover:bg-pink-600 disabled:bg-pink-300 text-white font-semibold rounded-xl py-3 transition-colors'
+                >
+                  {blastLoading
+                    ? <><div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> Sending to all customers...</>
+                    : <><FaWhatsapp size={16} /> Send Offer Blast</>
+                  }
+                </button>
+
+                {blastResult && (
+                  <div className='bg-green-50 border border-green-200 rounded-xl p-3 text-xs text-green-700 flex gap-4'>
+                    <span>✅ Sent: <strong>{blastResult.sent}</strong></span>
+                    {blastResult.failed > 0 && <span>❌ Failed: <strong>{blastResult.failed}</strong></span>}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 

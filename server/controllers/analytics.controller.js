@@ -3,6 +3,7 @@ import ProductModel from "../models/product.model.js";
 import UserModel from "../models/user.model.js";
 import WalletModel from "../models/wallet.model.js";
 import ReturnModel from "../models/return.model.js";
+import CouponModel from "../models/coupon.model.js";
 import sendEmail from "../config/sendEmail.js";
 import orderStatusTemplate from "../utils/orderStatusTemplate.js";
 import { createNotification } from '../utils/notificationHelper.js'
@@ -325,6 +326,40 @@ export async function whatsappBroadcastController(request, response) {
             } catch { failed++ }
         }
         return response.json({ message: `Broadcast done: ${sent} sent, ${failed} failed`, data: { sent, failed }, success: true, error: false })
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false })
+    }
+}
+
+// ─── Coupon Offer Blast ───────────────────────────────────────────────────────
+export async function couponBlastController(request, response) {
+    try {
+        const { couponCode, message } = request.body
+        if (!couponCode?.trim()) return response.status(400).json({ message: 'Coupon code required', error: true, success: false })
+        if (!message?.trim()) return response.status(400).json({ message: 'Message required', error: true, success: false })
+
+        const coupon = await CouponModel.findOne({ code: couponCode.trim().toUpperCase(), isActive: true })
+        if (!coupon) return response.status(404).json({ message: `Coupon "${couponCode}" not found or inactive`, error: true, success: false })
+
+        const users = await UserModel.find({ mobile: { $ne: null }, status: 'Active' }).select('mobile name').lean()
+        let sent = 0, failed = 0
+
+        for (const user of users) {
+            try {
+                const personalised = message
+                    .replace(/{{name}}/gi, user.name || 'Customer')
+                    .replace(/{{code}}/gi, coupon.code)
+                await sendFreeTextWhatsApp(user.mobile, personalised)
+                sent++
+                await new Promise(r => setTimeout(r, 120))
+            } catch { failed++ }
+        }
+
+        return response.json({
+            message: `Offer blast done: ${sent} sent, ${failed} failed`,
+            data: { sent, failed },
+            success: true, error: false
+        })
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false })
     }

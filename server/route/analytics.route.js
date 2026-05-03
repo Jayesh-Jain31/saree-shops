@@ -12,6 +12,7 @@ import {
     adminWalletAdjust,
     getReturnAnalyticsController,
     whatsappBroadcastController,
+    couponBlastController,
     getCustomerLoyaltyController,
     getReferralInfoController,
     abandonedCartRecoveryController,
@@ -30,6 +31,7 @@ analyticsRouter.put("/customer/:userId/status", auth, admin, updateCustomerStatu
 analyticsRouter.post("/customer/:userId/wallet", auth, admin, adminWalletAdjust)
 analyticsRouter.get("/return-analytics", auth, admin, getReturnAnalyticsController)
 analyticsRouter.post("/whatsapp-broadcast", auth, admin, whatsappBroadcastController)
+analyticsRouter.post("/coupon-blast", auth, admin, couponBlastController)
 analyticsRouter.get("/my-loyalty", auth, getCustomerLoyaltyController)
 analyticsRouter.get("/my-referral", auth, getReferralInfoController)
 analyticsRouter.post("/abandoned-cart-recovery", auth, admin, abandonedCartRecoveryController)
