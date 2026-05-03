@@ -364,12 +364,15 @@ export async function razorpayOrderController(request, response) {
             // The promotional_tag on the frontend must use the same prefixed id.
             const giftVariantId = `gift_${String(gp._id)}`
 
-            // Unshift so the free gift always appears at the top of the Magic Checkout order summary
+            // Unshift so the free gift always appears at the top of the Magic Checkout order summary.
+            // Razorpay treats offer_price:0 as "unset" and falls back to displaying `price`.
+            // Setting price:0 forces Razorpay to show ₹0 next to the gift item.
+            // The original price is preserved in freeGiftData for invoice/order-record use.
             line_items.unshift({
                 sku:         giftVariantId,
                 variant_id:  giftVariantId,
-                price:       originalPaise,   // original price — shown as strikethrough by Razorpay
-                offer_price: 0,               // ₹0 — shown as the actual price
+                price:       0,    // Razorpay displays this value; 0 → shows ₹0
+                offer_price: 0,
                 quantity:    1,
                 name:        gp.name || 'Free Gift',
                 ...(gp.image?.[0] && { image_url: gp.image[0] }),
