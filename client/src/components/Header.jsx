@@ -10,7 +10,6 @@ import UserMenu from './UserMenu'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import { useGlobalContext } from '../provider/GlobalProvider'
 import DisplayCartItem from './DisplayCartItem'
-import NotificationBell from './NotificationBell'
 
 const Header = () => {
     const [isMobile] = useMobile()
@@ -75,12 +74,7 @@ const Header = () => {
                             )}
                         </Link>
                         {/* Right icons — never shrink, always visible */}
-                        <div className='flex items-center gap-1.5 flex-shrink-0'>
-                            {user?._id && (
-                                <div className='flex items-center justify-center'>
-                                    <NotificationBell />
-                                </div>
-                            )}
+                        <div className='flex items-center gap-1.5 flex-shrink-0'>{''}
                             <button
                                 onClick={handleMobileUser}
                                 className='w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors'
@@ -122,7 +116,6 @@ const Header = () => {
 
                 {/* Right actions */}
                 <div className='flex items-center gap-6 flex-shrink-0'>
-                    {user?._id && <NotificationBell />}
                     {user?._id ? (
                         <div className='relative'>
                             <div

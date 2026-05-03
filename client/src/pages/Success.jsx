@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { FaCheckCircle, FaMapMarkerAlt, FaTruck, FaBox, FaCreditCard, FaTag } from 'react-icons/fa'
+import { FaCheckCircle, FaMapMarkerAlt, FaTruck, FaBox, FaCreditCard, FaTag, FaGift } from 'react-icons/fa'
 import { MdCreditCard, MdLocalShipping } from 'react-icons/md'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
@@ -57,7 +57,8 @@ const Success = () => {
   const paymentMethod  = resolvePaymentMethod()
   const orderDate      = serverOrder?.createdAt   || state.orderDate
 
-  const items = navItems.length > 0 ? navItems : (serverOrder?.items || [])
+  // Prefer serverOrder.items — it includes the auto-appended free gift item
+  const items = serverOrder?.items?.length > 0 ? serverOrder.items : navItems
 
   const hasDetails = address && items.length > 0
 
@@ -144,27 +145,43 @@ const Success = () => {
               </div>
               <div className='space-y-2 max-h-56 overflow-y-auto pr-1'>
                 {items.map((item, i) => {
-                  const product = item.productId || {}
-                  const img  = product?.image?.[0] || item.product_details?.image?.[0]
-                  const name = product?.name || item.product_details?.name || 'Product'
-                  const price = pricewithDiscount(product?.price || item.price || 0, product?.discount || 0)
-                  const qty  = item.quantity || 1
+                  const product   = item.productId || {}
+                  const img       = product?.image?.[0] || item.product_details?.image?.[0]
+                  const name      = product?.name || item.product_details?.name || 'Product'
+                  const isFreeGift = item.isFreeGift || false
+                  const origPrice  = product?.price || item.product_details?.price || 0
+                  const price      = isFreeGift ? 0 : pricewithDiscount(origPrice, product?.discount || 0)
+                  const qty        = item.quantity || 1
                   return (
-                    <div key={i} className='flex items-center gap-3 py-2 border-b last:border-0'>
+                    <div key={i} className={`flex items-center gap-3 py-2 border-b last:border-0 ${isFreeGift ? 'bg-rose-50 -mx-1 px-1 rounded-lg' : ''}`}>
                       {img && (
                         <img
                           src={img}
                           alt={name}
-                          className='w-12 h-12 object-contain rounded-lg border bg-gray-50 flex-shrink-0'
+                          className={`w-12 h-12 object-contain rounded-lg border flex-shrink-0 ${isFreeGift ? 'bg-white border-rose-100' : 'bg-gray-50'}`}
                         />
                       )}
                       <div className='flex-1 min-w-0'>
-                        <p className='text-xs font-medium text-gray-700 line-clamp-2'>{name}</p>
+                        <div className='flex items-center gap-1.5 flex-wrap'>
+                          <p className='text-xs font-medium text-gray-700 line-clamp-1'>{name}</p>
+                          {isFreeGift && (
+                            <span className='inline-flex items-center gap-0.5 text-[9px] font-bold uppercase bg-rose-500 text-white px-1.5 py-0.5 rounded-full tracking-wide flex-shrink-0'>
+                              <FaGift size={7} /> Free Gift
+                            </span>
+                          )}
+                        </div>
                         <p className='text-[11px] text-gray-400 mt-0.5'>Qty: {qty}</p>
                       </div>
-                      <p className='text-xs font-bold text-gray-700 flex-shrink-0'>
-                        {DisplayPriceInRupees(price * qty)}
-                      </p>
+                      {isFreeGift ? (
+                        <div className='flex-shrink-0 text-right'>
+                          <span className='text-[10px] line-through text-gray-400 block'>{DisplayPriceInRupees(origPrice)}</span>
+                          <span className='text-xs font-bold text-rose-600'>₹0</span>
+                        </div>
+                      ) : (
+                        <p className='text-xs font-bold text-gray-700 flex-shrink-0'>
+                          {DisplayPriceInRupees(price * qty)}
+                        </p>
+                      )}
                     </div>
                   )
                 })}

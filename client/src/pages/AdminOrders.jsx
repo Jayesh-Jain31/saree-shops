@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 import {
   FaBoxOpen, FaSearch, FaChevronLeft, FaChevronRight, FaFilter,
   FaCheckCircle, FaMoneyBillWave, FaCreditCard, FaTruck, FaTimes,
-  FaUser, FaPhone, FaMapMarkerAlt, FaTag, FaPrint, FaUndoAlt, FaRocket
+  FaUser, FaPhone, FaMapMarkerAlt, FaTag, FaPrint, FaUndoAlt, FaRocket, FaGift
 } from 'react-icons/fa'
 import {
   MdAccessTime, MdDone, MdInventory, MdPending, MdEdit, MdSave,
@@ -146,7 +146,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     ${order.paymentId ? `<span style="font-size:11px;color:#999;margin-left:8px;font-family:monospace">${esc(order.paymentId)}</span>` : ''}</div>
     <h3>Items</h3>
     <table><thead><tr><th>#</th><th>Product</th><th class="tr">Qty</th><th class="tr">Price</th></tr></thead><tbody>
-    ${items.map((item, i) => `<tr><td>${i+1}</td><td>${item.product_details?.name || 'Product'}</td><td class="tr">${item.quantity || 1}</td><td class="tr">₹${item.price || 0}</td></tr>`).join('')}
+    ${items.map((item, i) => `<tr><td>${i+1}</td><td>${esc(item.product_details?.name || 'Product')}${item.isFreeGift ? ' <span style="display:inline-block;background:#fce7f3;color:#be185d;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">🎁 FREE GIFT</span>' : ''}</td><td class="tr">${item.quantity || 1}</td><td class="tr">${item.isFreeGift ? `<span style="text-decoration:line-through;color:#9ca3af;font-size:11px;margin-right:3px;">₹${item.product_details?.price || 0}</span><span style="color:#be185d;font-weight:700;">₹0</span>` : `₹${item.price || 0}`}</td></tr>`).join('')}
     </tbody></table>
     <div class="totals">${order.couponCode && order.couponDiscount > 0 ? `<div class="trow"><span>Coupon (${order.couponCode})</span><span style="color:#16a34a">- ₹${order.couponDiscount}</span></div>` : ''}${order.walletDeduction > 0 ? `<div class="trow"><span>Wallet used</span><span style="color:#2563eb">- ₹${order.walletDeduction}</span></div>` : ''}${!order.couponCode && !order.walletDeduction && order.discountAmt > 0 ? `<div class="trow"><span>Discount</span><span style="color:#16a34a">- ₹${order.discountAmt}</span></div>` : ''}<div class="trow"><span>Delivery</span><span>${order.deliveryCharge > 0 ? `₹${order.deliveryCharge}` : 'FREE'}</span></div>
     <div class="trow grand"><span>Grand Total</span><span>₹${order.totalAmt}</span></div></div>
@@ -342,7 +342,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
               </h3>
               <div className='space-y-2'>
                 {(order.items || []).map((item, idx) => {
-                  const productUrl = item.productId && item.product_details?.name
+                  const productUrl = item.productId && item.product_details?.name && !item.isFreeGift
                     ? `/product/${valideURLConvert(item.product_details.name)}-${item.productId}`
                     : null
                   const Wrapper = productUrl ? Link : 'div'
@@ -352,18 +352,38 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                       to={productUrl || undefined}
                       target={productUrl ? '_blank' : undefined}
                       rel={productUrl ? 'noopener noreferrer' : undefined}
-                      className={`flex items-center gap-3 bg-gray-50 rounded-xl p-2.5 transition-colors ${productUrl ? 'hover:bg-green-50 cursor-pointer' : ''}`}
+                      className={`flex items-center gap-3 rounded-xl p-2.5 transition-colors
+                        ${item.isFreeGift ? 'bg-rose-50 border border-rose-100' : 'bg-gray-50'}
+                        ${productUrl ? 'hover:bg-green-50 cursor-pointer' : ''}`}
                     >
-                      <div className='w-12 h-12 rounded-lg border bg-white flex-shrink-0 p-0.5 overflow-hidden'>
+                      <div className={`w-12 h-12 rounded-lg border flex-shrink-0 p-0.5 overflow-hidden ${item.isFreeGift ? 'bg-white border-rose-200' : 'bg-white'}`}>
                         <img src={item.product_details?.image?.[0]} alt='' className='w-full h-full object-contain' />
                       </div>
                       <div className='flex-1 min-w-0'>
-                        <p className={`text-xs font-semibold line-clamp-1 ${productUrl ? 'text-green-700' : 'text-gray-700'}`}>{item.product_details?.name}</p>
+                        <div className='flex items-center gap-1.5 flex-wrap'>
+                          <p className={`text-xs font-semibold line-clamp-1 ${item.isFreeGift ? 'text-rose-700' : productUrl ? 'text-green-700' : 'text-gray-700'}`}>
+                            {item.product_details?.name}
+                          </p>
+                          {item.isFreeGift && (
+                            <span className='inline-flex items-center gap-0.5 text-[9px] font-bold uppercase bg-rose-500 text-white px-1.5 py-0.5 rounded-full tracking-wide flex-shrink-0'>
+                              <FaGift size={7} /> Free Gift
+                            </span>
+                          )}
+                        </div>
                         <p className='text-[10px] text-gray-400 mt-0.5'>Qty: {item.quantity || 1}</p>
                       </div>
-                      <p className='text-sm font-bold text-gray-700 flex-shrink-0'>
-                        {DisplayPriceInRupees((item.price || 0) * (item.quantity || 1))}
-                      </p>
+                      {item.isFreeGift ? (
+                        <div className='flex-shrink-0 text-right'>
+                          <span className='text-[10px] line-through text-gray-400 block'>
+                            {DisplayPriceInRupees(item.product_details?.price || 0)}
+                          </span>
+                          <span className='text-sm font-bold text-rose-600'>₹0</span>
+                        </div>
+                      ) : (
+                        <p className='text-sm font-bold text-gray-700 flex-shrink-0'>
+                          {DisplayPriceInRupees((item.price || 0) * (item.quantity || 1))}
+                        </p>
+                      )}
                     </Wrapper>
                   )
                 })}
