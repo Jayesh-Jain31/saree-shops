@@ -37,6 +37,7 @@ import magicCheckoutRouter from './route/magicCheckout.route.js'
 import { startLoyaltyCron } from './utils/loyaltyCron.js'
 import notificationRouter from './route/notification.route.js'
 import freeGiftRouter from './route/freeGift.route.js'
+import aiAgentRouter from './route/aiAgent.route.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -129,6 +130,7 @@ app.use('/api/loyalty', loyaltyRouter)
 app.use('/api/bundle', bundleRouter)
 app.use('/api/notification', notificationRouter)
 app.use('/api/free-gift', freeGiftRouter)
+app.use('/api/ai-agent', aiAgentRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })
