@@ -181,10 +181,16 @@ Rules:
 - After executing an action, confirm what was done.
 - Respond in the same language the admin uses.`
 
-        const chatHistory = history.slice(-12).map(h => ({
+        // Build history for Gemini — exclude the last entry (current user message,
+        // already being sent via sendMessage) and drop any leading 'model' turns
+        // because Gemini requires history to always start with a 'user' turn.
+        let chatHistory = history.slice(0, -1).slice(-12).map(h => ({
             role: h.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: h.content }],
         }))
+        while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
+            chatHistory.shift()
+        }
 
         const chat = model.startChat({
             history: chatHistory,
