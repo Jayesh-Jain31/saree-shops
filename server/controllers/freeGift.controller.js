@@ -152,9 +152,10 @@ export async function createFreeGift(req, res) {
             if (!product) return res.status(404).json({ success: false, message: 'Product not found' })
         }
 
+        const safeImage = (customGift?.image || '').replace(/^http:\/\//i, 'https://')
         const gift = await FreeGiftModel.create({
             productId:      hasProduct ? productId : null,
-            customGift:     hasCustomGift ? { name: customGift.name, image: customGift.image, price: Number(customGift.price) || 0 } : undefined,
+            customGift:     hasCustomGift ? { name: customGift.name, image: safeImage, price: Number(customGift.price) || 0 } : undefined,
             title:          title || 'Free Gift with your order!',
             minOrderAmount: Number(minOrderAmount) || 0,
             isActive:       isActive !== false,
@@ -181,11 +182,12 @@ export async function updateFreeGift(req, res) {
             return res.status(400).json({ success: false, message: 'Select an existing product or provide custom gift details.' })
         }
 
+        const safeUpdateImage = (customGift?.image || '').replace(/^http:\/\//i, 'https://')
         const gift = await FreeGiftModel.findByIdAndUpdate(
             id,
             {
                 productId:      hasProduct ? productId : null,
-                customGift:     hasCustomGift ? { name: customGift.name, image: customGift.image, price: Number(customGift.price) || 0 } : { name: '', image: '', price: 0 },
+                customGift:     hasCustomGift ? { name: customGift.name, image: safeUpdateImage, price: Number(customGift.price) || 0 } : { name: '', image: '', price: 0 },
                 title,
                 minOrderAmount: Number(minOrderAmount) || 0,
                 isActive,

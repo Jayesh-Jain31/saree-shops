@@ -108,7 +108,8 @@ const AdminFreeGifts = () => {
     setImageUploading(true)
     try {
       const res = await Axios({ ...SummaryApi.uploadImage, data: fd })
-      const url = res.data?.data?.url || res.data?.url || ''
+      // Prefer secure_url (HTTPS) so images load inside Razorpay's HTTPS checkout
+      const url = res.data?.data?.secure_url || res.data?.data?.url || res.data?.url || ''
       if (url) {
         setForm(f => ({ ...f, customGift: { ...f.customGift, image: url } }))
         toast.success('Image uploaded!')

@@ -370,6 +370,9 @@ export async function razorpayOrderController(request, response) {
             // offer_price only affects the "Discount on price" row, not the per-item display.
             // Setting price:0 → Razorpay shows ₹0 next to the gift item.
             // The "free gift item" badge comes from promotional_tag on the frontend.
+            // Razorpay checkout is HTTPS — ensure image_url is always HTTPS
+            const giftImageUrl = (gp.image?.[0] || '').replace(/^http:\/\//i, 'https://')
+
             line_items.unshift({
                 sku:         giftVariantId,
                 variant_id:  giftVariantId,
@@ -377,13 +380,13 @@ export async function razorpayOrderController(request, response) {
                 offer_price: 0,
                 quantity:    1,
                 name:        gp.name || 'Free Gift',
-                ...(gp.image?.[0] && { image_url: gp.image[0] }),
+                ...(giftImageUrl && { image_url: giftImageUrl }),
             })
             freeGiftData = {
                 productId:    String(gp._id),
-                giftVariantId,              // "GIFT" — frontend promotional_tag must match
+                giftVariantId,
                 name:         gp.name,
-                image:        gp.image?.[0] || '',
+                image:        giftImageUrl,
             }
         }
 
