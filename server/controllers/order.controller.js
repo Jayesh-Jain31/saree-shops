@@ -359,27 +359,29 @@ export async function razorpayOrderController(request, response) {
         if (freeGiftRzp) {
             const gp = freeGiftRzp.productId
             const originalPaise = Math.round((gp.price || 0) * 100)
-            // Use a prefixed variant_id so Razorpay never merges the free gift
-            // with an existing cart item that has the same product id.
-            // The promotional_tag on the frontend must use the same prefixed id.
-            const giftVariantId = `gift_${String(gp._id)}`
+            // Use a short constant variant_id "GIFT".
+            // Long IDs like "gift_<mongoId>" can confuse Razorpay's matching logic.
+            // "GIFT" is guaranteed to never equal any cart item's product ObjectId,
+            // so Razorpay will never merge the gift with a regular line item.
+            // The promotional_tag on the frontend must use the same id.
+            const giftVariantId = 'GIFT'
 
-            // Razorpay renders the `price` field as the displayed amount next to the item name.
-            // Setting price:0 makes Razorpay show ₹0 for the gift.
-            // The promotional_tag on the frontend adds the "free gift item" green badge.
-            // originalPaise is preserved in freeGiftData for invoice / order-record display.
+            // price: originalPaise → Razorpay shows this as struck-through (~~₹X~~)
+            // offer_price: 0      → Razorpay shows this as ₹0 (the price customer pays)
+            // Together with promotional_tag { tag:"free gift item", variant_id:"GIFT" }
+            // this produces the display:  ₹ 0  (above)  ~~₹X~~ (below, smaller)
             line_items.unshift({
                 sku:         giftVariantId,
                 variant_id:  giftVariantId,
-                price:       0,              // displayed as ₹0 in Razorpay order summary
-                offer_price: 0,
+                price:       originalPaise,  // MRP — shown struck-through below ₹0
+                offer_price: 0,             // ₹0 — what customer pays
                 quantity:    1,
                 name:        gp.name || 'Free Gift',
                 ...(gp.image?.[0] && { image_url: gp.image[0] }),
             })
             freeGiftData = {
                 productId:    String(gp._id),
-                giftVariantId,               // send prefixed id so frontend promotional_tag matches
+                giftVariantId,              // "GIFT" — frontend promotional_tag must match
                 name:         gp.name,
                 image:        gp.image?.[0] || '',
             }
