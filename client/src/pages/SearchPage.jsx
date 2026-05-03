@@ -7,7 +7,7 @@ import CardProduct from '../components/CardProduct'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import { useLocation } from 'react-router-dom'
 import noDataImage from '../assets/nothing here yet.webp'
-import BackButton from '../components/BackButton'
+
 
 const SearchPage = () => {
   const [data,setData] = useState([])
@@ -67,7 +67,7 @@ const SearchPage = () => {
   return (
     <section className='bg-white'>
       <div className='container mx-auto p-4'>
-        <BackButton className='mb-3' />
+
         <p className='font-semibold'>Search Results: {data.length}  </p>
 
         <InfiniteScroll
