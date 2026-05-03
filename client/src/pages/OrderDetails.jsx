@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 import {
   FaArrowLeft, FaCheckCircle, FaMoneyBillWave, FaCreditCard,
   FaReceipt, FaTruck, FaTimes, FaShoppingBag, FaBoxOpen,
-  FaPhoneAlt, FaRegCopy, FaDownload, FaUndoAlt, FaStar
+  FaPhoneAlt, FaRegCopy, FaDownload, FaUndoAlt, FaStar, FaEdit
 } from 'react-icons/fa'
 import {
   MdAccessTime, MdLocationOn, MdDeliveryDining, MdDone,
@@ -140,6 +140,9 @@ const OrderDetails = () => {
   const returnPeriodDays = parseInt(siteSettings?.return_period_days || 7) || 7
   const [selectedReturnItems, setSelectedReturnItems] = useState([])
   const [orderRatings, setOrderRatings] = useState({})
+  const [showEditAddress, setShowEditAddress] = useState(false)
+  const [editAddr, setEditAddr] = useState({})
+  const [savingAddress, setSavingAddress] = useState(false)
 
   const fetchOrderDetails = async () => {
     try {
@@ -503,6 +506,51 @@ const addr = {
   const nonCancellableStatuses = ['Shipped', 'Out for Delivery', 'Delivered', 'Cancelled']
   const canCancel = order?.orderStatus && !nonCancellableStatuses.includes(order.orderStatus)
   const isShippedOrBeyond = ['Shipped', 'Out for Delivery'].includes(order?.orderStatus)
+  const canEditAddress = order?.orderStatus && ['Pending', 'Confirmed'].includes(order.orderStatus)
+
+  const openEditAddress = () => {
+    const snap = order?.delivery_address_snapshot || order?.delivery_address || {}
+    setEditAddr({
+      name:         snap.name || '',
+      mobile:       snap.mobile || snap.contact || '',
+      address_line: snap.address_line || '',
+      city:         snap.city || '',
+      state:        snap.state || '',
+      pincode:      snap.pincode || snap.zipcode || '',
+      country:      snap.country || 'India',
+      landmark:     snap.landmark || '',
+    })
+    setShowEditAddress(true)
+  }
+
+  const handleSaveAddress = async () => {
+    if (!editAddr.name?.trim() || !editAddr.address_line?.trim() || !editAddr.city?.trim() || !editAddr.state?.trim() || !editAddr.pincode?.trim()) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+    try {
+      setSavingAddress(true)
+      const res = await Axios({
+        ...SummaryApi.updateOrderAddress,
+        url: `${SummaryApi.updateOrderAddress.url}/${order._id}`,
+        data: editAddr
+      })
+      if (res.data?.success) {
+        toast.success('Delivery address updated!')
+        setOrder(prev => ({
+          ...prev,
+          delivery_address_snapshot: res.data.data?.delivery_address_snapshot || editAddr
+        }))
+        setShowEditAddress(false)
+      } else {
+        toast.error(res.data?.message || 'Failed to update address')
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update address')
+    } finally {
+      setSavingAddress(false)
+    }
+  }
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -725,6 +773,14 @@ const addr = {
           <div className='bg-white rounded-xl border p-4'>
             <h2 className='font-bold text-gray-800 text-sm mb-3 flex items-center gap-2'>
               <MdLocationOn className='text-red-500' size={16} /> Delivery Address
+              {canEditAddress && (
+                <button
+                  onClick={openEditAddress}
+                  className='ml-auto flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-colors'
+                >
+                  <FaEdit size={10} /> Edit
+                </button>
+              )}
             </h2>
             <div className='bg-gray-50 rounded-lg p-3'>
               {addr?.name && (
@@ -1061,6 +1117,66 @@ const addr = {
 
         <div className='h-4'></div>
       </div>
+
+      {/* Edit Address Modal */}
+      {showEditAddress && (
+        <div className='fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4'>
+          <div className='bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl'>
+            <div className='flex items-center justify-between p-4 border-b sticky top-0 bg-white rounded-t-2xl'>
+              <h3 className='font-bold text-gray-800 flex items-center gap-2'>
+                <FaEdit className='text-blue-500' size={14} /> Edit Delivery Address
+              </h3>
+              <button onClick={() => setShowEditAddress(false)} className='text-gray-400 hover:text-gray-600 p-1'>
+                <FaTimes size={16} />
+              </button>
+            </div>
+
+            <div className='p-4 space-y-3'>
+              <p className='text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2'>
+                You can only edit the address while the order is Pending or Confirmed.
+              </p>
+
+              {[
+                { label: 'Full Name *', key: 'name', placeholder: 'Recipient name' },
+                { label: 'Mobile Number', key: 'mobile', placeholder: '10-digit number', type: 'tel' },
+                { label: 'Address Line *', key: 'address_line', placeholder: 'House no, street, area' },
+                { label: 'Landmark', key: 'landmark', placeholder: 'Near landmark (optional)' },
+                { label: 'City *', key: 'city', placeholder: 'City' },
+                { label: 'State *', key: 'state', placeholder: 'State' },
+                { label: 'Pincode *', key: 'pincode', placeholder: '6-digit pincode', type: 'tel' },
+                { label: 'Country', key: 'country', placeholder: 'Country' },
+              ].map(({ label, key, placeholder, type }) => (
+                <div key={key}>
+                  <label className='text-xs font-medium text-gray-600 mb-1 block'>{label}</label>
+                  <input
+                    type={type || 'text'}
+                    value={editAddr[key] || ''}
+                    onChange={e => setEditAddr(prev => ({ ...prev, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent'
+                  />
+                </div>
+              ))}
+
+              <div className='flex gap-3 pt-2'>
+                <button
+                  onClick={() => setShowEditAddress(false)}
+                  className='flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors'
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveAddress}
+                  disabled={savingAddress}
+                  className='flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-60'
+                >
+                  {savingAddress ? 'Saving…' : 'Save Address'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

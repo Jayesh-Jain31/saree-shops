@@ -962,3 +962,60 @@ export async function cancelOrderController(request, response) {
         })
     }
 }
+
+export async function updateOrderAddressController(request, response) {
+    try {
+        const userId = request.userId
+        const { id } = request.params
+        const { name, mobile, address_line, city, state, pincode, country, landmark } = request.body
+
+        if (!name || !address_line || !city || !state || !pincode) {
+            return response.status(400).json({
+                message: 'Name, address, city, state and pincode are required',
+                error: true, success: false
+            })
+        }
+
+        const order = await OrderModel.findOne({ _id: id, userId })
+        if (!order) {
+            return response.status(404).json({ message: 'Order not found', error: true, success: false })
+        }
+
+        if (!['Pending', 'Confirmed'].includes(order.orderStatus)) {
+            return response.status(400).json({
+                message: 'Address can only be updated for Pending or Confirmed orders',
+                error: true, success: false
+            })
+        }
+
+        const updatedOrder = await OrderModel.findByIdAndUpdate(
+            id,
+            {
+                delivery_address_snapshot: {
+                    name:         name.trim(),
+                    mobile:       String(mobile || '').replace(/\D/g, '').slice(-10),
+                    address_line: address_line.trim(),
+                    city:         city.trim(),
+                    state:        state.trim(),
+                    pincode:      String(pincode).trim(),
+                    country:      (country || 'India').trim(),
+                    landmark:     (landmark || '').trim(),
+                }
+            },
+            { new: true }
+        )
+
+        return response.json({
+            message: 'Delivery address updated successfully',
+            error: false,
+            success: true,
+            data: updatedOrder
+        })
+    } catch (error) {
+        return response.status(500).json({
+            message: error.message || error,
+            error: true,
+            success: false
+        })
+    }
+}
