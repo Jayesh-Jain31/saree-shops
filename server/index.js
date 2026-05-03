@@ -35,9 +35,11 @@ import loyaltyRouter from './route/loyalty.route.js'
 import bundleRouter from './route/bundle.route.js'
 import magicCheckoutRouter from './route/magicCheckout.route.js'
 import { startLoyaltyCron } from './utils/loyaltyCron.js'
+import { startBlastCron } from './utils/blastCron.js'
 import notificationRouter from './route/notification.route.js'
 import freeGiftRouter from './route/freeGift.route.js'
 import aiAgentRouter from './route/aiAgent.route.js'
+import blastRouter from './route/scheduledBlast.route.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -131,6 +133,7 @@ app.use('/api/bundle', bundleRouter)
 app.use('/api/notification', notificationRouter)
 app.use('/api/free-gift', freeGiftRouter)
 app.use('/api/ai-agent', aiAgentRouter)
+app.use('/api/blast', blastRouter)
 
 app.get('/api/config/razorpay-key', (req, res) => {
     res.json({ keyId: process.env.RAZORPAY_KEY_ID })
@@ -147,5 +150,6 @@ connectDB().then(() => {
     app.listen(PORT, () => {
         console.log('Server is running', PORT)
         startLoyaltyCron()
+        startBlastCron()
     })
 })

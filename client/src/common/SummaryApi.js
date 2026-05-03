@@ -131,7 +131,11 @@ getProduct : { url : '/api/product/get', method : 'get' },
     resendCodOtp : { url : '/api/otp/resend', method : 'post' },
     whatsappTestConnection : { url : '/api/settings/whatsapp-test-connection', method : 'post' },
     whatsappTestSend : { url : '/api/settings/test-whatsapp', method : 'post' },
-    couponOfferBlast : { url : '/api/analytics/coupon-blast', method : 'post' },
+    couponOfferBlast      : { url : '/api/analytics/coupon-blast', method : 'post' },
+    scheduleBlast         : { url : '/api/blast/schedule', method : 'post' },
+    getScheduledBlasts    : { url : '/api/blast/list', method : 'get' },
+    cancelScheduledBlast  : { url : '/api/blast/cancel', method : 'put' },
+    deleteScheduledBlast  : { url : '/api/blast', method : 'delete' },
 }
 
 export default SummaryApi

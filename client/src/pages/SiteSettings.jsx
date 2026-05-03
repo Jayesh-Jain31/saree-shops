@@ -47,6 +47,13 @@ const SiteSettings = () => {
   const [blastMessage, setBlastMessage] = useState('')
   const [blastLoading, setBlastLoading] = useState(false)
   const [blastResult, setBlastResult] = useState(null)
+  const [schedCoupon, setSchedCoupon] = useState(null)
+  const [schedMessage, setSchedMessage] = useState('')
+  const [schedAt, setSchedAt] = useState('')
+  const [schedNote, setSchedNote] = useState('')
+  const [scheduling, setScheduling] = useState(false)
+  const [scheduledBlasts, setScheduledBlasts] = useState([])
+  const [loadingBlasts, setLoadingBlasts] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [themeColor, setThemeColor] = useState('green')
   const [policyContent, setPolicyContent] = useState({})
@@ -167,7 +174,16 @@ const SiteSettings = () => {
     Axios({ ...SummaryApi.getActiveCoupons }).then(res => {
       if (res.data.success) setActiveCoupons(res.data.data || [])
     }).catch(() => {})
+    loadScheduledBlasts()
   }, [])
+
+  const loadScheduledBlasts = async () => {
+    setLoadingBlasts(true)
+    try {
+      const res = await Axios({ ...SummaryApi.getScheduledBlasts })
+      if (res.data.success) setScheduledBlasts(res.data.data || [])
+    } catch {} finally { setLoadingBlasts(false) }
+  }
 
   const saveSetting = async (key, value) => {
     await Axios({ ...SummaryApi.updateSetting, data: { key, value: String(value) } })
@@ -1154,6 +1170,182 @@ const SiteSettings = () => {
                 )}
               </>
             )}
+          </div>
+        </div>
+
+        {/* ── Schedule Offer Blast Card ── */}
+        <div className='bg-white rounded-2xl border shadow-sm overflow-hidden'>
+          <div className='flex items-center gap-3 p-5 border-b'>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100'>
+              <FaWhatsapp className='text-violet-600' size={20} />
+            </div>
+            <div>
+              <h2 className='font-bold text-gray-800'>Schedule Offer Blast</h2>
+              <p className='text-xs text-gray-500'>Set a future date & time to send a coupon offer automatically</p>
+            </div>
+          </div>
+          <div className='p-5 space-y-4'>
+            <div>
+              <label className='block text-xs font-semibold text-gray-600 mb-1'>Select Coupon</label>
+              <select
+                value={schedCoupon?.code || ''}
+                onChange={e => {
+                  const c = activeCoupons.find(cp => cp.code === e.target.value)
+                  setSchedCoupon(c || null)
+                  if (c) {
+                    const discount = c.discountType === 'percentage' ? `${c.discountValue}% off`
+                      : c.discountType === 'flat' ? `₹${c.discountValue} off` : 'free shipping'
+                    const minOrder = c.minOrderAmount > 0 ? ` on orders above ₹${c.minOrderAmount}` : ''
+                    const expiry = c.expiresAt ? ` Valid till ${new Date(c.expiresAt).toLocaleDateString('en-IN')}.` : ''
+                    setSchedMessage(`🎉 Hi {{name}}! Special offer just for you!\n\nUse code *{{code}}* to get *${discount}*${minOrder} on your next order.${expiry}\n\nShop now and enjoy the savings! 🛍️`)
+                  } else { setSchedMessage('') }
+                }}
+                className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 transition bg-white'
+              >
+                <option value=''>-- Select a coupon --</option>
+                {activeCoupons.map(c => (
+                  <option key={c._id} value={c.code}>
+                    {c.code} — {c.discountType === 'percentage' ? `${c.discountValue}%` : c.discountType === 'flat' ? `₹${c.discountValue}` : c.discountType} off
+                    {c.minOrderAmount > 0 ? ` (min ₹${c.minOrderAmount})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {schedCoupon && (
+              <>
+                <div>
+                  <label className='block text-xs font-semibold text-gray-600 mb-1'>Message</label>
+                  <textarea
+                    rows={5}
+                    value={schedMessage}
+                    onChange={e => setSchedMessage(e.target.value)}
+                    className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none'
+                    maxLength={1000}
+                  />
+                  <p className='text-[11px] text-gray-400 mt-1'><span className='font-mono'>{'{{name}}'}</span> = customer name, <span className='font-mono'>{'{{code}}'}</span> = coupon code</p>
+                </div>
+
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <label className='block text-xs font-semibold text-gray-600 mb-1'>Date & Time (IST)</label>
+                    <input
+                      type='datetime-local'
+                      value={schedAt}
+                      onChange={e => setSchedAt(e.target.value)}
+                      min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                      className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 transition'
+                    />
+                  </div>
+                  <div>
+                    <label className='block text-xs font-semibold text-gray-600 mb-1'>Note (optional)</label>
+                    <input
+                      type='text'
+                      value={schedNote}
+                      onChange={e => setSchedNote(e.target.value)}
+                      placeholder='e.g. Diwali campaign'
+                      className='w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 transition'
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={async () => {
+                    if (!schedMessage.trim()) return toast.error('Enter a message')
+                    if (!schedAt) return toast.error('Pick a date and time')
+                    setScheduling(true)
+                    try {
+                      const res = await Axios({
+                        ...SummaryApi.scheduleBlast,
+                        data: { couponCode: schedCoupon.code, message: schedMessage, scheduledAt: new Date(schedAt).toISOString(), note: schedNote }
+                      })
+                      if (res.data.success) {
+                        toast.success(res.data.message)
+                        setSchedAt('')
+                        setSchedNote('')
+                        setSchedCoupon(null)
+                        setSchedMessage('')
+                        loadScheduledBlasts()
+                      }
+                    } catch (e) { toast.error(e.response?.data?.message || 'Failed to schedule') }
+                    finally { setScheduling(false) }
+                  }}
+                  disabled={scheduling || !schedAt || !schedMessage.trim()}
+                  className='w-full flex items-center justify-center gap-2 bg-violet-500 hover:bg-violet-600 disabled:bg-violet-300 text-white font-semibold rounded-xl py-3 transition-colors'
+                >
+                  {scheduling
+                    ? <><div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' /> Scheduling...</>
+                    : <><FaWhatsapp size={16} /> Schedule Blast</>
+                  }
+                </button>
+              </>
+            )}
+
+            {/* Scheduled blasts list */}
+            <div className='border-t pt-4'>
+              <div className='flex items-center justify-between mb-3'>
+                <p className='text-xs font-semibold text-gray-600'>Scheduled & Past Blasts</p>
+                <button onClick={loadScheduledBlasts} className='text-xs text-violet-500 hover:text-violet-700'>Refresh</button>
+              </div>
+              {loadingBlasts ? (
+                <div className='flex justify-center py-4'><div className='w-5 h-5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin' /></div>
+              ) : scheduledBlasts.length === 0 ? (
+                <p className='text-xs text-gray-400 text-center py-3'>No scheduled blasts yet</p>
+              ) : (
+                <div className='space-y-2 max-h-72 overflow-y-auto'>
+                  {scheduledBlasts.map(b => (
+                    <div key={b._id} className='flex items-start justify-between gap-2 bg-gray-50 rounded-xl p-3 text-xs'>
+                      <div className='space-y-0.5 flex-1 min-w-0'>
+                        <div className='flex items-center gap-2 flex-wrap'>
+                          <span className='font-mono font-bold text-gray-800'>{b.couponCode}</span>
+                          <span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${
+                            b.status === 'sent' ? 'bg-green-100 text-green-700' :
+                            b.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            b.status === 'sending' ? 'bg-blue-100 text-blue-700' :
+                            b.status === 'cancelled' ? 'bg-gray-200 text-gray-500' :
+                            'bg-red-100 text-red-600'
+                          }`}>{b.status}</span>
+                          {b.note && <span className='text-gray-400 italic truncate max-w-[120px]'>{b.note}</span>}
+                        </div>
+                        <p className='text-gray-500'>
+                          {b.status === 'sent'
+                            ? `Sent ${new Date(b.sentAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} — ✅ ${b.sentCount} sent ${b.failedCount > 0 ? `❌ ${b.failedCount} failed` : ''}`
+                            : `Scheduled: ${new Date(b.scheduledAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`
+                          }
+                        </p>
+                      </div>
+                      <div className='flex gap-1 shrink-0'>
+                        {b.status === 'pending' && (
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm('Cancel this scheduled blast?')) return
+                              try {
+                                await Axios({ ...SummaryApi.cancelScheduledBlast, url: `/api/blast/cancel/${b._id}` })
+                                toast.success('Blast cancelled')
+                                loadScheduledBlasts()
+                              } catch { toast.error('Failed to cancel') }
+                            }}
+                            className='text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded-lg hover:bg-yellow-50'
+                          >Cancel</button>
+                        )}
+                        {(b.status === 'sent' || b.status === 'cancelled' || b.status === 'failed') && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await Axios({ ...SummaryApi.deleteScheduledBlast, url: `/api/blast/${b._id}` })
+                                toast.success('Deleted')
+                                loadScheduledBlasts()
+                              } catch { toast.error('Failed to delete') }
+                            }}
+                            className='text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50'
+                          >Delete</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
