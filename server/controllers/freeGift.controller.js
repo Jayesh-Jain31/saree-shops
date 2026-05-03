@@ -3,6 +3,24 @@ import ProductModel from '../models/product.model.js'
 
 const POPULATE = 'name image price discount'
 
+// Normalise a FreeGift document so callers always get a `productId`-shaped object
+// regardless of whether the gift uses a real product or customGift fields.
+function normaliseGift(gift) {
+    if (!gift) return null
+    const g = gift.toObject ? gift.toObject() : { ...gift }
+
+    if (!g.productId && g.customGift?.name) {
+        g.productId = {
+            _id:      g._id,
+            name:     g.customGift.name,
+            image:    g.customGift.image ? [g.customGift.image] : [],
+            price:    g.customGift.price || 0,
+            discount: 0,
+        }
+    }
+    return g
+}
+
 // ── Internal helper used by order controllers ─────────────────────────────────
 export async function getActiveFreeGiftInternal(cartAmount = 0) {
     try {
@@ -16,11 +34,28 @@ export async function getActiveFreeGiftInternal(cartAmount = 0) {
             .populate('productId', POPULATE)
             .sort({ createdAt: -1 })
             .lean()
-        return gift?.productId ? gift : null
+
+        if (!gift) return null
+
+        // For real-product gifts
+        if (gift.productId) return gift
+
+        // For custom gifts — synthesise a productId-shaped object
+        if (gift.customGift?.name) {
+            gift.productId = {
+                _id:      gift._id,
+                name:     gift.customGift.name,
+                image:    gift.customGift.image ? [gift.customGift.image] : [],
+                price:    gift.customGift.price || 0,
+                discount: 0,
+            }
+            return gift
+        }
+        return null
     } catch { return null }
 }
 
-// GET /api/free-gift/active?cartAmount=X  (public, no auth)
+// GET /api/free-gift/active?cartAmount=X  (public)
 export async function getActiveFreeGift(req, res) {
     try {
         const cartAmount = parseFloat(req.query.cartAmount) || 0
@@ -31,15 +66,12 @@ export async function getActiveFreeGift(req, res) {
     }
 }
 
-// GET /api/free-gift/progress?cartAmount=X  (public, no auth)
-// Returns the best active offer for progress-bar display, even if cart hasn't qualified yet.
+// GET /api/free-gift/progress?cartAmount=X  (public)
 export async function getFreeGiftProgress(req, res) {
     try {
         const cartAmount = parseFloat(req.query.cartAmount) || 0
         const now = new Date()
 
-        // Find all active, date-valid gifts, pick the one with the lowest threshold >= cartAmount (next to unlock)
-        // or the highest threshold <= cartAmount (already unlocked)
         const allGifts = await FreeGiftModel.find({
             isActive: true,
             $or: [{ startDate: null }, { startDate: { $lte: now } }],
@@ -48,24 +80,33 @@ export async function getFreeGiftProgress(req, res) {
 
         if (!allGifts.length) return res.json({ success: true, data: null })
 
-        // Prefer the gift that the cart has just unlocked or is closest to unlocking
-        const qualified = allGifts.filter(g => g.minOrderAmount <= cartAmount && g.productId)
-        const upcoming  = allGifts.filter(g => g.minOrderAmount > cartAmount && g.productId)
+        const validGifts = allGifts.filter(g => g.productId || g.customGift?.name)
+        if (!validGifts.length) return res.json({ success: true, data: null })
+
+        const qualified = validGifts.filter(g => g.minOrderAmount <= cartAmount)
+        const upcoming  = validGifts.filter(g => g.minOrderAmount > cartAmount)
 
         let gift = null
         let isQualified = false
 
         if (qualified.length) {
-            // Show the highest-threshold unlocked gift (most relevant)
             gift = qualified[qualified.length - 1]
             isQualified = true
         } else if (upcoming.length) {
-            // Show the closest upcoming gift
             gift = upcoming[0]
             isQualified = false
         }
 
         if (!gift) return res.json({ success: true, data: null })
+
+        // Normalise custom gift
+        if (!gift.productId && gift.customGift?.name) {
+            gift.productId = {
+                _id: gift._id, name: gift.customGift.name,
+                image: gift.customGift.image ? [gift.customGift.image] : [],
+                price: gift.customGift.price || 0,
+            }
+        }
 
         const shortfall = Math.max(0, gift.minOrderAmount - cartAmount)
         const progress  = gift.minOrderAmount > 0
@@ -74,12 +115,7 @@ export async function getFreeGiftProgress(req, res) {
 
         return res.json({
             success: true,
-            data: {
-                ...gift,
-                isQualified,
-                shortfall,
-                progress,
-            }
+            data: { ...gift, isQualified, shortfall, progress }
         })
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message })
@@ -102,18 +138,28 @@ export async function getAllFreeGifts(req, res) {
 // POST /api/free-gift/create  (admin)
 export async function createFreeGift(req, res) {
     try {
-        const { productId, title, minOrderAmount, isActive, startDate, endDate } = req.body
-        if (!productId) return res.status(400).json({ success: false, message: 'Product is required' })
-        const product = await ProductModel.findById(productId)
-        if (!product) return res.status(404).json({ success: false, message: 'Product not found' })
+        const { productId, customGift, title, minOrderAmount, isActive, startDate, endDate } = req.body
+
+        const hasProduct    = productId && productId !== ''
+        const hasCustomGift = customGift?.name && customGift?.image
+
+        if (!hasProduct && !hasCustomGift) {
+            return res.status(400).json({ success: false, message: 'Select an existing product or provide custom gift details (name + image).' })
+        }
+
+        if (hasProduct) {
+            const product = await ProductModel.findById(productId)
+            if (!product) return res.status(404).json({ success: false, message: 'Product not found' })
+        }
 
         const gift = await FreeGiftModel.create({
-            productId,
-            title: title || 'Free Gift with your order!',
+            productId:      hasProduct ? productId : null,
+            customGift:     hasCustomGift ? { name: customGift.name, image: customGift.image, price: Number(customGift.price) || 0 } : undefined,
+            title:          title || 'Free Gift with your order!',
             minOrderAmount: Number(minOrderAmount) || 0,
-            isActive: isActive !== false,
-            startDate: startDate || null,
-            endDate: endDate || null,
+            isActive:       isActive !== false,
+            startDate:      startDate || null,
+            endDate:        endDate || null,
         })
         await gift.populate('productId', POPULATE)
         return res.json({ success: true, data: gift, message: 'Free gift offer created!' })
@@ -126,10 +172,26 @@ export async function createFreeGift(req, res) {
 export async function updateFreeGift(req, res) {
     try {
         const { id } = req.params
-        const { productId, title, minOrderAmount, isActive, startDate, endDate } = req.body
+        const { productId, customGift, title, minOrderAmount, isActive, startDate, endDate } = req.body
+
+        const hasProduct    = productId && productId !== ''
+        const hasCustomGift = customGift?.name && customGift?.image
+
+        if (!hasProduct && !hasCustomGift) {
+            return res.status(400).json({ success: false, message: 'Select an existing product or provide custom gift details.' })
+        }
+
         const gift = await FreeGiftModel.findByIdAndUpdate(
             id,
-            { productId, title, minOrderAmount: Number(minOrderAmount) || 0, isActive, startDate: startDate || null, endDate: endDate || null },
+            {
+                productId:      hasProduct ? productId : null,
+                customGift:     hasCustomGift ? { name: customGift.name, image: customGift.image, price: Number(customGift.price) || 0 } : { name: '', image: '', price: 0 },
+                title,
+                minOrderAmount: Number(minOrderAmount) || 0,
+                isActive,
+                startDate: startDate || null,
+                endDate:   endDate   || null,
+            },
             { new: true }
         ).populate('productId', POPULATE)
         if (!gift) return res.status(404).json({ success: false, message: 'Gift not found' })
