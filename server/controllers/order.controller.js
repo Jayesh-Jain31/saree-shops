@@ -86,8 +86,9 @@ export async function CashOnDeliveryOrderController(request, response) {
         const items = list_items.map(el => ({
             productId: el.productId._id,
             product_details: {
-                name: el.productId.name,
-                image: el.productId.image
+                name:     el.productId.name,
+                image:    el.productId.image,
+                discount: el.productId.discount || 0,
             },
             quantity: el.quantity || 1,
             price: el.productId.price || 0,
@@ -98,7 +99,7 @@ export async function CashOnDeliveryOrderController(request, response) {
         if (freeGift) {
             items.push({
                 productId: freeGift.productId._id,
-                product_details: { name: freeGift.productId.name, image: freeGift.productId.image },
+                product_details: { name: freeGift.productId.name, image: freeGift.productId.image, discount: 0 },
                 quantity: 1,
                 price: 0,
                 isFreeGift: true,
@@ -510,8 +511,9 @@ console.log("POPUP ADDRESSES:", popupAddresses)
         const items = list_items.map(el => ({
             productId: el.productId._id,
             product_details: {
-                name: el.productId.name,
-                image: el.productId.image
+                name:     el.productId.name,
+                image:    el.productId.image,
+                discount: el.productId.discount || 0,
             },
             quantity: el.quantity || 1,
             price: el.productId.price || 0,
@@ -522,7 +524,7 @@ console.log("POPUP ADDRESSES:", popupAddresses)
         if (freeGiftVerify) {
             items.push({
                 productId: freeGiftVerify.productId._id,
-                product_details: { name: freeGiftVerify.productId.name, image: freeGiftVerify.productId.image },
+                product_details: { name: freeGiftVerify.productId.name, image: freeGiftVerify.productId.image, discount: 0 },
                 quantity: 1,
                 price: 0,
                 isFreeGift: true,

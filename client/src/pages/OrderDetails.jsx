@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
+import { pricewithDiscount } from '../utils/PriceWithDiscount'
 import { useGlobalContext } from '../provider/GlobalProvider'
 import toast from 'react-hot-toast'
 import {
@@ -393,7 +394,7 @@ const OrderDetails = () => {
                   <td class="text-right">${item.quantity || 1}</td>
                   <td class="text-right">
                     ${item.isFreeGift
-                      ? `<span class="price-original">${fmtRs(item.product_details?.price || 0)}</span><span class="price-free">₹0</span>`
+                      ? `<span class="price-original">${fmtRs(item.price || 0)}</span><span class="price-free">₹0</span>`
                       : fmtRs(item.price || 0)
                     }
                   </td>
@@ -567,13 +568,13 @@ const addr = {
                     {item.isFreeGift ? (
                       <div className='flex items-center gap-1.5 mt-1'>
                         <span className='text-xs line-through text-gray-400'>
-                          {DisplayPriceInRupees(item.product_details?.price || 0)}
+                          {DisplayPriceInRupees(item.price || 0)}
                         </span>
                         <span className='text-sm font-bold text-rose-600'>₹0</span>
                       </div>
                     ) : item.price > 0 ? (
                       <p className='text-sm font-semibold text-gray-700 mt-1'>
-                        {DisplayPriceInRupees(item.price)}
+                        {DisplayPriceInRupees(pricewithDiscount(item.price, item.product_details?.discount ?? 0))}
                       </p>
                     ) : null}
                     {order?.orderStatus === 'Delivered' && (
@@ -875,7 +876,7 @@ const addr = {
                               </div>
                               <div className='flex-1 min-w-0'>
                                 <p className='text-sm font-semibold text-gray-800 line-clamp-1'>{item.product_details?.name}</p>
-                                <p className='text-xs text-gray-500'>Qty: {item.quantity} · ₹{(item.price * item.quantity).toLocaleString('en-IN')}</p>
+                                <p className='text-xs text-gray-500'>Qty: {item.quantity} · ₹{(pricewithDiscount(item.price, item.product_details?.discount ?? 0) * item.quantity).toLocaleString('en-IN')}</p>
                               </div>
                             </button>
                           )

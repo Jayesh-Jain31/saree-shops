@@ -149,8 +149,11 @@ const Success = () => {
                   const img       = product?.image?.[0] || item.product_details?.image?.[0]
                   const name      = product?.name || item.product_details?.name || 'Product'
                   const isFreeGift = item.isFreeGift || false
-                  const origPrice  = product?.price || item.product_details?.price || 0
-                  const price      = isFreeGift ? 0 : pricewithDiscount(origPrice, product?.discount || 0)
+                  // item.price = full/original price stored at order time
+                  // item.product_details.discount = discount % stored at order time
+                  const origPrice  = item.price || product?.price || 0
+                  const discount   = item.product_details?.discount ?? product?.discount ?? 0
+                  const price      = isFreeGift ? 0 : pricewithDiscount(origPrice, discount)
                   const qty        = item.quantity || 1
                   return (
                     <div key={i} className={`flex items-center gap-3 py-2 border-b last:border-0 ${isFreeGift ? 'bg-rose-50 -mx-1 px-1 rounded-lg' : ''}`}>

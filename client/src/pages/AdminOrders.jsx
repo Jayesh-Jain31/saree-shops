@@ -4,6 +4,7 @@ import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import BackButton from '../components/BackButton'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
+import { pricewithDiscount } from '../utils/PriceWithDiscount'
 import { valideURLConvert } from '../utils/valideURLConvert'
 import toast from 'react-hot-toast'
 import {
@@ -146,7 +147,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     ${order.paymentId ? `<span style="font-size:11px;color:#999;margin-left:8px;font-family:monospace">${esc(order.paymentId)}</span>` : ''}</div>
     <h3>Items</h3>
     <table><thead><tr><th>#</th><th>Product</th><th class="tr">Qty</th><th class="tr">Price</th></tr></thead><tbody>
-    ${items.map((item, i) => `<tr><td>${i+1}</td><td>${esc(item.product_details?.name || 'Product')}${item.isFreeGift ? ' <span style="display:inline-block;background:#fce7f3;color:#be185d;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">🎁 FREE GIFT</span>' : ''}</td><td class="tr">${item.quantity || 1}</td><td class="tr">${item.isFreeGift ? `<span style="text-decoration:line-through;color:#9ca3af;font-size:11px;margin-right:3px;">₹${item.product_details?.price || 0}</span><span style="color:#be185d;font-weight:700;">₹0</span>` : `₹${item.price || 0}`}</td></tr>`).join('')}
+    ${items.map((item, i) => `<tr><td>${i+1}</td><td>${esc(item.product_details?.name || 'Product')}${item.isFreeGift ? ' <span style="display:inline-block;background:#fce7f3;color:#be185d;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">🎁 FREE GIFT</span>' : ''}</td><td class="tr">${item.quantity || 1}</td><td class="tr">${item.isFreeGift ? `<span style="text-decoration:line-through;color:#9ca3af;font-size:11px;margin-right:3px;">₹${item.price || 0}</span><span style="color:#be185d;font-weight:700;">₹0</span>` : `₹${pricewithDiscount(item.price || 0, item.product_details?.discount ?? 0)}`}</td></tr>`).join('')}
     </tbody></table>
     <div class="totals">${order.couponCode && order.couponDiscount > 0 ? `<div class="trow"><span>Coupon (${order.couponCode})</span><span style="color:#16a34a">- ₹${order.couponDiscount}</span></div>` : ''}${order.walletDeduction > 0 ? `<div class="trow"><span>Wallet used</span><span style="color:#2563eb">- ₹${order.walletDeduction}</span></div>` : ''}${!order.couponCode && !order.walletDeduction && order.discountAmt > 0 ? `<div class="trow"><span>Discount</span><span style="color:#16a34a">- ₹${order.discountAmt}</span></div>` : ''}<div class="trow"><span>Delivery</span><span>${order.deliveryCharge > 0 ? `₹${order.deliveryCharge}` : 'FREE'}</span></div>
     <div class="trow grand"><span>Grand Total</span><span>₹${order.totalAmt}</span></div></div>
@@ -375,13 +376,13 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                       {item.isFreeGift ? (
                         <div className='flex-shrink-0 text-right'>
                           <span className='text-[10px] line-through text-gray-400 block'>
-                            {DisplayPriceInRupees(item.product_details?.price || 0)}
+                            {DisplayPriceInRupees(item.price || 0)}
                           </span>
                           <span className='text-sm font-bold text-rose-600'>₹0</span>
                         </div>
                       ) : (
                         <p className='text-sm font-bold text-gray-700 flex-shrink-0'>
-                          {DisplayPriceInRupees((item.price || 0) * (item.quantity || 1))}
+                          {DisplayPriceInRupees(pricewithDiscount(item.price || 0, item.product_details?.discount ?? 0) * (item.quantity || 1))}
                         </p>
                       )}
                     </Wrapper>
