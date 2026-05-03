@@ -5,7 +5,6 @@ import UserModel from '../models/user.model.js'
 import CouponModel from '../models/coupon.model.js'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
 async function gatherStoreContext() {
     const now = new Date()
@@ -193,7 +192,7 @@ Rules:
         }
 
         const chatModel = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             systemInstruction: systemPrompt,
         })
 
