@@ -192,9 +192,13 @@ Rules:
             chatHistory.shift()
         }
 
-        const chat = model.startChat({
-            history: chatHistory,
+        const chatModel = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash',
             systemInstruction: systemPrompt,
+        })
+
+        const chat = chatModel.startChat({
+            history: chatHistory,
         })
 
         const result = await chat.sendMessage(message)
