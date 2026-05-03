@@ -556,52 +556,18 @@ console.log("POPUP ADDRESSES:", popupAddresses)
             }
         }
 
-        // ── Step 2: Razorpay billing object is the most reliable address source ─────────
-        // It reflects the exact address the customer confirmed at payment time.
-        // Apply for ALL payment types (online AND COD from Magic Checkout).
-        if (paymentDetails?.billing) {
-            const ba    = paymentDetails.billing
-            const bAddr = ba.address || {}
-            if (ba.name || bAddr.line1 || bAddr.city) {
-                delivery_address_snapshot = {
-                    name:         ba.name || delivery_address_snapshot.name || '',
-                    mobile:       String(ba.contact || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10) || delivery_address_snapshot.mobile || '',
-                    address_line: [bAddr.line1, bAddr.line2].filter(Boolean).join(', ') || delivery_address_snapshot.address_line || '',
-                    city:         bAddr.city  || delivery_address_snapshot.city  || '',
-                    state:        bAddr.state || delivery_address_snapshot.state || '',
-                    pincode:      String(bAddr.zipcode || '') || delivery_address_snapshot.pincode || '',
-                    country:      (bAddr.country === 'IN' ? 'India' : (bAddr.country || '')) || delivery_address_snapshot.country || 'India',
-                    landmark:     bAddr.line2 || delivery_address_snapshot.landmark || '',
-                }
-                // Re-derive delivery charge from the billing address pincode.
-                // This ensures the popup-selected address delivery charge is correct
-                // even when the in-memory address map was wiped (e.g. server restart).
-                const billingPincode = String(bAddr.zipcode || '').trim()
-                if (billingPincode) {
-                    try {
-                        const matchedZones = await DeliveryZoneModel.find({
-                            isActive: true,
-                            pincodes: billingPincode
-                        }).lean()
-                        resolvedDeliveryCharge = matchedZones.length > 0 ? matchedZones[0].deliveryCharge : 0
-                    } catch (zoneErr) {
-                        console.log("[verify] delivery zone lookup failed:", zoneErr.message)
-                    }
-                }
-            }
-        }
-
-        // ── Step 2.5: Fetch Razorpay order for COD address + coupon code from notes ───────
-        // For COD: paymentDetails.billing is null; get address from customer_details.
-        // For all payment types: read popup_coupon_code from order notes (set by apply-promotion)
-        // so we can recover the coupon code even if the in-memory map was wiped.
+        // ── Step 2: Razorpay order customer_details.shipping_address ────────────────────
+        // For both online and COD: if Step 1 found nothing (popup map was empty/expired),
+        // fall back to the shipping address stored on the Razorpay order itself.
+        // NOTE: paymentDetails.billing is the card/payment billing address — NOT the delivery
+        // address — so we intentionally do NOT use it for the delivery snapshot.
         let rzpOrderNotes = {}
         try {
-            const rzpOrder    = await Razorpay.orders.fetch(razorpay_order_id)
-            rzpOrderNotes     = rzpOrder?.notes || {}
+            const rzpOrder = await Razorpay.orders.fetch(razorpay_order_id)
+            rzpOrderNotes  = rzpOrder?.notes || {}
 
-            // COD address from Razorpay order (only needed when address not already resolved)
-            if (isCOD && !delivery_address_snapshot.name) {
+            // Use shipping_address from Razorpay order when Step 1 found nothing
+            if (!delivery_address_snapshot.name && !delivery_address_snapshot.address_line) {
                 const custDetails = rzpOrder?.customer_details || {}
                 const shipAddr    = custDetails.shipping_address || custDetails.billing_address || {}
                 const addrName    = shipAddr.name || custDetails.name || ''
@@ -624,7 +590,7 @@ console.log("POPUP ADDRESSES:", popupAddresses)
                         }).lean()
                         resolvedDeliveryCharge = matchedZones.length > 0 ? matchedZones[0].deliveryCharge : 0
                     }
-                    console.log(`[verify] COD address from rzp order: ${delivery_address_snapshot.city}, delivery=₹${resolvedDeliveryCharge}`)
+                    console.log(`[verify] address from rzp order customer_details: ${delivery_address_snapshot.city}, delivery=₹${resolvedDeliveryCharge}`)
                 }
             }
         } catch (orderFetchErr) {
