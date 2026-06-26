@@ -203,7 +203,7 @@ const ProductDisplayPage = () => {
           <img
             key={image}
             src={data.image[image]}
-            className='w-full h-auto block cursor-zoom-in'
+            className='w-full aspect-[3/4] sm:aspect-auto object-cover block cursor-zoom-in'
             style={{ animation: 'fadeSlideIn 0.35s ease' }}
             onClick={() => setLightboxOpen(true)}
           />
@@ -344,7 +344,7 @@ const ProductDisplayPage = () => {
         )}
 
         {/* ── Price row + AddToCart (inline) ── */}
-        <div className='flex items-end justify-between gap-3 mb-3 pr-3'>
+        <div className='flex flex-col gap-4 mb-4 sm:flex-row sm:items-end sm:justify-between'>
           <div className='min-w-0 flex-1'>
             <p className='text-xs text-gray-500 uppercase tracking-wider mb-1'>Price</p>
             <span className='text-2xl font-bold text-gray-900 block leading-tight'>
@@ -359,7 +359,7 @@ const ProductDisplayPage = () => {
           </div>
 
           {/* AddToCart on the right of price */}
-          <div className='w-28 flex-shrink-0'>
+          <div className='w-full sm:w-28'>
             {displayStock !== 0 && <AddToCartButton data={data} />}
           </div>
         </div>
