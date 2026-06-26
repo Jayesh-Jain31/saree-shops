@@ -369,7 +369,7 @@ const ProductDisplayPage = () => {
     </div>
 
     {displayStock !== 0 && (
-     <div className="w-34 ml-2">
+     <div className="w-15 ml-2">
   {displayStock !== 0 && <AddToCartButton data={data} compact />}
 </div>
     )}
