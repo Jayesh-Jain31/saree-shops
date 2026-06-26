@@ -200,7 +200,7 @@ const ProductDisplayPage = () => {
 
       {/* ── Left: Images ── */}
       <div>
-        <div className="bg-white rounded-3xl border overflow-hidden shadow-sm">
+       <div className='bg-red-500 rounded-3xl border overflow-hidden shadow-sm'>
           <div className="w-full aspect-[3/4] bg-gray-100 overflow-hidden rounded-2xl">
   <img
     key={image}
