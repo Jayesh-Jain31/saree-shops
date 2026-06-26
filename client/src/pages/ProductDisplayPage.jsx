@@ -359,10 +359,9 @@ const ProductDisplayPage = () => {
           </div>
 
           {/* AddToCart on the right of price */}
-          <div className='w-full sm:w-20'>
-            {displayStock !== 0 && <AddToCartButton data={data} />}
-          </div>
-        </div>
+          <div className="w-36 mx-auto mt-2">
+    {displayStock !== 0 && <AddToCartButton data={data} />}
+</div>
 
         {/* Out of Stock + Notify Me */}
         {displayStock === 0 && (
