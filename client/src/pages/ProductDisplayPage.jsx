@@ -201,13 +201,16 @@ const ProductDisplayPage = () => {
       {/* ── Left: Images ── */}
       <div>
         <div className="bg-white rounded-3xl border overflow-hidden shadow-sm">
-          <img
-            key={image}
-            src={data.image[image]}
-            className='w-full h-auto block cursor-zoom-in'
-            style={{ animation: 'fadeSlideIn 0.35s ease' }}
-            onClick={() => setLightboxOpen(true)}
-          />
+          <div className="w-full aspect-[3/4] bg-gray-100 overflow-hidden rounded-2xl">
+  <img
+    key={image}
+    src={data.image[image]}
+    alt={data.name}
+    className="w-full h-full object-cover cursor-zoom-in transition-all duration-300"
+    style={{ animation: 'fadeSlideIn 0.35s ease' }}
+    onClick={() => setLightboxOpen(true)}
+  />
+</div>
           {/* Wishlist + Share — float over top-right of image */}
           <div className='absolute top-3 right-3 flex gap-2 z-10'>
             <button onClick={toggleWishlist}
