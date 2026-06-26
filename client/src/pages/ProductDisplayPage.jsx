@@ -343,24 +343,37 @@ const ProductDisplayPage = () => {
           </div>
         )}
 
-        {/* ── Price row + AddToCart (inline) ── */}
-        <div className='flex flex-col gap-4 mb-4 sm:flex-row sm:items-end sm:justify-between'>
-          <div className='min-w-0 flex-1'>
-            <p className='text-xs text-gray-500 uppercase tracking-wider mb-1'>Price</p>
-            <span className='text-2xl font-bold text-gray-900 block leading-tight'>
-              {DisplayPriceInRupees(displayPrice)}
-            </span>
-            {!selectedVariant && data.discount > 0 && (
-              <div className='flex items-center gap-1.5 mt-0.5 flex-wrap'>
-                <span className='text-sm text-gray-400 line-through'>{DisplayPriceInRupees(data.price)}</span>
-                <span className='bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full'>{data.discount}% OFF</span>
-              </div>
-            )}
-          </div>
+        {/* ── Price + Add Button ── */}
+<div className="mb-4">
+  <div className="flex items-end justify-between">
+    <div>
+      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+        Price
+      </p>
 
-          {/* AddToCart on the right of price */}
-          <div className="w-36 mx-auto mt-2">
-    {displayStock !== 0 && <AddToCartButton data={data} />}
+      <span className="text-2xl font-bold text-gray-900">
+        {DisplayPriceInRupees(displayPrice)}
+      </span>
+
+      {!selectedVariant && data.discount > 0 && (
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-sm text-gray-400 line-through">
+            {DisplayPriceInRupees(data.price)}
+          </span>
+
+          <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
+            {data.discount}% OFF
+          </span>
+        </div>
+      )}
+    </div>
+
+    {displayStock !== 0 && (
+      <div className="w-24">
+        <AddToCartButton data={data} compact />
+      </div>
+    )}
+  </div>
 </div>
 
         {/* Out of Stock + Notify Me */}
