@@ -199,11 +199,11 @@ const ProductDisplayPage = () => {
 
       {/* ── Left: Images ── */}
       <div>
-        <div className='bg-white rounded-2xl relative border overflow-hidden w-full h-72 sm:h-96 md:h-auto aspect-square flex items-center justify-center'>
+        <div className='bg-white rounded-2xl relative border overflow-hidden'>
           <img
             key={image}
             src={data.image[image]}
-            className='w-full h-full object-contain block cursor-zoom-in'
+            className='w-full h-auto block cursor-zoom-in'
             style={{ animation: 'fadeSlideIn 0.35s ease' }}
             onClick={() => setLightboxOpen(true)}
           />
@@ -621,3 +621,5 @@ const ProductDisplayPage = () => {
 }
 
 export default ProductDisplayPage
+
+Bro listen first in desktop side my website is showing good but only in mobile is not showing good ui I think I image is too tall and add button also cut it so give me full update codes without changes of other code only error one 
