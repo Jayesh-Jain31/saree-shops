@@ -359,7 +359,7 @@ const ProductDisplayPage = () => {
           </div>
 
           {/* AddToCart on the right of price */}
-          <div className='w-full sm:w-28'>
+          <div className='w-full sm:w-40'>
             {displayStock !== 0 && <AddToCartButton data={data} />}
           </div>
         </div>
@@ -622,4 +622,3 @@ const ProductDisplayPage = () => {
 
 export default ProductDisplayPage
 
-Bro listen first in desktop side my website is showing good but only in mobile is not showing good ui I think I image is too tall and add button also cut it so give me full update codes without changes of other code only error one 
