@@ -34,7 +34,6 @@ const addToRecentlyViewed = (product) => {
   } catch (e) {}
 }
 
-
 const TRUST_BADGES = [
   { icon: FaTruck,     label: 'Cash on Delivery', sub: 'Available',  bg: 'bg-green-50',  icon_color: 'text-green-600'  },
   { icon: FaShieldAlt, label: 'Secure Payment',   sub: '100% Safe',  bg: 'bg-blue-50',   icon_color: 'text-blue-600'   },
@@ -200,17 +199,14 @@ const ProductDisplayPage = () => {
 
       {/* ── Left: Images ── */}
       <div>
-       <div className='bg-red-500 rounded-3xl border overflow-hidden shadow-sm'>
-          <div className="w-full aspect-[3/4] bg-gray-100 overflow-hidden rounded-2xl">
-  <img
-    key={image}
-    src={data.image[image]}
-    alt={data.name}
-    className="w-full h-full object-cover cursor-zoom-in transition-all duration-300"
-    style={{ animation: 'fadeSlideIn 0.35s ease' }}
-    onClick={() => setLightboxOpen(true)}
-  />
-</div>
+        <div className='bg-white rounded-2xl relative border overflow-hidden w-full h-72 sm:h-96 md:h-auto aspect-square flex items-center justify-center'>
+          <img
+            key={image}
+            src={data.image[image]}
+            className='w-full h-full object-contain block cursor-zoom-in'
+            style={{ animation: 'fadeSlideIn 0.35s ease' }}
+            onClick={() => setLightboxOpen(true)}
+          />
           {/* Wishlist + Share — float over top-right of image */}
           <div className='absolute top-3 right-3 flex gap-2 z-10'>
             <button onClick={toggleWishlist}
