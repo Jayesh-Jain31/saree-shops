@@ -345,7 +345,7 @@ const ProductDisplayPage = () => {
 
         {/* ── Price + Add Button ── */}
 <div className="mb-4">
-  <div className="flex items-end gap-4">
+  <div className="flex items-end gap-2">
     <div>
       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
         Price
