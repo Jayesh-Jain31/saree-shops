@@ -345,7 +345,7 @@ const ProductDisplayPage = () => {
 
         {/* ── Price + Add Button ── */}
 <div className="mb-4">
-  <div className="flex items-end justify-between">
+  <div className="flex items-end gap-4">
     <div>
       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
         Price
@@ -369,9 +369,9 @@ const ProductDisplayPage = () => {
     </div>
 
     {displayStock !== 0 && (
-      <div className="w-24">
-        <AddToCartButton data={data} compact />
-      </div>
+     <div className="w-24 ml-2">
+  {displayStock !== 0 && <AddToCartButton data={data} compact />}
+</div>
     )}
   </div>
 </div>
