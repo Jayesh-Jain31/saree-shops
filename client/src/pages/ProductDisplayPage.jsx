@@ -359,7 +359,7 @@ const ProductDisplayPage = () => {
           </div>
 
           {/* AddToCart on the right of price */}
-          <div className='w-full sm:w-40'>
+          <div className='w-full sm:w-24'>
             {displayStock !== 0 && <AddToCartButton data={data} />}
           </div>
         </div>
