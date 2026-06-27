@@ -16,7 +16,6 @@ import {
   FaPalette, FaStar, FaRegStar, FaBell, FaCheckDouble,
   FaTag, FaFire,
   FaLeaf, FaFeatherAlt, FaMagic, FaGem,
-  FaUserCircle, FaThumbsUp, FaCommentDots,
 } from 'react-icons/fa'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
@@ -59,6 +58,13 @@ const ProductDisplayPage = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [, setLoading] = useState(false)
   const imageContainer = useRef()
+  const [zoom, setZoom] = useState(1)
+  const [panX, setPanX] = useState(0)
+  const [panY, setPanY] = useState(0)
+  const lastTap = useRef(0)
+  const lastTouches = useRef(null)
+  const isPinching = useRef(false)
+  const panStart = useRef(null)
   const user = useSelector(state => state?.user)
 
   const [wishlisted, setWishlisted] = useState(false)
@@ -66,10 +72,7 @@ const ProductDisplayPage = () => {
   const [notifyRequested, setNotifyRequested] = useState(false)
 
   const [selectedVariant, setSelectedVariant] = useState(null)
-  const [ratingDist, setRatingDist] = useState({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 })
-  const [reviews, setReviews] = useState([])
-  const [reviewsLoading, setReviewsLoading] = useState(false)
-  const [reviewSort, setReviewSort] = useState('recent')
+  const [, setRatingDist] = useState({})
   const [viewingCount, setViewingCount] = useState(0)
 
   const [pincode, setPincode] = useState('')
@@ -90,21 +93,17 @@ const ProductDisplayPage = () => {
   }
 
   const fetchReviewDist = async () => {
-    setReviewsLoading(true)
     try {
       const res = await Axios({ ...SummaryApi.getProductReviews, data: { productId } })
       if (res.data.success) {
-        const list = res.data.data?.reviews || []
         const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-        list.forEach(r => {
+        ;(res.data.data?.reviews || []).forEach(r => {
           const star = Math.round(r.rating)
           if (star >= 1 && star <= 5) dist[star]++
         })
         setRatingDist(dist)
-        setReviews(list)
       }
     } catch {}
-    finally { setReviewsLoading(false) }
   }
 
   const checkWishlist = async () => {
@@ -129,8 +128,7 @@ const ProductDisplayPage = () => {
 
   useEffect(() => {
     setSelectedVariant(null)
-    setRatingDist({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 })
-    setReviews([])
+    setRatingDist({})
     fetchProductDetails()
     fetchReviewDist()
     if (user?._id) checkWishlist()
@@ -195,14 +193,6 @@ const ProductDisplayPage = () => {
   const variants = data.variants || []
   const isBestseller = (data.reviewCount || 0) >= 1 || data.avgRating >= 4
 
-  const totalReviews = reviews.length
-  const maxDistCount = Math.max(1, ...Object.values(ratingDist))
-  const sortedReviews = [...reviews].sort((a, b) => {
-    if (reviewSort === 'highest') return (b.rating || 0) - (a.rating || 0)
-    if (reviewSort === 'lowest') return (a.rating || 0) - (b.rating || 0)
-    return new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0)
-  })
-
   return (
     <>
       <div className="container mx-auto px-4 pt-3 max-w-full overflow-x-hidden">
@@ -213,53 +203,42 @@ const ProductDisplayPage = () => {
 
         {/* ============ LEFT: IMAGES ============ */}
         <div className="w-full min-w-0 px-4 sm:px-6 lg:px-0">
-          <div className="relative bg-white rounded-3xl border border-emerald-100 overflow-hidden shadow-lg w-full max-w-[560px] mx-auto">
-            <div
-              className="relative w-full max-w-full bg-gradient-to-br from-emerald-50 via-white to-slate-50 overflow-hidden"
-              style={{ paddingTop: '125%' }}
-            >
-              {data.image?.[image] ? (
-                <img
-                  key={image}
-                  src={data.image[image]}
-                  alt={data.name}
-                  className="cursor-zoom-in"
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'block',
-                  }}
-                  onClick={() => setLightboxOpen(true)}
-                />
-              ) : (
-                <div className="absolute inset-0 animate-pulse bg-gray-100" />
-              )}
+          <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full max-w-[560px] mx-auto">
+            <div className="w-full max-w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
+              <img
+                key={image}
+                src={data.image[image]}
+                alt={data.name}
+                className="cursor-zoom-in"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+                onClick={() => setLightboxOpen(true)}
+              />
             </div>
 
             {data.discount > 0 && !selectedVariant && (
-              <div className="absolute top-3 left-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-lg shadow-emerald-500/30">
+              <div className="absolute top-3 left-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-lg shadow-pink-500/30">
                 {data.discount}% OFF
               </div>
             )}
 
             <div className="absolute top-3 right-3 flex gap-2 z-10">
-              <button onClick={toggleWishlist} className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border border-emerald-100">
-                {wishlisted ? <FaHeart className="text-emerald-600" size={17} /> : <FaRegHeart className="text-emerald-400" size={17} />}
+              <button onClick={toggleWishlist} className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border border-pink-100">
+                {wishlisted ? <FaHeart className="text-pink-500" size={17} /> : <FaRegHeart className="text-pink-400" size={17} />}
               </button>
               <div className="relative">
-                <button onClick={() => setShowShareMenu(!showShareMenu)} className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border border-emerald-100">
-                  <FaShareAlt className="text-emerald-600" size={14} />
+                <button onClick={() => setShowShareMenu(!showShareMenu)} className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border border-pink-100">
+                  <FaShareAlt className="text-pink-500" size={14} />
                 </button>
                 {showShareMenu && (
                   <div className="absolute right-0 top-12 bg-white border border-gray-100 rounded-xl shadow-xl p-2 z-20 w-44">
-                    <button onClick={() => handleShare('whatsapp')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 rounded-lg text-sm"><FaWhatsapp className="text-green-500" size={16} /> WhatsApp</button>
-                    <button onClick={() => handleShare('copy')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 rounded-lg text-sm"><FaLink className="text-gray-500" size={14} /> Copy Link</button>
+                    <button onClick={() => handleShare('whatsapp')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-pink-50 rounded-lg text-sm"><FaWhatsapp className="text-green-500" size={16} /> WhatsApp</button>
+                    <button onClick={() => handleShare('copy')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-pink-50 rounded-lg text-sm"><FaLink className="text-gray-500" size={14} /> Copy Link</button>
                   </div>
                 )}
               </div>
@@ -272,7 +251,7 @@ const ProductDisplayPage = () => {
             {data.image.length > 1 && (
               <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
                 {data.image.map((_, i) => (
-                  <span key={i} className={`rounded-full transition-all duration-300 ${i === image ? 'w-5 h-2 bg-emerald-500' : 'w-2 h-2 bg-white/70'}`} />
+                  <span key={i} className={`rounded-full transition-all duration-300 ${i === image ? 'w-5 h-2 bg-pink-500' : 'w-2 h-2 bg-white/70'}`} />
                 ))}
               </div>
             )}
@@ -282,7 +261,7 @@ const ProductDisplayPage = () => {
           <div className="relative mt-3 w-full">
             <div ref={imageContainer} className="flex gap-2 w-full overflow-x-auto scrollbar-none scroll-smooth">
               {data.image.map((img, index) => (
-                <button key={img + index} onClick={() => setImage(index)} className={`w-16 h-16 sm:w-20 sm:h-20 min-w-16 sm:min-w-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${index === image ? 'border-emerald-500 ring-2 ring-emerald-200 scale-105' : 'border-gray-200 opacity-80 hover:opacity-100'}`}>
+                <button key={img + index} onClick={() => setImage(index)} className={`w-16 h-16 sm:w-20 sm:h-20 min-w-16 sm:min-w-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${index === image ? 'border-pink-500 ring-2 ring-pink-200 scale-105' : 'border-gray-200 opacity-80 hover:opacity-100'}`}>
                   <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
@@ -296,13 +275,13 @@ const ProductDisplayPage = () => {
           {/* Description — desktop only (mobile version repeated lower) */}
           <div className="my-6 hidden lg:grid gap-4">
             {data.description && (
-              <div className="bg-white border border-emerald-100 rounded-2xl p-5">
+              <div className="bg-white border border-pink-100 rounded-2xl p-5">
                 <p className="font-bold text-gray-800 mb-2">Description</p>
                 <p className="text-sm text-gray-600 leading-relaxed">{data.description}</p>
               </div>
             )}
             {data?.more_details && Object.keys(data.more_details).map((el, i) => (
-              <div key={i} className="bg-white border border-emerald-100 rounded-2xl p-5">
+              <div key={i} className="bg-white border border-pink-100 rounded-2xl p-5">
                 <p className="font-bold text-gray-800 mb-1">{el}</p>
                 <p className="text-sm text-gray-600">{data.more_details[el]}</p>
               </div>
@@ -317,19 +296,12 @@ const ProductDisplayPage = () => {
             <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[11px] font-bold px-2.5 py-1 rounded-md mb-2">Bestseller</span>
           )}
 
-          {data._id ? (
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{data.name}</h1>
-          ) : (
-            <div className="h-7 sm:h-8 w-3/4 rounded-md bg-gray-100 animate-pulse" />
-          )}
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{data.name}</h1>
           {data.unit && <p className="text-sm text-gray-500 mt-1">{data.unit}</p>}
 
           {data.avgRating > 0 && (
-            <button
-              onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              className="mt-3 flex items-center gap-3 flex-wrap group"
-            >
-              <div className="flex items-center gap-1 bg-emerald-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
+            <div className="mt-3 flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
                 <span>{Number(data.avgRating).toFixed(1)}</span><FaStar size={10} />
               </div>
               <div className="flex gap-0.5">
@@ -339,29 +311,27 @@ const ProductDisplayPage = () => {
                     : <FaRegStar key={s} size={16} className="text-gray-300" />
                 ))}
               </div>
-              <span className="text-sm text-gray-500 font-medium underline-offset-2 group-hover:underline group-hover:text-emerald-700">
-                {data.reviewCount || totalReviews} rating{(data.reviewCount || totalReviews) !== 1 ? 's' : ''}
-              </span>
-            </button>
+              <span className="text-sm text-gray-500 font-medium">{data.reviewCount} rating{data.reviewCount !== 1 ? 's' : ''}</span>
+            </div>
           )}
 
           {viewingCount > 0 && (
-            <div className="flex items-center gap-1.5 mt-3 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 w-fit max-w-full">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-              <p className="text-xs text-emerald-700 font-semibold truncate">{viewingCount} people are viewing this right now</p>
+            <div className="flex items-center gap-1.5 mt-3 bg-pink-50 border border-pink-200 rounded-full px-3 py-1.5 w-fit max-w-full">
+              <span className="inline-block w-2 h-2 rounded-full bg-pink-500 animate-pulse flex-shrink-0" />
+              <p className="text-xs text-pink-700 font-semibold truncate">{viewingCount} people are viewing this right now</p>
             </div>
           )}
 
           {variants.length > 0 && (
             <div className="mt-5">
               <div className="flex items-center gap-1.5 mb-2">
-                <FaPalette className="text-emerald-600" size={12} />
+                <FaPalette className="text-pink-500" size={12} />
                 <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Select Variant</p>
-                {selectedVariant && <span className="text-xs text-emerald-700 font-semibold">— {selectedVariant.name}</span>}
+                {selectedVariant && <span className="text-xs text-pink-600 font-semibold">— {selectedVariant.name}</span>}
               </div>
               <div className="flex gap-2 flex-wrap">
                 {variants.map((v, i) => (
-                  <button key={i} onClick={() => setSelectedVariant(selectedVariant?.name === v.name ? null : v)} className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all ${selectedVariant?.name === v.name ? 'border-emerald-500 bg-emerald-500 text-white shadow-md shadow-emerald-200' : 'border-gray-200 text-gray-700 bg-white hover:border-emerald-300'}`}>
+                  <button key={i} onClick={() => setSelectedVariant(selectedVariant?.name === v.name ? null : v)} className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all ${selectedVariant?.name === v.name ? 'border-pink-500 bg-pink-500 text-white shadow-md shadow-pink-200' : 'border-gray-200 text-gray-700 bg-white hover:border-pink-300'}`}>
                     {v.name}{v.price ? <span className="ml-1 text-xs opacity-80">₹{v.price}</span> : ''}
                   </button>
                 ))}
@@ -375,23 +345,17 @@ const ProductDisplayPage = () => {
           {/* Price + Add to Cart */}
           <div className="mt-5">
             <div className="flex items-baseline gap-3 flex-wrap">
-              {data._id ? (
+              <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">{DisplayPriceInRupees(displayPrice)}</span>
+              {!selectedVariant && data.discount > 0 && (
                 <>
-                  <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">{DisplayPriceInRupees(displayPrice)}</span>
-                  {!selectedVariant && data.discount > 0 && (
-                    <>
-                      <span className="text-base text-gray-400 line-through">{DisplayPriceInRupees(data.price)}</span>
-                      <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md">{data.discount}% OFF</span>
-                    </>
-                  )}
+                  <span className="text-base text-gray-400 line-through">{DisplayPriceInRupees(data.price)}</span>
+                  <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md">{data.discount}% OFF</span>
                 </>
-              ) : (
-                <span className="h-9 w-32 rounded-md bg-gray-100 animate-pulse" />
               )}
             </div>
             <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
 
-            {data._id && displayStock !== 0 && (
+            {displayStock !== 0 && (
               <div className="mt-4 w-48 sm:w-56">
                 <AddToCartButton data={data} />
               </div>
@@ -464,9 +428,9 @@ const ProductDisplayPage = () => {
           </div>
 
           {/* Pincode */}
-          <div className="mt-4 bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
+          <div className="mt-4 bg-white border border-pink-100 rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
-              <FaMapMarkerAlt className="text-emerald-600" size={14} />
+              <FaMapMarkerAlt className="text-pink-500" size={14} />
               <p className="font-bold text-gray-800 text-sm">Check Delivery for Your Area</p>
             </div>
             <div className="flex gap-2">
@@ -474,9 +438,9 @@ const ProductDisplayPage = () => {
                 onChange={e => { setPincode(e.target.value); setPincodeResult(null) }}
                 onKeyDown={e => e.key === 'Enter' && handleCheckPincode()}
                 maxLength={6} placeholder="Enter 6-digit pincode"
-                className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition" />
+                className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition" />
               <button onClick={handleCheckPincode} disabled={checkingPincode}
-                className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-5 py-3 rounded-xl text-sm font-bold disabled:opacity-60 transition-all active:scale-95 shadow-md shadow-emerald-200 flex-shrink-0">
+                className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-5 py-3 rounded-xl text-sm font-bold disabled:opacity-60 transition-all active:scale-95 shadow-md shadow-pink-200 flex-shrink-0">
                 {checkingPincode ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'CHECK'}
               </button>
             </div>
@@ -513,9 +477,9 @@ const ProductDisplayPage = () => {
             <p className="font-bold text-gray-800 text-sm mb-3">Why you'll love this</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {LOVE_FEATURES.map(({ icon: Icon, label }) => (
-                <div key={label} className="bg-emerald-50 border border-emerald-100 rounded-xl px-2 py-3 flex flex-col items-center text-center gap-1.5 min-w-0">
+                <div key={label} className="bg-pink-50 border border-pink-100 rounded-xl px-2 py-3 flex flex-col items-center text-center gap-1.5 min-w-0">
                   <div className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0">
-                    <Icon className="text-emerald-600" size={14} />
+                    <Icon className="text-pink-500" size={14} />
                   </div>
                   <p className="text-[11px] font-semibold text-gray-700 leading-tight w-full">{label}</p>
                 </div>
@@ -541,13 +505,13 @@ const ProductDisplayPage = () => {
           {/* Mobile description — desktop has its own copy in the left column */}
           <div className="mt-5 grid gap-3 lg:hidden">
             {data.description && (
-              <div className="bg-white border border-emerald-100 rounded-2xl p-4">
+              <div className="bg-white border border-pink-100 rounded-2xl p-4">
                 <p className="font-bold text-gray-800 mb-1">Description</p>
                 <p className="text-sm text-gray-600 leading-relaxed">{data.description}</p>
               </div>
             )}
             {data?.more_details && Object.keys(data.more_details).map((el, i) => (
-              <div key={i} className="bg-white border border-emerald-100 rounded-2xl p-4">
+              <div key={i} className="bg-white border border-pink-100 rounded-2xl p-4">
                 <p className="font-bold text-gray-800 mb-1">{el}</p>
                 <p className="text-sm text-gray-600">{data.more_details[el]}</p>
               </div>
@@ -560,36 +524,75 @@ const ProductDisplayPage = () => {
           <div className="fixed inset-0 z-[999] bg-black flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
               <p className="text-white/70 text-sm font-medium">{image + 1} / {data.image.length}</p>
-              <button onClick={() => setLightboxOpen(false)} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
-                <FaXmark className="text-white" size={18} />
-              </button>
+              <div className="flex items-center gap-3">
+                {zoom > 1 && (
+                  <button onClick={() => { setZoom(1); setPanX(0); setPanY(0) }} className="text-white/60 text-xs border border-white/30 rounded-full px-3 py-1">Reset</button>
+                )}
+                <button onClick={() => { setLightboxOpen(false); setZoom(1); setPanX(0); setPanY(0) }} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                  <FaXmark className="text-white" size={18} />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-hidden flex items-center justify-center relative">
-              {data.image.length > 1 && (
-                <button onClick={() => setImage(prev => (prev - 1 + data.image.length) % data.image.length)}
+            <div className="flex-1 overflow-hidden flex items-center justify-center relative"
+              onTouchStart={e => {
+                if (e.touches.length === 2) { isPinching.current = true; lastTouches.current = e.touches }
+                else if (e.touches.length === 1) {
+                  isPinching.current = false
+                  if (zoom > 1) panStart.current = { x: e.touches[0].clientX - panX, y: e.touches[0].clientY - panY }
+                  const now = Date.now()
+                  if (now - lastTap.current < 300) {
+                    setZoom(z => { if (z > 1) { setPanX(0); setPanY(0); return 1 } return 2.5 })
+                  }
+                  lastTap.current = now
+                }
+              }}
+              onTouchMove={e => {
+                e.preventDefault()
+                if (e.touches.length === 2 && isPinching.current && lastTouches.current) {
+                  const prev = lastTouches.current
+                  const prevDist = Math.hypot(prev[0].clientX - prev[1].clientX, prev[0].clientY - prev[1].clientY)
+                  const currDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+                  setZoom(z => Math.min(5, Math.max(1, z * (currDist / prevDist))))
+                  lastTouches.current = e.touches
+                } else if (e.touches.length === 1 && zoom > 1 && panStart.current) {
+                  setPanX(e.touches[0].clientX - panStart.current.x)
+                  setPanY(e.touches[0].clientY - panStart.current.y)
+                }
+              }}
+              onTouchEnd={() => { lastTouches.current = null; panStart.current = null }}
+              style={{ touchAction: 'none' }}
+            >
+              {data.image.length > 1 && zoom === 1 && (
+                <button onClick={() => { setImage(prev => (prev - 1 + data.image.length) % data.image.length); setZoom(1); setPanX(0); setPanY(0) }}
                   className="absolute left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center z-10">
                   <FaAngleLeft className="text-white" size={20} />
                 </button>
               )}
-              <img key={'lb-' + image} src={data.image[image]} alt={data.name} className="select-none" draggable={false}
+              <img key={'lb-' + image} src={data.image[image]} alt={data.name} className="select-none pointer-events-none" draggable={false}
                 style={{
                   maxWidth: '100%', maxHeight: 'calc(100vh - 140px)', objectFit: 'contain',
-                  animation: 'fadeSlideIn 0.25s ease',
+                  transform: `scale(${zoom}) translate(${panX / zoom}px, ${panY / zoom}px)`,
+                  transformOrigin: 'center center',
+                  transition: isPinching.current ? 'none' : 'transform 0.15s ease',
+                  animation: zoom === 1 ? 'fadeSlideIn 0.25s ease' : 'none',
                 }}
               />
-              {data.image.length > 1 && (
-                <button onClick={() => setImage(prev => (prev + 1) % data.image.length)}
+              {data.image.length > 1 && zoom === 1 && (
+                <button onClick={() => { setImage(prev => (prev + 1) % data.image.length); setZoom(1); setPanX(0); setPanY(0) }}
                   className="absolute right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center z-10">
                   <FaAngleRight className="text-white" size={20} />
                 </button>
+              )}
+              {zoom === 1 && (
+                <p className="absolute bottom-3 left-0 right-0 text-center text-white/40 text-xs">Pinch or double-tap to zoom</p>
               )}
             </div>
 
             {data.image.length > 1 && (
               <div className="flex-shrink-0 flex justify-center gap-2 p-4 overflow-x-auto scrollbar-none">
                 {data.image.map((img, i) => (
-                  <button key={i} onClick={() => setImage(i)}
+                  <button key={i} onClick={() => { setImage(i); setZoom(1); setPanX(0); setPanY(0) }}
                     className={`w-14 h-14 min-w-14 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${i === image ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-90'}`}>
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -598,132 +601,6 @@ const ProductDisplayPage = () => {
             )}
           </div>
         )}
-
-        {/* ============ RATINGS & REVIEWS ============ */}
-        <div id="reviews-section" className="col-span-1 lg:col-span-2 mt-8 scroll-mt-4">
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-7 shadow-sm">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-5">Ratings &amp; Reviews</h2>
-
-            {reviewsLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : totalReviews === 0 ? (
-              <div className="text-center py-10">
-                <FaCommentDots className="text-gray-300 mx-auto mb-3" size={32} />
-                <p className="text-gray-500 font-medium">No reviews yet</p>
-                <p className="text-sm text-gray-400 mt-1">Be the first to share your experience with this product</p>
-              </div>
-            ) : (
-              <>
-                {/* Summary: score + stars (left) and bar breakdown (right) */}
-                <div className="grid sm:grid-cols-[auto,1fr] gap-6 sm:gap-10 pb-6 border-b border-gray-100">
-                  <div className="flex flex-col items-start sm:items-center justify-center sm:w-40 flex-shrink-0">
-                    <p className="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-none">
-                      {Number(data.avgRating || 0).toFixed(1)}<span className="text-xl text-gray-400 font-semibold">/5</span>
-                    </p>
-                    <div className="flex gap-0.5 mt-2">
-                      {[1, 2, 3, 4, 5].map(s => (
-                        s <= Math.round(data.avgRating || 0)
-                          ? <FaStar key={s} size={18} className="text-yellow-400" />
-                          : <FaRegStar key={s} size={18} className="text-gray-300" />
-                      ))}
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2 flex items-center gap-1">
-                      <FaCheckCircle className="text-emerald-500" size={12} />
-                      {totalReviews} Verified Rating{totalReviews !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-2 justify-center min-w-0">
-                    {[5, 4, 3, 2, 1].map(star => {
-                      const count = ratingDist[star] || 0
-                      const pct = Math.round((count / maxDistCount) * 100)
-                      const sharePct = totalReviews ? Math.round((count / totalReviews) * 100) : 0
-                      return (
-                        <div key={star} className="flex items-center gap-2 text-sm">
-                          <span className="flex items-center gap-1 w-10 flex-shrink-0 text-gray-700 font-medium">
-                            {star} <FaStar size={11} className="text-yellow-400" />
-                          </span>
-                          <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden min-w-0">
-                            <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="w-20 flex-shrink-0 text-right text-gray-500 text-xs">{count} ({sharePct}%)</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Sort control */}
-                <div className="flex items-center justify-between gap-3 flex-wrap mt-5 mb-3">
-                  <p className="text-sm font-semibold text-gray-700">{totalReviews} Review{totalReviews !== 1 ? 's' : ''}</p>
-                  <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full p-1">
-                    {[
-                      { key: 'recent', label: 'Recent' },
-                      { key: 'highest', label: 'Highest' },
-                      { key: 'lowest', label: 'Lowest' },
-                    ].map(opt => (
-                      <button
-                        key={opt.key}
-                        onClick={() => setReviewSort(opt.key)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-all ${reviewSort === opt.key ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Individual review cards */}
-                <div className="grid gap-4 mt-4">
-                  {sortedReviews.map((r, i) => {
-                    const reviewerName = r.userId?.name || r.name || r.userName || 'Anonymous Buyer'
-                    const reviewText = r.comment || r.review || r.text || ''
-                    const reviewDate = r.createdAt || r.date
-                    return (
-                      <div key={r._id || i} className="border border-gray-100 rounded-xl p-4">
-                        <div className="flex items-start justify-between gap-3 flex-wrap">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                              <FaUserCircle className="text-emerald-600" size={20} />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-gray-800 truncate">{reviewerName}</p>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <div className="flex gap-0.5">
-                                  {[1, 2, 3, 4, 5].map(s => (
-                                    s <= Math.round(r.rating || 0)
-                                      ? <FaStar key={s} size={11} className="text-yellow-400" />
-                                      : <FaRegStar key={s} size={11} className="text-gray-300" />
-                                  ))}
-                                </div>
-                                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
-                                  <FaCheckCircle size={9} /> Verified Purchase
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          {reviewDate && (
-                            <span className="text-xs text-gray-400 flex-shrink-0">
-                              {new Date(reviewDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </span>
-                          )}
-                        </div>
-                        {reviewText && (
-                          <p className="text-sm text-gray-600 leading-relaxed mt-3">{reviewText}</p>
-                        )}
-                        <button className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-emerald-600 font-medium mt-3 transition-colors">
-                          <FaThumbsUp size={11} /> Helpful{r.helpfulCount ? ` (${r.helpfulCount})` : ''}
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
 
         {data?._id && (
           <div className="col-span-1 lg:col-span-2 mt-8">
