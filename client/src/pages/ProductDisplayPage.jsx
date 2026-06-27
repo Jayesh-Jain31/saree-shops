@@ -392,7 +392,7 @@ const ProductDisplayPage = () => {
             <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
 
             {data._id && displayStock !== 0 && (
-              <div className="mt-4 w-60 sm:w-56">
+              <div className="mt-4 w-48 sm:w-56">
                 <AddToCartButton data={data} />
               </div>
             )}
@@ -420,20 +420,6 @@ const ProductDisplayPage = () => {
               <span className="truncate">Cash on Delivery</span>
             </span>
           </div>
-
-          {/* Trust badges — moved here, right under the In Stock status row */}
-          <div className="mt-3 grid grid-cols-2 gap-2 w-full">
-            {TRUST_BADGES.map(({ icon: Icon, label, sub, bg, ic }) => (
-              <div key={label} className={`${bg} rounded-xl px-2.5 py-2.5 flex items-center gap-2 min-w-0 w-full`}>
-                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                  <Icon className={ic} size={14} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] sm:text-xs font-bold text-gray-800 leading-tight truncate">{label}</p>
-                  <p className="text-[9px] sm:text-[10px] text-gray-500 truncate">{sub}</p>
-                </div>
-              </div>
-            ))}
           </div>
 
           {displayStock > 0 && displayStock <= 5 && (
@@ -536,6 +522,21 @@ const ProductDisplayPage = () => {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Trust badges — single grid, 2-up always (reads fine on mobile and desktop) */}
+          <div className="mt-5 grid grid-cols-2 gap-2 w-full">
+            {TRUST_BADGES.map(({ icon: Icon, label, sub, bg, ic }) => (
+              <div key={label} className={`${bg} rounded-xl px-2.5 py-2.5 flex items-center gap-2 min-w-0 w-full`}>
+                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Icon className={ic} size={14} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-800 leading-tight truncate">{label}</p>
+                  <p className="text-[9px] sm:text-[10px] text-gray-500 truncate">{sub}</p>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Mobile description — desktop has its own copy in the left column */}
