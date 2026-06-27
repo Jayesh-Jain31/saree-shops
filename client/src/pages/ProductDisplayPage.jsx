@@ -536,7 +536,7 @@ const ProductDisplayPage = () => {
               </div>
             ))}
           </div>
-        </div>
+        
 
         {/* Lightbox */}
         {lightboxOpen && (
