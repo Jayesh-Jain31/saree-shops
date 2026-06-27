@@ -204,21 +204,32 @@ const ProductDisplayPage = () => {
         {/* ============ LEFT: IMAGES ============ */}
         <div className="w-full min-w-0 px-4 sm:px-6 lg:px-0">
           <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full max-w-[560px] mx-auto">
-            <div className="w-full max-w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
-              <img
-                key={image}
-                src={data.image[image]}
-                alt={data.name}
-                className="cursor-zoom-in"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  maxWidth: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                }}
-                onClick={() => setLightboxOpen(true)}
-              />
+            <div
+              className="relative w-full max-w-full bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden"
+              style={{ paddingTop: '125%' }}
+            >
+              {data.image?.[image] ? (
+                <img
+                  key={image}
+                  src={data.image[image]}
+                  alt={data.name}
+                  className="cursor-zoom-in"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                  onClick={() => setLightboxOpen(true)}
+                />
+              ) : (
+                <div className="absolute inset-0 animate-pulse bg-gray-100" />
+              )}
             </div>
 
             {data.discount > 0 && !selectedVariant && (
