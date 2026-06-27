@@ -392,7 +392,7 @@ const ProductDisplayPage = () => {
             <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
 
             {data._id && displayStock !== 0 && (
-              <div className="mt-4 w-48 sm:w-56">
+              <div className="mt-4 w-30 sm:w-56">
                 <AddToCartButton data={data} />
               </div>
             )}
@@ -743,4 +743,4 @@ const ProductDisplayPage = () => {
   )
 }
 
-export default ProductDisplayPage
+export default ProductDisplayPage 
