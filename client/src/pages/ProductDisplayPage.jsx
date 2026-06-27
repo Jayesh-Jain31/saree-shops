@@ -202,8 +202,8 @@ const ProductDisplayPage = () => {
       <section className="container mx-auto px-4 pb-10 pt-2 grid lg:grid-cols-2 lg:gap-10 max-w-full overflow-x-hidden">
 
         {/* Left: Images */}
-      <div className="lg:sticky lg:top-4 lg:self-start w-full max-w-full min-w-0">
-         <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-[90%] mx-auto">
+      <div className="lg:sticky lg:top-4 lg:self-start w-full min-w-0 px-3 sm:px-0">
+         <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full mx-auto">
             <div className="w-full max-w-full aspect-[4/5] sm:aspect-[3/4] max-h-[70vh] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
               <img
                 key={image}
@@ -251,7 +251,7 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
-          <div className="relative mt-3">
+          <div className="relative mt-3 w-full">
             <div ref={imageContainer} className="flex gap-2 w-full overflow-x-auto scrollbar-none scroll-smooth">
               {data.image.map((img, index) => (
                 <button key={img + index} onClick={() => setImage(index)} className={`w-16 h-16 sm:w-20 sm:h-20 min-w-16 sm:min-w-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${index === image ? 'border-pink-500 ring-2 ring-pink-200 scale-105' : 'border-gray-200 opacity-80 hover:opacity-100'}`}>
