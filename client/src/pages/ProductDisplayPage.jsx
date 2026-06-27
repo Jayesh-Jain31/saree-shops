@@ -203,8 +203,8 @@ const ProductDisplayPage = () => {
 
         {/* ============ LEFT: IMAGES ============ */}
         <div className="w-full px-4 sm:px-6 lg:px-0">
-          <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full mx-auto">
-            <div className="w-full max-w-full aspect-[4/5] sm:aspect-[3/4] max-h-[70vh] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
+          <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full max-w-[560px] mx-auto">
+            <div className="w-full max-w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
               <img
                 key={image}
                 src={data.image[image]}
