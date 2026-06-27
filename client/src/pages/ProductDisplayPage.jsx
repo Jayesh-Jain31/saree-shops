@@ -199,18 +199,25 @@ const ProductDisplayPage = () => {
         <BackButton />
       </div>
 
-      <section className="container mx-auto px-4 pb-10 pt-2 grid lg:grid-cols-2 lg:gap-10 max-w-full overflow-x-hidden">
+      <section className="container mx-auto px-4 pb-10 pt-2 grid lg:grid-cols-2 lg:gap-10 max-w-full overflow-x-hidden min-w-0">
 
         {/* ============ LEFT: IMAGES ============ */}
-        <div className="w-full px-4 sm:px-6 lg:px-0">
+        <div className="w-full min-w-0 px-4 sm:px-6 lg:px-0">
           <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full max-w-[560px] mx-auto">
             <div className="w-full max-w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
               <img
                 key={image}
                 src={data.image[image]}
                 alt={data.name}
-                className="w-full h-full object-cover cursor-zoom-in transition-all duration-500"
-                style={{ animation: 'fadeSlideIn 0.4s ease' }}
+                className="cursor-zoom-in transition-all duration-500"
+                style={{
+                  animation: 'fadeSlideIn 0.4s ease',
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
                 onClick={() => setLightboxOpen(true)}
               />
             </div>
@@ -284,7 +291,7 @@ const ProductDisplayPage = () => {
         </div>
 
         {/* ============ RIGHT: INFO ============ */}
-        <div className="pt-3 lg:pt-0 w-full">
+        <div className="pt-3 lg:pt-0 w-full min-w-0">
 
           {isBestseller && (
             <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[11px] font-bold px-2.5 py-1 rounded-md mb-2">Bestseller</span>
