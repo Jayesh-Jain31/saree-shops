@@ -203,7 +203,7 @@ const ProductDisplayPage = () => {
 
         {/* Left: Images */}
       <div className="lg:sticky lg:top-4 lg:self-start w-full max-w-full min-w-0">
-          <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full max-w-[92%] mx-auto">
+         <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-[90%] mx-auto">
             <div className="w-full max-w-full aspect-[4/5] sm:aspect-[3/4] max-h-[70vh] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
               <img
                 key={image}
