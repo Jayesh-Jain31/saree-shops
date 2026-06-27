@@ -221,14 +221,15 @@ const ProductDisplayPage = () => {
         {/* ============ LEFT: IMAGES ============ */}
         <div className="w-full min-w-0 px-4 sm:px-6 lg:px-0">
           <div className="relative bg-white rounded-3xl border border-emerald-100 overflow-hidden shadow-lg w-full max-w-[560px] mx-auto">
-            <div className="w-full max-w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gradient-to-br from-emerald-50 via-white to-slate-50 overflow-hidden">
+            <div
+              className="w-full max-w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gradient-to-br from-emerald-50 via-white to-slate-50 overflow-hidden"
+            >
               <img
                 key={image}
                 src={data.image[image]}
                 alt={data.name}
-                className="cursor-zoom-in transition-all duration-500"
+                className="cursor-zoom-in"
                 style={{
-                  animation: 'fadeSlideIn 0.4s ease',
                   width: '100%',
                   height: '100%',
                   maxWidth: '100%',
