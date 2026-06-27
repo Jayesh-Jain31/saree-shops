@@ -201,9 +201,9 @@ const ProductDisplayPage = () => {
 
       <section className="container mx-auto px-4 pb-10 pt-2 grid lg:grid-cols-2 lg:gap-10 max-w-full overflow-x-hidden">
 
-        {/* Left: Images */}
-      <div className="lg:sticky lg:top-4 lg:self-start w-full min-w-0 px-4 lg:px-0">
-         <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full mx-auto">
+        {/* ============ LEFT: IMAGES ============ */}
+        <div className="w-full">
+          <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full mx-auto">
             <div className="w-full max-w-full aspect-[4/5] sm:aspect-[3/4] max-h-[70vh] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
               <img
                 key={image}
@@ -251,6 +251,7 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
+          {/* Thumbnails */}
           <div className="relative mt-3 w-full">
             <div ref={imageContainer} className="flex gap-2 w-full overflow-x-auto scrollbar-none scroll-smooth">
               {data.image.map((img, index) => (
@@ -265,6 +266,7 @@ const ProductDisplayPage = () => {
             </div>
           </div>
 
+          {/* Description — desktop only (mobile version repeated lower) */}
           <div className="my-6 hidden lg:grid gap-4">
             {data.description && (
               <div className="bg-white border border-pink-100 rounded-2xl p-5">
@@ -281,8 +283,8 @@ const ProductDisplayPage = () => {
           </div>
         </div>
 
-        {/* Right: Info */}
-        <div className="pt-3 lg:pt-0">
+        {/* ============ RIGHT: INFO ============ */}
+        <div className="pt-3 lg:pt-0 w-full">
 
           {isBestseller && (
             <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[11px] font-bold px-2.5 py-1 rounded-md mb-2">Bestseller</span>
@@ -297,7 +299,7 @@ const ProductDisplayPage = () => {
                 <span>{Number(data.avgRating).toFixed(1)}</span><FaStar size={10} />
               </div>
               <div className="flex gap-0.5">
-                {[1,2,3,4,5].map(s => (
+                {[1, 2, 3, 4, 5].map(s => (
                   s <= Math.round(data.avgRating)
                     ? <FaStar key={s} size={16} className="text-yellow-400" />
                     : <FaRegStar key={s} size={16} className="text-gray-300" />
@@ -334,7 +336,7 @@ const ProductDisplayPage = () => {
             </div>
           )}
 
-          {/* Price + Add to Cart under price */}
+          {/* Price + Add to Cart */}
           <div className="mt-5">
             <div className="flex items-baseline gap-3 flex-wrap">
               <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">{DisplayPriceInRupees(displayPrice)}</span>
@@ -348,14 +350,14 @@ const ProductDisplayPage = () => {
             <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
 
             {displayStock !== 0 && (
-              <div className="mt-4 max-w-xs">
+              <div className="mt-4 w-full sm:max-w-xs">
                 <AddToCartButton data={data} />
               </div>
             )}
           </div>
 
-          {/* Status row (grid, never overflows) */}
-          <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] sm:text-sm">
+          {/* Status row — stacks on very small screens, 3-up from sm */}
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] sm:text-sm">
             {displayStock > 0 ? (
               <span className="flex items-center gap-1 text-green-700 font-semibold min-w-0">
                 <FaCheckCircle className="text-green-500 flex-shrink-0" size={13} />
@@ -408,7 +410,7 @@ const ProductDisplayPage = () => {
           {/* Offers */}
           <div className="mt-5 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm flex-shrink-0">
                 <FaTag className="text-green-600" size={14} />
               </div>
               <p className="font-bold text-gray-800">Offers for you</p>
@@ -432,7 +434,7 @@ const ProductDisplayPage = () => {
                 maxLength={6} placeholder="Enter 6-digit pincode"
                 className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition" />
               <button onClick={handleCheckPincode} disabled={checkingPincode}
-                className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-5 py-3 rounded-xl text-sm font-bold disabled:opacity-60 transition-all active:scale-95 shadow-md shadow-pink-200">
+                className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-5 py-3 rounded-xl text-sm font-bold disabled:opacity-60 transition-all active:scale-95 shadow-md shadow-pink-200 flex-shrink-0">
                 {checkingPincode ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'CHECK'}
               </button>
             </div>
@@ -444,7 +446,7 @@ const ProductDisplayPage = () => {
                 {pincodeResult.available ? (
                   <>
                     <FaCheckCircle className="text-green-500 mt-0.5 flex-shrink-0" size={15} />
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-semibold text-green-700">Delivery Available!</p>
                       <p className="text-xs text-green-600 mt-0.5">Estimated: <strong>{pincodeResult.estimatedTime}</strong>{pincodeResult.zoneName ? ` · ${pincodeResult.zoneName}` : ''}</p>
                       <p className="text-xs text-green-600">{pincodeResult.deliveryCharge === 0 ? '🎉 Free Delivery' : `Delivery: ₹${pincodeResult.deliveryCharge}`}</p>
@@ -453,7 +455,7 @@ const ProductDisplayPage = () => {
                 ) : (
                   <>
                     <FaTimesCircle className="text-blue-500 mt-0.5 flex-shrink-0" size={15} />
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-semibold text-blue-700">Standard Delivery</p>
                       <p className="text-xs text-blue-600 mt-0.5">Estimated: <strong>{outsideDeliveryTime}</strong></p>
                       <p className="text-xs text-blue-500">Charges may apply</p>
@@ -464,64 +466,37 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
-              {/* Why you'll love this */}
+          {/* Why you'll love this — single, responsive grid (2-up mobile, 4-up from sm) */}
           <div className="mt-5 w-full">
-            <p className="font-bold text-gray-800 text-sm mb-3">Why you'll love this</p>
-            <div className="flex gap-2 w-full">
-              {LOVE_FEATURES.map(({ icon: Icon, label }) => (
-                <div key={label} className="flex-1 min-w-0 bg-pink-50 border border-pink-100 rounded-xl px-2 py-3 flex flex-col items-center text-center gap-1.5">
-                  <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0">
-                    <Icon className="text-pink-500" size={12} />
-                  </div>
-                  <p className="text-[10px] sm:text-xs font-semibold text-gray-700 leading-tight truncate w-full">{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Trust badges */}
-          <div className="mt-5 grid grid-cols-2 gap-2 w-full">
-            {TRUST_BADGES.map(({ icon: Icon, label, sub, bg, ic }) => (
-              <div key={label} className={`${bg} rounded-xl px-2.5 py-2 flex items-center gap-2 min-w-0 w-full`}>
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                  <Icon className={ic} size={13} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-bold text-gray-800 leading-tight truncate">{label}</p>
-                  <p className="text-[9px] text-gray-500 truncate">{sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
             <p className="font-bold text-gray-800 text-sm mb-3">Why you'll love this</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {LOVE_FEATURES.map(({ icon: Icon, label }) => (
-                <div key={label} className="bg-pink-50 border border-pink-100 rounded-xl px-3 py-3 flex flex-col items-center text-center gap-1.5">
-                  <div className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center">
+                <div key={label} className="bg-pink-50 border border-pink-100 rounded-xl px-2 py-3 flex flex-col items-center text-center gap-1.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0">
                     <Icon className="text-pink-500" size={14} />
                   </div>
-                  <p className="text-[11px] font-semibold text-gray-700 leading-tight">{label}</p>
+                  <p className="text-[11px] font-semibold text-gray-700 leading-tight w-full">{label}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Trust badges */}
-          <div className="mt-5 grid grid-cols-2 gap-2">
+          {/* Trust badges — single grid, 2-up always (reads fine on mobile and desktop) */}
+          <div className="mt-5 grid grid-cols-2 gap-2 w-full">
             {TRUST_BADGES.map(({ icon: Icon, label, sub, bg, ic }) => (
-              <div key={label} className={`${bg} rounded-xl px-3 py-2.5 flex items-center gap-2 min-w-0`}>
+              <div key={label} className={`${bg} rounded-xl px-2.5 py-2.5 flex items-center gap-2 min-w-0 w-full`}>
                 <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                  <Icon className={ic} size={15} />
+                  <Icon className={ic} size={14} />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-gray-800 leading-tight truncate">{label}</p>
-                  <p className="text-[10px] text-gray-500 truncate">{sub}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-800 leading-tight truncate">{label}</p>
+                  <p className="text-[9px] sm:text-[10px] text-gray-500 truncate">{sub}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Mobile description */}
+          {/* Mobile description — desktop has its own copy in the left column */}
           <div className="mt-5 grid gap-3 lg:hidden">
             {data.description && (
               <div className="bg-white border border-pink-100 rounded-2xl p-4">
@@ -536,9 +511,9 @@ const ProductDisplayPage = () => {
               </div>
             ))}
           </div>
-        
+        </div>
 
-        {/* Lightbox */}
+        {/* ============ LIGHTBOX ============ */}
         {lightboxOpen && (
           <div className="fixed inset-0 z-[999] bg-black flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
