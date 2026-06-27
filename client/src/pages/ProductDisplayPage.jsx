@@ -202,9 +202,9 @@ const ProductDisplayPage = () => {
       <section className="container mx-auto px-4 pb-10 pt-2 grid lg:grid-cols-2 lg:gap-10 max-w-full overflow-x-hidden">
 
         {/* Left: Images */}
-        <div className="lg:sticky lg:top-4 lg:self-start">
-          <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-sm">
-            <div className="w-full aspect-[4/5] sm:aspect-[3/4] max-h-[70vh] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
+      <div className="lg:sticky lg:top-4 lg:self-start w-full max-w-full min-w-0">
+          <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-sm w-full max-w-full">
+            <div className="w-full max-w-full aspect-[4/5] sm:aspect-[3/4] max-h-[70vh] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
               <img
                 key={image}
                 src={data.image[image]}
