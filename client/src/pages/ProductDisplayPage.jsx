@@ -224,20 +224,24 @@ const ProductDisplayPage = () => {
             <div
               className="w-full max-w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gradient-to-br from-emerald-50 via-white to-slate-50 overflow-hidden"
             >
-              <img
-                key={image}
-                src={data.image[image]}
-                alt={data.name}
-                className="cursor-zoom-in"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  maxWidth: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                }}
-                onClick={() => setLightboxOpen(true)}
-              />
+              {data.image?.[image] ? (
+                <img
+                  key={image}
+                  src={data.image[image]}
+                  alt={data.name}
+                  className="cursor-zoom-in"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                  onClick={() => setLightboxOpen(true)}
+                />
+              ) : (
+                <div className="w-full h-full animate-pulse bg-gray-100" />
+              )}
             </div>
 
             {data.discount > 0 && !selectedVariant && (
