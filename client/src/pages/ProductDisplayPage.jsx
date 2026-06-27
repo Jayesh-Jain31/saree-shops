@@ -389,7 +389,7 @@ const ProductDisplayPage = () => {
             <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
 
             {displayStock !== 0 && (
-              <div className="mt-4 w-35 sm:w-60">
+              <div className="mt-4 w-70 sm:w-56">
                 <AddToCartButton data={data} />
               </div>
             )}
