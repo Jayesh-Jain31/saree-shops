@@ -215,7 +215,8 @@ const ProductDisplayPage = () => {
         <div className="w-full min-w-0 px-4 sm:px-6 lg:px-0">
           <div className="relative bg-white rounded-3xl border border-emerald-100 overflow-hidden shadow-lg w-full max-w-[560px] mx-auto">
             <div
-              className="relative w-full max-w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gradient-to-br from-emerald-50 via-white to-slate-50 overflow-hidden"
+              className="relative w-full max-w-full bg-gradient-to-br from-emerald-50 via-white to-slate-50 overflow-hidden"
+              style={{ paddingTop: '125%' }}
             >
               {data.image?.[image] ? (
                 <img
@@ -225,7 +226,10 @@ const ProductDisplayPage = () => {
                   className="cursor-zoom-in"
                   style={{
                     position: 'absolute',
-                    inset: 0,
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
@@ -234,7 +238,7 @@ const ProductDisplayPage = () => {
                   onClick={() => setLightboxOpen(true)}
                 />
               ) : (
-                <div className="w-full h-full animate-pulse bg-gray-100" />
+                <div className="absolute inset-0 animate-pulse bg-gray-100" />
               )}
             </div>
 
@@ -313,7 +317,11 @@ const ProductDisplayPage = () => {
             <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[11px] font-bold px-2.5 py-1 rounded-md mb-2">Bestseller</span>
           )}
 
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{data.name}</h1>
+          {data._id ? (
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{data.name}</h1>
+          ) : (
+            <div className="h-7 sm:h-8 w-3/4 rounded-md bg-gray-100 animate-pulse" />
+          )}
           {data.unit && <p className="text-sm text-gray-500 mt-1">{data.unit}</p>}
 
           {data.avgRating > 0 && (
@@ -367,17 +375,23 @@ const ProductDisplayPage = () => {
           {/* Price + Add to Cart */}
           <div className="mt-5">
             <div className="flex items-baseline gap-3 flex-wrap">
-              <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">{DisplayPriceInRupees(displayPrice)}</span>
-              {!selectedVariant && data.discount > 0 && (
+              {data._id ? (
                 <>
-                  <span className="text-base text-gray-400 line-through">{DisplayPriceInRupees(data.price)}</span>
-                  <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md">{data.discount}% OFF</span>
+                  <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">{DisplayPriceInRupees(displayPrice)}</span>
+                  {!selectedVariant && data.discount > 0 && (
+                    <>
+                      <span className="text-base text-gray-400 line-through">{DisplayPriceInRupees(data.price)}</span>
+                      <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md">{data.discount}% OFF</span>
+                    </>
+                  )}
                 </>
+              ) : (
+                <span className="h-9 w-32 rounded-md bg-gray-100 animate-pulse" />
               )}
             </div>
             <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
 
-            {displayStock !== 0 && (
+            {data._id && displayStock !== 0 && (
               <div className="mt-4 w-48 sm:w-56">
                 <AddToCartButton data={data} />
               </div>
