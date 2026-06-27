@@ -1,6 +1,5 @@
-
 import React, { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import BackButton from '../components/BackButton'
 import ProductQA from '../components/ProductQA'
 import YouMayAlsoLike from '../components/YouMayAlsoLike'
@@ -24,7 +23,6 @@ import AddToCartButton from '../components/AddToCartButton'
 import toast from 'react-hot-toast'
 import { useSelector } from 'react-redux'
 
-/* ---------- helpers ---------- */
 const addToRecentlyViewed = (product) => {
   try {
     const stored = JSON.parse(localStorage.getItem('recentlyViewed') || '[]')
@@ -53,7 +51,6 @@ const LOVE_FEATURES = [
 
 const ProductDisplayPage = () => {
   const params = useParams()
-  const navigate = useNavigate()
   const productId = params?.product?.split('-')?.slice(-1)[0]
 
   const [data, setData] = useState({ name: '', image: [] })
@@ -76,7 +73,6 @@ const ProductDisplayPage = () => {
 
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [, setRatingDist] = useState({})
-
   const [viewingCount, setViewingCount] = useState(0)
 
   const [pincode, setPincode] = useState('')
@@ -84,8 +80,6 @@ const ProductDisplayPage = () => {
   const [checkingPincode, setCheckingPincode] = useState(false)
   const siteSettings = useSelector(state => state.site.settings)
   const outsideDeliveryTime = siteSettings?.outside_delivery_time || '3-4 days'
-
-  const [buyingNow, setBuyingNow] = useState(false)
 
   const fetchProductDetails = async () => {
     try {
@@ -122,8 +116,7 @@ const ProductDisplayPage = () => {
   useEffect(() => {
     if (!productId) return
     const seed = productId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-    const base = 8 + (seed % 16)
-    setViewingCount(base)
+    setViewingCount(8 + (seed % 16))
     const iv = setInterval(() => {
       setViewingCount(prev => {
         const delta = Math.random() > 0.5 ? 1 : -1
@@ -195,24 +188,6 @@ const ProductDisplayPage = () => {
     setShowShareMenu(false)
   }
 
-  const handleBuyNow = async () => {
-    if (!user?._id) {
-      toast('Please login to continue', { icon: '🔒' })
-      navigate('/login')
-      return
-    }
-    if (displayStock === 0) { toast.error('Out of stock'); return }
-    try {
-      setBuyingNow(true)
-      await Axios({ ...SummaryApi.addTocart, data: { productId: data._id } })
-      navigate('/checkout')
-    } catch (e) {
-      AxiosToastError(e)
-    } finally {
-      setBuyingNow(false)
-    }
-  }
-
   const displayPrice = selectedVariant ? selectedVariant.price : pricewithDiscount(data.price, data.discount)
   const displayStock = selectedVariant ? selectedVariant.stock : data.stock
   const variants = data.variants || []
@@ -220,25 +195,16 @@ const ProductDisplayPage = () => {
 
   return (
     <>
-      {/* Top promo banner */}
-      <div className="w-full bg-gradient-to-r from-pink-50 via-pink-100 to-pink-50 border-b border-pink-200">
-        <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-4 sm:gap-8 text-[11px] sm:text-xs font-semibold text-pink-700">
-          <span className="flex items-center gap-1.5"><FaTruck className="text-pink-600" /> Free delivery above ₹999</span>
-          <span className="hidden sm:inline text-pink-300">|</span>
-          <span className="flex items-center gap-1.5"><FaFire className="text-pink-600" /> Same day dispatch</span>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 pt-3">
+      <div className="container mx-auto px-4 pt-3 max-w-full overflow-x-hidden">
         <BackButton />
       </div>
 
-      <section className="container mx-auto px-4 pb-32 lg:pb-12 pt-2 grid lg:grid-cols-2 lg:gap-10">
+      <section className="container mx-auto px-4 pb-10 pt-2 grid lg:grid-cols-2 lg:gap-10 max-w-full overflow-x-hidden">
 
         {/* Left: Images */}
         <div className="lg:sticky lg:top-4 lg:self-start">
           <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-sm">
-            <div className="w-full aspect-[3/4] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
+            <div className="w-full aspect-[4/5] sm:aspect-[3/4] max-h-[70vh] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
               <img
                 key={image}
                 src={data.image[image]}
@@ -256,38 +222,23 @@ const ProductDisplayPage = () => {
             )}
 
             <div className="absolute top-3 right-3 flex gap-2 z-10">
-              <button
-                onClick={toggleWishlist}
-                className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border border-pink-100"
-              >
-                {wishlisted
-                  ? <FaHeart className="text-pink-500" size={17} />
-                  : <FaRegHeart className="text-pink-400" size={17} />}
+              <button onClick={toggleWishlist} className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border border-pink-100">
+                {wishlisted ? <FaHeart className="text-pink-500" size={17} /> : <FaRegHeart className="text-pink-400" size={17} />}
               </button>
               <div className="relative">
-                <button
-                  onClick={() => setShowShareMenu(!showShareMenu)}
-                  className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border border-pink-100"
-                >
+                <button onClick={() => setShowShareMenu(!showShareMenu)} className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border border-pink-100">
                   <FaShareAlt className="text-pink-500" size={14} />
                 </button>
                 {showShareMenu && (
                   <div className="absolute right-0 top-12 bg-white border border-gray-100 rounded-xl shadow-xl p-2 z-20 w-44">
-                    <button onClick={() => handleShare('whatsapp')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-pink-50 rounded-lg text-sm">
-                      <FaWhatsapp className="text-green-500" size={16} /> WhatsApp
-                    </button>
-                    <button onClick={() => handleShare('copy')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-pink-50 rounded-lg text-sm">
-                      <FaLink className="text-gray-500" size={14} /> Copy Link
-                    </button>
+                    <button onClick={() => handleShare('whatsapp')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-pink-50 rounded-lg text-sm"><FaWhatsapp className="text-green-500" size={16} /> WhatsApp</button>
+                    <button onClick={() => handleShare('copy')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-pink-50 rounded-lg text-sm"><FaLink className="text-gray-500" size={14} /> Copy Link</button>
                   </div>
                 )}
               </div>
             </div>
 
-            <button
-              onClick={() => setLightboxOpen(true)}
-              className="absolute bottom-3 right-3 bg-white/95 backdrop-blur text-gray-700 text-xs font-semibold pl-2.5 pr-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 hover:bg-white active:scale-95 transition"
-            >
+            <button onClick={() => setLightboxOpen(true)} className="absolute bottom-3 right-3 bg-white/95 backdrop-blur text-gray-700 text-xs font-semibold pl-2.5 pr-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 hover:bg-white active:scale-95 transition">
               <FaExpand size={11} /> View full screen
             </button>
 
@@ -300,17 +251,10 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
-          {/* Thumbnails */}
           <div className="relative mt-3">
             <div ref={imageContainer} className="flex gap-2 w-full overflow-x-auto scrollbar-none scroll-smooth">
               {data.image.map((img, index) => (
-                <button
-                  key={img + index}
-                  onClick={() => setImage(index)}
-                  className={`w-16 h-16 sm:w-20 sm:h-20 min-w-16 sm:min-w-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
-                    index === image ? 'border-pink-500 ring-2 ring-pink-200 scale-105' : 'border-gray-200 opacity-80 hover:opacity-100'
-                  }`}
-                >
+                <button key={img + index} onClick={() => setImage(index)} className={`w-16 h-16 sm:w-20 sm:h-20 min-w-16 sm:min-w-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${index === image ? 'border-pink-500 ring-2 ring-pink-200 scale-105' : 'border-gray-200 opacity-80 hover:opacity-100'}`}>
                   <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
@@ -321,7 +265,6 @@ const ProductDisplayPage = () => {
             </div>
           </div>
 
-          {/* Desktop description */}
           <div className="my-6 hidden lg:grid gap-4">
             {data.description && (
               <div className="bg-white border border-pink-100 rounded-2xl p-5">
@@ -342,19 +285,16 @@ const ProductDisplayPage = () => {
         <div className="pt-3 lg:pt-0">
 
           {isBestseller && (
-            <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[11px] font-bold px-2.5 py-1 rounded-md mb-2">
-              Bestseller
-            </span>
+            <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[11px] font-bold px-2.5 py-1 rounded-md mb-2">Bestseller</span>
           )}
 
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{data.name}</h1>
           {data.unit && <p className="text-sm text-gray-500 mt-1">{data.unit}</p>}
 
           {data.avgRating > 0 && (
-            <div className="mt-3 flex items-center gap-3">
+            <div className="mt-3 flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
-                <span>{Number(data.avgRating).toFixed(1)}</span>
-                <FaStar size={10} />
+                <span>{Number(data.avgRating).toFixed(1)}</span><FaStar size={10} />
               </div>
               <div className="flex gap-0.5">
                 {[1,2,3,4,5].map(s => (
@@ -363,16 +303,14 @@ const ProductDisplayPage = () => {
                     : <FaRegStar key={s} size={16} className="text-gray-300" />
                 ))}
               </div>
-              <span className="text-sm text-gray-500 font-medium">
-                {data.reviewCount} rating{data.reviewCount !== 1 ? 's' : ''}
-              </span>
+              <span className="text-sm text-gray-500 font-medium">{data.reviewCount} rating{data.reviewCount !== 1 ? 's' : ''}</span>
             </div>
           )}
 
           {viewingCount > 0 && (
-            <div className="flex items-center gap-1.5 mt-3 bg-pink-50 border border-pink-200 rounded-full px-3 py-1.5 w-fit">
-              <span className="inline-block w-2 h-2 rounded-full bg-pink-500 animate-pulse" />
-              <p className="text-xs text-pink-700 font-semibold">{viewingCount} people are viewing this right now</p>
+            <div className="flex items-center gap-1.5 mt-3 bg-pink-50 border border-pink-200 rounded-full px-3 py-1.5 w-fit max-w-full">
+              <span className="inline-block w-2 h-2 rounded-full bg-pink-500 animate-pulse flex-shrink-0" />
+              <p className="text-xs text-pink-700 font-semibold truncate">{viewingCount} people are viewing this right now</p>
             </div>
           )}
 
@@ -385,17 +323,8 @@ const ProductDisplayPage = () => {
               </div>
               <div className="flex gap-2 flex-wrap">
                 {variants.map((v, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedVariant(selectedVariant?.name === v.name ? null : v)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all ${
-                      selectedVariant?.name === v.name
-                        ? 'border-pink-500 bg-pink-500 text-white shadow-md shadow-pink-200'
-                        : 'border-gray-200 text-gray-700 bg-white hover:border-pink-300'
-                    }`}
-                  >
-                    {v.name}
-                    {v.price ? <span className="ml-1 text-xs opacity-80">₹{v.price}</span> : ''}
+                  <button key={i} onClick={() => setSelectedVariant(selectedVariant?.name === v.name ? null : v)} className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all ${selectedVariant?.name === v.name ? 'border-pink-500 bg-pink-500 text-white shadow-md shadow-pink-200' : 'border-gray-200 text-gray-700 bg-white hover:border-pink-300'}`}>
+                    {v.name}{v.price ? <span className="ml-1 text-xs opacity-80">₹{v.price}</span> : ''}
                   </button>
                 ))}
               </div>
@@ -405,12 +334,10 @@ const ProductDisplayPage = () => {
             </div>
           )}
 
-          {/* Price */}
+          {/* Price + Add to Cart under price */}
           <div className="mt-5">
             <div className="flex items-baseline gap-3 flex-wrap">
-              <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">
-                {DisplayPriceInRupees(displayPrice)}
-              </span>
+              <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">{DisplayPriceInRupees(displayPrice)}</span>
               {!selectedVariant && data.discount > 0 && (
                 <>
                   <span className="text-base text-gray-400 line-through">{DisplayPriceInRupees(data.price)}</span>
@@ -419,19 +346,35 @@ const ProductDisplayPage = () => {
               )}
             </div>
             <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
+
+            {displayStock !== 0 && (
+              <div className="mt-4 max-w-xs">
+                <AddToCartButton data={data} />
+              </div>
+            )}
           </div>
 
-          {/* Quick status row */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          {/* Status row (grid, never overflows) */}
+          <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] sm:text-sm">
             {displayStock > 0 ? (
-              <span className="flex items-center gap-1.5 text-green-700 font-semibold"><FaCheckCircle className="text-green-500" /> In Stock</span>
+              <span className="flex items-center gap-1 text-green-700 font-semibold min-w-0">
+                <FaCheckCircle className="text-green-500 flex-shrink-0" size={13} />
+                <span className="truncate">In Stock</span>
+              </span>
             ) : (
-              <span className="flex items-center gap-1.5 text-red-600 font-semibold"><FaTimesCircle className="text-red-500" /> Out of Stock</span>
+              <span className="flex items-center gap-1 text-red-600 font-semibold min-w-0">
+                <FaTimesCircle className="text-red-500 flex-shrink-0" size={13} />
+                <span className="truncate">Out of Stock</span>
+              </span>
             )}
-            <span className="hidden sm:inline text-gray-300">|</span>
-            <span className="flex items-center gap-1.5 text-gray-700"><FaTruck className="text-green-500" /> Delivery in 2 - 3 days</span>
-            <span className="hidden sm:inline text-gray-300">|</span>
-            <span className="flex items-center gap-1.5 text-gray-700">💵 Cash on Delivery</span>
+            <span className="flex items-center gap-1 text-gray-700 min-w-0">
+              <FaTruck className="text-green-500 flex-shrink-0" size={13} />
+              <span className="truncate">2-3 days delivery</span>
+            </span>
+            <span className="flex items-center gap-1 text-gray-700 min-w-0">
+              <FaMedal className="text-yellow-500 flex-shrink-0" size={13} />
+              <span className="truncate">Cash on Delivery</span>
+            </span>
           </div>
 
           {displayStock > 0 && displayStock <= 5 && (
@@ -455,17 +398,14 @@ const ProductDisplayPage = () => {
                   <p className="text-green-700 text-sm font-semibold">You're on the notify list! We'll let you know.</p>
                 </div>
               ) : (
-                <button
-                  onClick={handleNotifyMe}
-                  className="flex items-center gap-2 bg-white border-2 border-red-300 hover:border-red-500 hover:bg-red-50 text-red-600 font-bold text-sm px-4 py-2 rounded-xl transition-all active:scale-95 w-full justify-center"
-                >
+                <button onClick={handleNotifyMe} className="flex items-center gap-2 bg-white border-2 border-red-300 hover:border-red-500 hover:bg-red-50 text-red-600 font-bold text-sm px-4 py-2 rounded-xl transition-all active:scale-95 w-full justify-center">
                   <FaBell size={14} className="animate-bounce" /> Notify Me When Back in Stock
                 </button>
               )}
             </div>
           )}
 
-          {/* Offers card */}
+          {/* Offers */}
           <div className="mt-5 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
@@ -486,27 +426,18 @@ const ProductDisplayPage = () => {
               <p className="font-bold text-gray-800 text-sm">Check Delivery for Your Area</p>
             </div>
             <div className="flex gap-2">
-              <input
-                type="number"
-                value={pincode}
+              <input type="number" value={pincode}
                 onChange={e => { setPincode(e.target.value); setPincodeResult(null) }}
                 onKeyDown={e => e.key === 'Enter' && handleCheckPincode()}
-                maxLength={6}
-                placeholder="Enter 6-digit pincode"
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition"
-              />
-              <button
-                onClick={handleCheckPincode}
-                disabled={checkingPincode}
-                className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-5 py-3 rounded-xl text-sm font-bold disabled:opacity-60 transition-all active:scale-95 shadow-md shadow-pink-200"
-              >
+                maxLength={6} placeholder="Enter 6-digit pincode"
+                className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition" />
+              <button onClick={handleCheckPincode} disabled={checkingPincode}
+                className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-5 py-3 rounded-xl text-sm font-bold disabled:opacity-60 transition-all active:scale-95 shadow-md shadow-pink-200">
                 {checkingPincode ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'CHECK'}
               </button>
             </div>
             {!pincodeResult && (
-              <p className="mt-2 text-xs text-gray-400 flex items-center gap-1">
-                <FaShieldAlt size={10} /> Enter pincode to check delivery availability
-              </p>
+              <p className="mt-2 text-xs text-gray-400 flex items-center gap-1"><FaShieldAlt size={10} /> Enter pincode to check delivery availability</p>
             )}
             {pincodeResult && (
               <div className={`mt-3 rounded-xl px-4 py-3 flex items-start gap-2.5 ${pincodeResult.available ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'}`}>
@@ -515,13 +446,8 @@ const ProductDisplayPage = () => {
                     <FaCheckCircle className="text-green-500 mt-0.5 flex-shrink-0" size={15} />
                     <div>
                       <p className="text-sm font-semibold text-green-700">Delivery Available!</p>
-                      <p className="text-xs text-green-600 mt-0.5">
-                        Estimated: <strong>{pincodeResult.estimatedTime}</strong>
-                        {pincodeResult.zoneName ? ` · ${pincodeResult.zoneName}` : ''}
-                      </p>
-                      <p className="text-xs text-green-600">
-                        {pincodeResult.deliveryCharge === 0 ? '🎉 Free Delivery' : `Delivery: ₹${pincodeResult.deliveryCharge}`}
-                      </p>
+                      <p className="text-xs text-green-600 mt-0.5">Estimated: <strong>{pincodeResult.estimatedTime}</strong>{pincodeResult.zoneName ? ` · ${pincodeResult.zoneName}` : ''}</p>
+                      <p className="text-xs text-green-600">{pincodeResult.deliveryCharge === 0 ? '🎉 Free Delivery' : `Delivery: ₹${pincodeResult.deliveryCharge}`}</p>
                     </div>
                   </>
                 ) : (
@@ -556,13 +482,13 @@ const ProductDisplayPage = () => {
           {/* Trust badges */}
           <div className="mt-5 grid grid-cols-2 gap-2">
             {TRUST_BADGES.map(({ icon: Icon, label, sub, bg, ic }) => (
-              <div key={label} className={`${bg} rounded-xl px-3 py-2.5 flex items-center gap-2`}>
+              <div key={label} className={`${bg} rounded-xl px-3 py-2.5 flex items-center gap-2 min-w-0`}>
                 <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
                   <Icon className={ic} size={15} />
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-800 leading-tight">{label}</p>
-                  <p className="text-[10px] text-gray-500">{sub}</p>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-gray-800 leading-tight truncate">{label}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{sub}</p>
                 </div>
               </div>
             ))}
@@ -583,22 +509,6 @@ const ProductDisplayPage = () => {
               </div>
             ))}
           </div>
-
-          {/* Desktop CTAs */}
-          {displayStock !== 0 && (
-            <div className="hidden lg:flex items-center gap-3 mt-6">
-              <div className="flex-1">
-                <AddToCartButton data={data} />
-              </div>
-              <button
-                onClick={handleBuyNow}
-                disabled={buyingNow}
-                className="flex-1 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-pink-200 active:scale-95 transition disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                <FaBolt /> {buyingNow ? 'Processing…' : 'BUY NOW'}
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Lightbox */}
@@ -610,17 +520,13 @@ const ProductDisplayPage = () => {
                 {zoom > 1 && (
                   <button onClick={() => { setZoom(1); setPanX(0); setPanY(0) }} className="text-white/60 text-xs border border-white/30 rounded-full px-3 py-1">Reset</button>
                 )}
-                <button
-                  onClick={() => { setLightboxOpen(false); setZoom(1); setPanX(0); setPanY(0) }}
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                >
+                <button onClick={() => { setLightboxOpen(false); setZoom(1); setPanX(0); setPanY(0) }} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
                   <FaXmark className="text-white" size={18} />
                 </button>
               </div>
             </div>
 
-            <div
-              className="flex-1 overflow-hidden flex items-center justify-center relative"
+            <div className="flex-1 overflow-hidden flex items-center justify-center relative"
               onTouchStart={e => {
                 if (e.touches.length === 2) { isPinching.current = true; lastTouches.current = e.touches }
                 else if (e.touches.length === 1) {
@@ -639,8 +545,7 @@ const ProductDisplayPage = () => {
                   const prev = lastTouches.current
                   const prevDist = Math.hypot(prev[0].clientX - prev[1].clientX, prev[0].clientY - prev[1].clientY)
                   const currDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
-                  const ratio = currDist / prevDist
-                  setZoom(z => Math.min(5, Math.max(1, z * ratio)))
+                  setZoom(z => Math.min(5, Math.max(1, z * (currDist / prevDist))))
                   lastTouches.current = e.touches
                 } else if (e.touches.length === 1 && zoom > 1 && panStart.current) {
                   setPanX(e.touches[0].clientX - panStart.current.x)
@@ -651,36 +556,23 @@ const ProductDisplayPage = () => {
               style={{ touchAction: 'none' }}
             >
               {data.image.length > 1 && zoom === 1 && (
-                <button
-                  onClick={() => { setImage(prev => (prev - 1 + data.image.length) % data.image.length); setZoom(1); setPanX(0); setPanY(0) }}
-                  className="absolute left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center z-10"
-                >
+                <button onClick={() => { setImage(prev => (prev - 1 + data.image.length) % data.image.length); setZoom(1); setPanX(0); setPanY(0) }}
+                  className="absolute left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center z-10">
                   <FaAngleLeft className="text-white" size={20} />
                 </button>
               )}
-
-              <img
-                key={'lb-' + image}
-                src={data.image[image]}
-                alt={data.name}
-                className="select-none pointer-events-none"
-                draggable={false}
+              <img key={'lb-' + image} src={data.image[image]} alt={data.name} className="select-none pointer-events-none" draggable={false}
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: 'calc(100vh - 140px)',
-                  objectFit: 'contain',
+                  maxWidth: '100%', maxHeight: 'calc(100vh - 140px)', objectFit: 'contain',
                   transform: `scale(${zoom}) translate(${panX / zoom}px, ${panY / zoom}px)`,
                   transformOrigin: 'center center',
                   transition: isPinching.current ? 'none' : 'transform 0.15s ease',
                   animation: zoom === 1 ? 'fadeSlideIn 0.25s ease' : 'none',
                 }}
               />
-
               {data.image.length > 1 && zoom === 1 && (
-                <button
-                  onClick={() => { setImage(prev => (prev + 1) % data.image.length); setZoom(1); setPanX(0); setPanY(0) }}
-                  className="absolute right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center z-10"
-                >
+                <button onClick={() => { setImage(prev => (prev + 1) % data.image.length); setZoom(1); setPanX(0); setPanY(0) }}
+                  className="absolute right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center z-10">
                   <FaAngleRight className="text-white" size={20} />
                 </button>
               )}
@@ -692,13 +584,8 @@ const ProductDisplayPage = () => {
             {data.image.length > 1 && (
               <div className="flex-shrink-0 flex justify-center gap-2 p-4 overflow-x-auto scrollbar-none">
                 {data.image.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { setImage(i); setZoom(1); setPanX(0); setPanY(0) }}
-                    className={`w-14 h-14 min-w-14 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                      i === image ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-90'
-                    }`}
-                  >
+                  <button key={i} onClick={() => { setImage(i); setZoom(1); setPanX(0); setPanY(0) }}
+                    className={`w-14 h-14 min-w-14 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${i === image ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-90'}`}>
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
@@ -721,58 +608,6 @@ const ProductDisplayPage = () => {
           </div>
         )}
       </section>
-
-      {/* Sticky bottom bar (mobile) */}
-      {displayStock !== 0 && (
-        <div
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-pink-100 shadow-[0_-4px_20px_rgba(236,72,153,0.08)] px-3 py-2.5"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex-shrink-0 pr-1">
-              <p className="text-lg font-extrabold text-gray-900 leading-none">{DisplayPriceInRupees(displayPrice)}</p>
-              {!selectedVariant && data.discount > 0 && (
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-[11px] text-gray-400 line-through">{DisplayPriceInRupees(data.price)}</span>
-                  <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1 rounded">{data.discount}% OFF</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <AddToCartButton data={data} compact />
-            </div>
-
-            <button
-              onClick={handleBuyNow}
-              disabled={buyingNow}
-              className="flex-1 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-extrabold text-sm py-3 rounded-xl shadow-md shadow-pink-200 active:scale-95 transition disabled:opacity-60 flex items-center justify-center gap-1.5"
-            >
-              <FaBolt size={13} /> {buyingNow ? '...' : 'BUY NOW'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {displayStock === 0 && (
-        <div
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-red-100 px-3 py-3"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}
-        >
-          {notifyRequested ? (
-            <div className="bg-green-50 border border-green-200 text-green-700 text-sm font-semibold text-center py-3 rounded-xl">
-              ✓ You're on the notify list
-            </div>
-          ) : (
-            <button
-              onClick={handleNotifyMe}
-              className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition"
-            >
-              <FaBell /> Notify When Back in Stock
-            </button>
-          )}
-        </div>
-      )}
     </>
   )
 }
