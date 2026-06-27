@@ -464,8 +464,35 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
-          {/* Why you'll love this */}
-          <div className="mt-5">
+              {/* Why you'll love this */}
+          <div className="mt-5 w-full">
+            <p className="font-bold text-gray-800 text-sm mb-3">Why you'll love this</p>
+            <div className="flex gap-2 w-full">
+              {LOVE_FEATURES.map(({ icon: Icon, label }) => (
+                <div key={label} className="flex-1 min-w-0 bg-pink-50 border border-pink-100 rounded-xl px-2 py-3 flex flex-col items-center text-center gap-1.5">
+                  <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0">
+                    <Icon className="text-pink-500" size={12} />
+                  </div>
+                  <p className="text-[10px] sm:text-xs font-semibold text-gray-700 leading-tight truncate w-full">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Trust badges */}
+          <div className="mt-5 grid grid-cols-2 gap-2 w-full">
+            {TRUST_BADGES.map(({ icon: Icon, label, sub, bg, ic }) => (
+              <div key={label} className={`${bg} rounded-xl px-2.5 py-2 flex items-center gap-2 min-w-0 w-full`}>
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Icon className={ic} size={13} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-bold text-gray-800 leading-tight truncate">{label}</p>
+                  <p className="text-[9px] text-gray-500 truncate">{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
             <p className="font-bold text-gray-800 text-sm mb-3">Why you'll love this</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {LOVE_FEATURES.map(({ icon: Icon, label }) => (
