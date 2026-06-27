@@ -420,7 +420,6 @@ const ProductDisplayPage = () => {
               <span className="truncate">Cash on Delivery</span>
             </span>
           </div>
-          </div>
 
           {displayStock > 0 && displayStock <= 5 && (
             <div className="mt-4 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-sm text-orange-700 font-medium flex items-center gap-2">
