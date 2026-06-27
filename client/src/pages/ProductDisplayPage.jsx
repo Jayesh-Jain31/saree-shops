@@ -202,7 +202,7 @@ const ProductDisplayPage = () => {
       <section className="container mx-auto px-4 pb-10 pt-2 grid lg:grid-cols-2 lg:gap-10 max-w-full overflow-x-hidden">
 
         {/* ============ LEFT: IMAGES ============ */}
-        <div className="w-full">
+        <div className="w-full px-4 sm:px-6 lg:px-0">
           <div className="relative bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-lg w-full mx-auto">
             <div className="w-full max-w-full aspect-[4/5] sm:aspect-[3/4] max-h-[70vh] bg-gradient-to-br from-pink-50 via-white to-orange-50 overflow-hidden">
               <img
@@ -350,7 +350,7 @@ const ProductDisplayPage = () => {
             <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
 
             {displayStock !== 0 && (
-              <div className="mt-4 w-full sm:max-w-xs">
+              <div className="mt-4 w-48 sm:w-56">
                 <AddToCartButton data={data} />
               </div>
             )}
