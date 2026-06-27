@@ -59,13 +59,6 @@ const ProductDisplayPage = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [, setLoading] = useState(false)
   const imageContainer = useRef()
-  const [zoom, setZoom] = useState(1)
-  const [panX, setPanX] = useState(0)
-  const [panY, setPanY] = useState(0)
-  const lastTap = useRef(0)
-  const lastTouches = useRef(null)
-  const isPinching = useRef(false)
-  const panStart = useRef(null)
   const user = useSelector(state => state?.user)
 
   const [wishlisted, setWishlisted] = useState(false)
@@ -553,75 +546,36 @@ const ProductDisplayPage = () => {
           <div className="fixed inset-0 z-[999] bg-black flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
               <p className="text-white/70 text-sm font-medium">{image + 1} / {data.image.length}</p>
-              <div className="flex items-center gap-3">
-                {zoom > 1 && (
-                  <button onClick={() => { setZoom(1); setPanX(0); setPanY(0) }} className="text-white/60 text-xs border border-white/30 rounded-full px-3 py-1">Reset</button>
-                )}
-                <button onClick={() => { setLightboxOpen(false); setZoom(1); setPanX(0); setPanY(0) }} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
-                  <FaXmark className="text-white" size={18} />
-                </button>
-              </div>
+              <button onClick={() => setLightboxOpen(false)} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                <FaXmark className="text-white" size={18} />
+              </button>
             </div>
 
-            <div className="flex-1 overflow-hidden flex items-center justify-center relative"
-              onTouchStart={e => {
-                if (e.touches.length === 2) { isPinching.current = true; lastTouches.current = e.touches }
-                else if (e.touches.length === 1) {
-                  isPinching.current = false
-                  if (zoom > 1) panStart.current = { x: e.touches[0].clientX - panX, y: e.touches[0].clientY - panY }
-                  const now = Date.now()
-                  if (now - lastTap.current < 300) {
-                    setZoom(z => { if (z > 1) { setPanX(0); setPanY(0); return 1 } return 2.5 })
-                  }
-                  lastTap.current = now
-                }
-              }}
-              onTouchMove={e => {
-                e.preventDefault()
-                if (e.touches.length === 2 && isPinching.current && lastTouches.current) {
-                  const prev = lastTouches.current
-                  const prevDist = Math.hypot(prev[0].clientX - prev[1].clientX, prev[0].clientY - prev[1].clientY)
-                  const currDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
-                  setZoom(z => Math.min(5, Math.max(1, z * (currDist / prevDist))))
-                  lastTouches.current = e.touches
-                } else if (e.touches.length === 1 && zoom > 1 && panStart.current) {
-                  setPanX(e.touches[0].clientX - panStart.current.x)
-                  setPanY(e.touches[0].clientY - panStart.current.y)
-                }
-              }}
-              onTouchEnd={() => { lastTouches.current = null; panStart.current = null }}
-              style={{ touchAction: 'none' }}
-            >
-              {data.image.length > 1 && zoom === 1 && (
-                <button onClick={() => { setImage(prev => (prev - 1 + data.image.length) % data.image.length); setZoom(1); setPanX(0); setPanY(0) }}
+            <div className="flex-1 overflow-hidden flex items-center justify-center relative">
+              {data.image.length > 1 && (
+                <button onClick={() => setImage(prev => (prev - 1 + data.image.length) % data.image.length)}
                   className="absolute left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center z-10">
                   <FaAngleLeft className="text-white" size={20} />
                 </button>
               )}
-              <img key={'lb-' + image} src={data.image[image]} alt={data.name} className="select-none pointer-events-none" draggable={false}
+              <img key={'lb-' + image} src={data.image[image]} alt={data.name} className="select-none" draggable={false}
                 style={{
                   maxWidth: '100%', maxHeight: 'calc(100vh - 140px)', objectFit: 'contain',
-                  transform: `scale(${zoom}) translate(${panX / zoom}px, ${panY / zoom}px)`,
-                  transformOrigin: 'center center',
-                  transition: isPinching.current ? 'none' : 'transform 0.15s ease',
-                  animation: zoom === 1 ? 'fadeSlideIn 0.25s ease' : 'none',
+                  animation: 'fadeSlideIn 0.25s ease',
                 }}
               />
-              {data.image.length > 1 && zoom === 1 && (
-                <button onClick={() => { setImage(prev => (prev + 1) % data.image.length); setZoom(1); setPanX(0); setPanY(0) }}
+              {data.image.length > 1 && (
+                <button onClick={() => setImage(prev => (prev + 1) % data.image.length)}
                   className="absolute right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center z-10">
                   <FaAngleRight className="text-white" size={20} />
                 </button>
-              )}
-              {zoom === 1 && (
-                <p className="absolute bottom-3 left-0 right-0 text-center text-white/40 text-xs">Pinch or double-tap to zoom</p>
               )}
             </div>
 
             {data.image.length > 1 && (
               <div className="flex-shrink-0 flex justify-center gap-2 p-4 overflow-x-auto scrollbar-none">
                 {data.image.map((img, i) => (
-                  <button key={i} onClick={() => { setImage(i); setZoom(1); setPanX(0); setPanY(0) }}
+                  <button key={i} onClick={() => setImage(i)}
                     className={`w-14 h-14 min-w-14 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${i === image ? 'border-white scale-110' : 'border-white/30 opacity-60 hover:opacity-90'}`}>
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
