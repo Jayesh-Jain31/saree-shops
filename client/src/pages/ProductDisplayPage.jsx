@@ -219,7 +219,7 @@ const ProductDisplayPage = () => {
       <section className="container mx-auto px-4 pb-10 pt-2 grid lg:grid-cols-2 lg:gap-10 max-w-full overflow-x-hidden min-w-0">
 
         {/* ============ LEFT: IMAGES ============ */}
-        <div className="w-full min-w-0 px-4 sm:px-6 lg:px-0">
+        <div className="w-full min-w-0 px-2 sm:px-3 lg:px-0">
           <div className="relative bg-white rounded-3xl border border-emerald-100 overflow-hidden shadow-lg w-full max-w-[560px] mx-auto">
             <div
               className="relative w-full max-w-full bg-gradient-to-br from-emerald-50 via-white to-slate-50 overflow-hidden"
