@@ -23,7 +23,7 @@ const YouMayAlsoLike = ({ productId }) => {
   if (loading) return (
     <div className='mt-8 px-2'>
       <h2 className='text-lg font-bold text-gray-800 mb-4'>You May Also Like</h2>
-      <div className='flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200'>
+      <div className="flex gap-3 overflow-x-auto scrollbar-none scroll-smooth pb-2">
         {[...Array(4)].map((_, i) => (
           <div key={i} className='min-w-[160px] w-[160px] rounded-2xl bg-gray-100 animate-pulse h-52 flex-shrink-0' />
         ))}
@@ -38,7 +38,7 @@ const YouMayAlsoLike = ({ productId }) => {
       <h2 className='text-lg font-bold text-gray-800 mb-4 flex items-center gap-2'>
         <span className='text-primary'>✨</span> You May Also Like
       </h2>
-      <div className='flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200'>
+      <div className="flex gap-3 overflow-x-auto scrollbar-none scroll-smooth pb-2">
         {products.map(product => {
           const discountedPrice = pricewithDiscount(product.price, product.discount)
           const hasDiscount = product.discount > 0
@@ -47,10 +47,10 @@ const YouMayAlsoLike = ({ productId }) => {
             <Link
               key={product._id}
               to={`/product/${slug}-${product._id}`}
-              className='min-w-[158px] w-[158px] flex-shrink-0 bg-white rounded-2xl border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden'
+              className="w-44 sm:w-48 lg:w-56 flex-shrink-0 bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden" bg-white rounded-2xl border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden'
             >
               <div className='relative'>
-                <div className='w-full h-36 bg-gray-50 overflow-hidden'>
+                <div className="w-full aspect-[3/4] bg-gray-50 overflow-hidden">
                   <img
                     src={product.image?.[0]}
                     alt={product.name}
@@ -75,9 +75,9 @@ const YouMayAlsoLike = ({ productId }) => {
                   <p className='text-sm font-black text-gray-800'>{DisplayPriceInRupees(discountedPrice)}</p>
                   {hasDiscount && <p className='text-[10px] text-gray-400 line-through'>{DisplayPriceInRupees(product.price)}</p>}
                 </div>
-                <div className='mt-2' onClick={e => e.preventDefault()}>
-                  <AddToCartButton data={product} />
-                </div>
+               <div className="w-20 mt-2" onClick={e => e.preventDefault()}>
+  <AddToCartButton data={product} />
+</div>
               </div>
             </Link>
           )
