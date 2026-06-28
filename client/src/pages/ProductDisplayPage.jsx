@@ -388,11 +388,11 @@ const ProductDisplayPage = () => {
             </div>
             <p className="text-xs text-gray-500 mt-1">Inclusive of all taxes</p>
 
-            {displayStock !== 0 && (
-              <div className="mt-4 w-48 sm:w-56">
-                <AddToCartButton data={data} />
-              </div>
-            )}
+          {displayStock !== 0 && (
+  <div className="mt-4 w-48 sm:w-56">
+    <AddToCartButton data={data} compact />
+  </div>
+)}
           </div>
 
           {/* Status row — stacks on very small screens, 3-up from sm */}
