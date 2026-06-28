@@ -47,7 +47,7 @@ const YouMayAlsoLike = ({ productId }) => {
             <Link
               key={product._id}
               to={`/product/${slug}-${product._id}`}
-              className="w-44 sm:w-48 lg:w-56 flex-shrink-0 bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden" bg-white rounded-2xl border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden'
+              className="w-44 sm:w-48 lg:w-56 flex-shrink-0 bg-white rounded-2xl border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden"
             >
               <div className='relative'>
                 <div className="w-full aspect-[3/4] bg-gray-50 overflow-hidden">
