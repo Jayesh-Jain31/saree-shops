@@ -8,7 +8,7 @@ import SummaryApi from '../common/SummaryApi';
 import Axios from '../utils/Axios';
 import AxiosToastError from '../utils/AxiosToastError';
 import { FaAngleRight, FaAngleLeft, FaXmark, FaExpand } from 'react-icons/fa6';
-import { FaHeart, FaRegHeart, FaWhatsapp, FaLink, FaShareAlt, FaTruck, FaShieldAlt, FaMedal, FaBolt, FaMapMarkerAlt, FaCheckCircle, FaTimesCircle, FaPalette, FaStar, FaRegStar, FaCheckDouble, FaTag, FaFire, FaLeaf, FaFeatherAlt, FaMagic, FaGem, FaUserCircle, FaThumbsUp, FaCommentDots } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaWhatsapp, FaLink, FaShareAlt, FaTruck, FaShieldAlt, FaMedal, FaBolt, FaMapMarkerAlt, FaCheckCircle, FaTimesCircle, FaStar, FaRegStar, FaCheckDouble, FaTag, FaFire, FaLeaf, FaFeatherAlt, FaMagic, FaGem, FaCommentDots } from 'react-icons/fa';
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees';
 import { pricewithDiscount } from '../utils/PriceWithDiscount';
 import AddToCartButton from '../components/AddToCartButton';
@@ -65,13 +65,9 @@ const ProductDisplayPage = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [notifyRequested, setNotifyRequested] = useState(false);
   
-  // ---------- FIXED VARIANT LOGIC ----------
-  // Track the INDEX of the selected variant instead of the object
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(null);
-  // Derive the actual variant object from the index
   const variants = data.variants || [];
   const selectedVariant = selectedVariantIndex !== null ? variants[selectedVariantIndex] : null;
-  // -----------------------------------------
 
   const [ratingDist, setRatingDist] = useState({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
   const [reviews, setReviews] = useState([]);
@@ -83,6 +79,10 @@ const ProductDisplayPage = () => {
   const [checkingPincode, setCheckingPincode] = useState(false);
   const siteSettings = useSelector(state => state.site.settings);
   const outsideDeliveryTime = siteSettings?.outside_delivery_time || '3-4 days';
+
+  const mainImageSrc = selectedVariant?.image 
+      ? selectedVariant.image 
+      : (data.image?.[image] || null);
 
   const fetchProductDetails = async () => {
     try {
@@ -143,8 +143,8 @@ const ProductDisplayPage = () => {
   }, [productId]);
 
   useEffect(() => {
-    // Reset variant selection when product changes
     setSelectedVariantIndex(null);
+    setImage(0);
     setRatingDist({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
     setReviews([]);
     fetchProductDetails();
@@ -218,12 +218,10 @@ const ProductDisplayPage = () => {
     }
   };
 
-  // Display price and stock based on selected variant (using derived `selectedVariant`)
   const displayPrice = selectedVariant ? selectedVariant.price : pricewithDiscount(data.price, data.discount);
-  const displayStock = selectedVariant ? selectedVariant.stock : data.stock;
+  const displayStock = selectedVariant ? (selectedVariant.stock ?? 0) : data.stock;
   const isBestseller = (data.reviewCount || 0) >= 1 || data.avgRating >= 4;
   const totalReviews = reviews.length;
-  const maxDistCount = Math.max(1, ...Object.values(ratingDist));
   const sortedReviews = [...reviews].sort((a, b) => {
     if (reviewSort === 'highest') return (b.rating || 0) - (a.rating || 0);
     if (reviewSort === 'lowest') return (a.rating || 0) - (b.rating || 0);
@@ -234,16 +232,15 @@ const ProductDisplayPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 font-sans bg-gradient-to-b from-rose-50/30 to-white">
       <BackButton />
 
-      {/* Main Product Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mt-4">
         
         {/* ============ LEFT: IMAGES ============ */}
         <div className="space-y-4">
           <div className="relative rounded-2xl overflow-hidden bg-white shadow-lg border border-rose-100/50 group">
-            {data.image?.[image] ? (
+            {mainImageSrc ? (
               <img 
-                src={data.image[image]} 
-                alt={data.name} 
+                src={mainImageSrc} 
+                alt={selectedVariant?.name || data.name} 
                 className="w-full h-auto aspect-square object-cover cursor-zoom-in transition-transform duration-700 group-hover:scale-105"
                 onClick={() => setLightboxOpen(true)}
               />
@@ -256,6 +253,12 @@ const ProductDisplayPage = () => {
             {data.discount > 0 && !selectedVariant && (
               <div className="absolute top-4 left-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg z-10">
                 {data.discount}% OFF
+              </div>
+            )}
+
+            {selectedVariant && (
+              <div className="absolute top-4 left-4 bg-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg z-10">
+                {selectedVariant.name || 'Variant'}
               </div>
             )}
 
@@ -292,7 +295,7 @@ const ProductDisplayPage = () => {
               <FaExpand className="text-xs" /> View full screen
             </button>
 
-            {data.image.length > 1 && (
+            {!selectedVariant?.image && data.image.length > 1 && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                 {data.image.map((_, i) => (
                   <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === image ? 'bg-white w-4' : 'bg-white/50'}`} />
@@ -301,13 +304,16 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
-          {data.image.length > 1 && (
+          {!selectedVariant?.image && data.image.length > 1 && (
             <div className="relative">
               <div ref={imageContainer} className="flex gap-3 overflow-x-auto pb-2 scroll-smooth no-scrollbar">
                 {data.image.map((img, index) => (
                   <button
                     key={index}
-                    onClick={() => setImage(index)}
+                    onClick={() => {
+                      if (selectedVariantIndex !== null) setSelectedVariantIndex(null);
+                      setImage(index);
+                    }}
                     className={`w-20 h-20 min-w-[80px] rounded-xl overflow-hidden border-2 transition-all duration-300 flex-shrink-0 ${index === image ? 'border-rose-500 ring-2 ring-rose-200 shadow-md' : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-rose-300'}`}
                   >
                     <img src={img} alt={`Thumbnail ${index}`} className="w-full h-full object-cover" />
@@ -325,6 +331,21 @@ const ProductDisplayPage = () => {
                 className="absolute right-0 top-1/2 -translate-y-1/2 -mr-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border border-rose-100 hover:bg-rose-50 transition-colors"
               >
                 <FaAngleRight className="text-gray-600 text-sm" />
+              </button>
+            </div>
+          )}
+
+          {selectedVariant?.image && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500">Variant Image:</span>
+              <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-rose-500 ring-2 ring-rose-200 shadow-md">
+                <img src={selectedVariant.image} alt={selectedVariant.name} className="w-full h-full object-cover" />
+              </div>
+              <button 
+                onClick={() => setSelectedVariantIndex(null)} 
+                className="text-xs text-rose-500 hover:text-rose-700 font-medium underline"
+              >
+                Clear variant
               </button>
             </div>
           )}
@@ -385,39 +406,73 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
-          {/* ---------- FIXED VARIANTS RENDER ---------- */}
+          {/* ============================================================
+              🛒  AMAZON-STYLE VARIANT CARDS (UPDATED) 
+              ============================================================ */}
           {variants.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700">Select Variant</span>
-                {selectedVariant && <span className="text-xs text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">— {selectedVariant.name || selectedVariant.variant || `Variant ${selectedVariantIndex + 1}`}</span>}
+                <span className="text-sm font-semibold text-gray-700">Select Variant:</span>
+                {selectedVariant && (
+                  <span className="text-xs text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full font-medium border border-rose-200">
+                    {selectedVariant.name || `Variant ${selectedVariantIndex + 1}`}
+                  </span>
+                )}
               </div>
-              <div className="flex flex-wrap gap-2">
+              
+              {/* Grid of variant cards (like Amazon) */}
+              <div className="flex flex-wrap gap-3">
                 {variants.map((v, index) => {
-                  // Check if this index is the selected one
                   const isActive = selectedVariantIndex === index;
                   return (
                     <button
                       key={index}
+                      type="button"
                       onClick={() => setSelectedVariantIndex(isActive ? null : index)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all duration-300 ${
+                      className={`group w-20 sm:w-24 p-1.5 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-1 ${
                         isActive 
-                          ? 'border-rose-500 bg-rose-500 text-white shadow-lg shadow-rose-200' 
-                          : 'border-gray-200 text-gray-700 bg-white hover:border-rose-300 hover:shadow-md'
+                          ? 'border-rose-500 bg-rose-50 shadow-md shadow-rose-200/50' 
+                          : 'border-gray-200 bg-white hover:border-rose-300 hover:shadow-sm'
                       }`}
                     >
-                      {v.name || v.variant || `Variant ${index + 1}`} 
-                      {v.price ? ` · ₹${v.price}` : ''}
+                      <div className="w-full aspect-square rounded-lg bg-gray-100 overflow-hidden">
+                        {v.image ? (
+                          <img 
+                            src={v.image} 
+                            alt={v.name} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-400 text-[10px] font-medium">
+                            No img
+                          </div>
+                        )}
+                      </div>
+                      <span className={`text-[11px] font-medium truncate w-full text-center px-0.5 leading-tight ${
+                        isActive ? 'text-rose-600' : 'text-gray-700'
+                      }`}>
+                        {v.name || `Variant ${index + 1}`}
+                      </span>
+                      {isActive && (
+                        <span className="text-[9px] font-bold text-rose-500 flex items-center gap-0.5">
+                          <FaCheckCircle size={9} /> Selected
+                        </span>
+                      )}
+                      {v.price && (
+                        <span className="text-[9px] text-gray-500 font-medium">₹{v.price}</span>
+                      )}
                     </button>
                   );
                 })}
               </div>
-              {selectedVariant && selectedVariant.stock !== undefined && selectedVariant.stock <= 5 && (
-                <p className="text-xs text-rose-500 font-medium">⚠️ Only {selectedVariant.stock} left in this variant</p>
+
+              {selectedVariant && selectedVariant.stock !== undefined && selectedVariant.stock <= 5 && selectedVariant.stock > 0 && (
+                <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                  ⚠️ Only {selectedVariant.stock} left in this variant
+                </p>
               )}
             </div>
           )}
-          {/* ------------------------------------------- */}
 
           <div className="flex items-end gap-3">
             <span className="text-3xl font-bold text-gray-800">{DisplayPriceInRupees(displayPrice)}</span>
@@ -447,7 +502,7 @@ const ProductDisplayPage = () => {
           </div>
 
           {displayStock > 0 ? (
-            <AddToCartButton data={{ ...data, price: displayPrice, stock: displayStock, variant: selectedVariant }} />
+            <AddToCartButton data={{ ...data, price: displayPrice, stock: displayStock, variant: selectedVariant, variantImage: selectedVariant?.image }} />
           ) : (
             <div className="space-y-3">
               <button disabled className="w-full py-3 bg-gray-200 text-gray-500 rounded-xl font-semibold cursor-not-allowed">
@@ -662,12 +717,13 @@ const ProductDisplayPage = () => {
       <RecentlyViewed />
       <ProductQA productId={data._id} />
 
+      {/* ============ LIGHTBOX ============ */}
       {lightboxOpen && (
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4" onClick={() => { setLightboxOpen(false); setZoom(1); setPanX(0); setPanY(0); }}>
           <div className="relative max-w-5xl w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
             <img 
-              src={data.image[image]} 
-              alt={data.name} 
+              src={mainImageSrc} 
+              alt={selectedVariant?.name || data.name} 
               className="max-h-full max-w-full object-contain transition-transform duration-200"
               style={{ transform: `scale(${zoom}) translate(${panX}px, ${panY}px)` }}
               onTouchStart={(e) => {
@@ -713,7 +769,7 @@ const ProductDisplayPage = () => {
               <FaXmark className="text-xl" />
             </button>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm bg-black/30 px-4 py-1.5 rounded-full">
-              {image + 1} / {data.image.length}
+              {selectedVariant?.name || 'Product'} Image
             </div>
             {zoom > 1 && (
               <button 
@@ -723,18 +779,6 @@ const ProductDisplayPage = () => {
                 Reset Zoom
               </button>
             )}
-            <button 
-              onClick={() => setImage((prev) => (prev - 1 + data.image.length) % data.image.length)} 
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
-            >
-              <FaAngleLeft className="text-xl" />
-            </button>
-            <button 
-              onClick={() => setImage((prev) => (prev + 1) % data.image.length)} 
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
-            >
-              <FaAngleRight className="text-xl" />
-            </button>
           </div>
         </div>
       )}
