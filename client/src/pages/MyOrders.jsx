@@ -50,12 +50,17 @@ const StatusBadge = ({ status }) => {
   )
 }
 
-const PaymentBadge = ({ status }) => {
+const PaymentBadge = ({ status, prepaidAmount, codAmount }) => {
   if (!status) return null
   const s = status.toUpperCase()
   if (s === 'CASH ON DELIVERY') return (
     <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200'>
       <FaMoneyBillWave size={10} /> COD
+    </span>
+  )
+  if (s === 'PARTIAL COD') return (
+    <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200'>
+      <FaCreditCard size={10} /> Partial COD
     </span>
   )
   return (
@@ -121,7 +126,7 @@ const OrderCard = ({ order, onClick }) => {
 
             <div className='flex flex-wrap items-center gap-1.5 mt-2'>
               <StatusBadge status={order?.orderStatus} />
-              <PaymentBadge status={order?.payment_status} />
+              <PaymentBadge status={order?.payment_status} prepaidAmount={order?.prepaidAmount} codAmount={order?.codAmount} />
             </div>
 
             <p className='text-base font-bold text-gray-800 mt-2'>
@@ -166,9 +171,11 @@ const MyOrders = () => {
       const matchesStatus = filterStatus === 'all' ||
         order?.orderStatus === filterStatus
 
+      const ps = order?.payment_status?.toUpperCase() || ''
       const matchesPayment = filterPayment === 'all' ||
-        (filterPayment === 'paid' && order?.payment_status?.toUpperCase() === 'PAID') ||
-        (filterPayment === 'cod' && order?.payment_status?.toUpperCase() === 'CASH ON DELIVERY')
+        (filterPayment === 'paid' && ps === 'PAID') ||
+        (filterPayment === 'cod' && ps === 'CASH ON DELIVERY') ||
+        (filterPayment === 'partial_cod' && ps === 'PARTIAL COD')
 
       return matchesSearch && matchesStatus && matchesPayment
     })
@@ -236,6 +243,7 @@ const MyOrders = () => {
                 >
                   <option value='all'>All Payment</option>
                   <option value='paid'>Online Paid</option>
+                  <option value='partial_cod'>Partial COD</option>
                   <option value='cod'>COD</option>
                 </select>
               </div>

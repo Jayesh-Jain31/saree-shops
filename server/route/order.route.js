@@ -7,6 +7,8 @@ import {
     cancelOrderController,
     razorpayOrderController,
     razorpayVerifyController,
+    partialCodOrderController,
+    partialCodVerifyController,
     updateOrderAddressController,
 } from '../controllers/order.controller.js'
 
@@ -20,5 +22,8 @@ orderRouter.put("/update-address/:id", auth, updateOrderAddressController)
 
 orderRouter.post('/razorpay', auth, razorpayOrderController)
 orderRouter.post('/razorpay-verify', auth, razorpayVerifyController)
+
+orderRouter.post('/partial-cod', auth, partialCodOrderController)
+orderRouter.post('/partial-cod-verify', auth, partialCodVerifyController)
 
 export default orderRouter

@@ -53,10 +53,22 @@ const StatusBadge = ({ status }) => {
 
 const PaymentBadge = ({ status }) => {
   if (!status) return null
-  const isCOD = status.toUpperCase() === 'CASH ON DELIVERY'
-  return isCOD
-    ? <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200'><FaMoneyBillWave size={9} />COD</span>
-    : <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200'><FaCreditCard size={9} />Online Paid</span>
+  const s = status.toUpperCase()
+  if (s === 'CASH ON DELIVERY') return (
+    <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200'>
+      <FaMoneyBillWave size={9} />COD
+    </span>
+  )
+  if (s === 'PARTIAL COD') return (
+    <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200'>
+      <FaCreditCard size={9} />Partial COD
+    </span>
+  )
+  return (
+    <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200'>
+      <FaCreditCard size={9} />Online Paid
+    </span>
+  )
 }
 
 /* ─────────── FULL ORDER DETAIL DRAWER ─────────── */
@@ -143,7 +155,11 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     <div><h3>Delivery Address</h3><p style="font-size:13px;line-height:1.5">${addr.address_line || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.pincode || ''}</p>
     ${addr.mobile ? `<p style="font-size:12px;color:#666">📞 ${esc(addr.mobile)}</p>` : ''}</div></div>
     <div style="margin-bottom:16px"><h3>Payment</h3>
-    <span class="badge ${order.payment_status?.toUpperCase() === 'PAID' ? 'bg-green' : 'bg-amber'}">${order.payment_status?.toUpperCase() === 'PAID' ? 'Online Paid' : 'Cash on Delivery'}</span>
+    ${order.payment_status?.toUpperCase() === 'PAID'
+      ? '<span class="badge bg-green">Online Paid</span>'
+      : order.payment_status?.toUpperCase() === 'PARTIAL COD'
+      ? `<span class="badge bg-indigo">Partial COD</span> <span style="font-size:11px;color:#6366f1;margin-left:8px">Online: \u20b9${order.prepaidAmount || 0} | COD: \u20b9${order.codAmount || 0}</span>`
+      : '<span class="badge bg-amber">Cash on Delivery</span>'}
     ${order.paymentId ? `<span style="font-size:11px;color:#999;margin-left:8px;font-family:monospace">${esc(order.paymentId)}</span>` : ''}</div>
     <h3>Items</h3>
     <table><thead><tr><th>#</th><th>Product</th><th class="tr">Qty</th><th class="tr">Price</th></tr></thead><tbody>
@@ -402,6 +418,18 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                   <span className='text-xs text-gray-500'>Method</span>
                   <PaymentBadge status={order.payment_status} />
                 </div>
+                {order.payment_status?.toUpperCase() === 'PARTIAL COD' && (
+                  <>
+                    <div className='flex justify-between text-xs text-indigo-600'>
+                      <span>Online Paid</span>
+                      <span className='font-semibold'>{DisplayPriceInRupees(order.prepaidAmount || 0)}</span>
+                    </div>
+                    <div className='flex justify-between text-xs text-amber-600'>
+                      <span>COD (on delivery)</span>
+                      <span className='font-semibold'>{DisplayPriceInRupees(order.codAmount || 0)}</span>
+                    </div>
+                  </>
+                )}
                 {order.paymentId && (
                   <div className='flex justify-between items-start gap-2'>
                     <span className='text-xs text-gray-500 flex-shrink-0'>Transaction ID</span>

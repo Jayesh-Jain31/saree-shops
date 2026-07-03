@@ -133,6 +133,19 @@ const orderSchema = new mongoose.Schema({
     reviewRequested: {
         type: Boolean,
         default: false
+    },
+    // Partial COD fields
+    prepaidAmount: {
+        type: Number,
+        default: 0
+    },
+    codAmount: {
+        type: Number,
+        default: 0
+    },
+    partialCodPercent: {
+        type: Number,
+        default: 0
     }
 }, {
     timestamps: true

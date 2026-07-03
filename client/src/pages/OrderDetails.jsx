@@ -370,9 +370,11 @@ const OrderDetails = () => {
 
         <div class="section">
           <div class="section-title">Payment</div>
-          <span class="badge ${order?.payment_status?.toUpperCase() === 'PAID' ? 'badge-green' : 'badge-amber'}">
-            ${order?.payment_status?.toUpperCase() === 'PAID' ? 'Paid Online' : 'Cash on Delivery'}
-          </span>
+          ${order?.payment_status?.toUpperCase() === 'PAID'
+            ? '<span class="badge badge-green">Paid Online</span>'
+            : order?.payment_status?.toUpperCase() === 'PARTIAL COD'
+            ? `<span class="badge badge-green">Partial COD</span> <span style="font-size:11px;color:#6366f1;margin-left:6px">Online: ₹${order.prepaidAmount || 0} | COD: ₹${order.codAmount || 0}</span>`
+            : '<span class="badge badge-amber">Cash on Delivery</span>'}
         </div>
 
         <div class="section">
@@ -750,7 +752,9 @@ const addr = {
             <div className='flex items-center justify-between'>
               <span className='text-xs text-gray-500'>Method</span>
               <span className='text-xs font-semibold text-gray-700'>
-                {order?.payment_status?.toUpperCase() === 'CASH ON DELIVERY' ? 'Cash on Delivery' : 'Razorpay (Online)'}
+                {order?.payment_status?.toUpperCase() === 'CASH ON DELIVERY' ? 'Cash on Delivery'
+                  : order?.payment_status?.toUpperCase() === 'PARTIAL COD' ? 'Partial COD'
+                  : 'Razorpay (Online)'}
               </span>
             </div>
             <div className='flex items-center justify-between'>
@@ -759,12 +763,28 @@ const addr = {
                 <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200'>
                   <FaCheckCircle size={9} /> Paid
                 </span>
+              ) : order?.payment_status?.toUpperCase() === 'PARTIAL COD' ? (
+                <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200'>
+                  <FaCreditCard size={9} /> Partial Paid
+                </span>
               ) : (
                 <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200'>
                   <FaMoneyBillWave size={9} /> Pay on Delivery
                 </span>
               )}
             </div>
+            {order?.payment_status?.toUpperCase() === 'PARTIAL COD' && (
+              <>
+                <div className='flex items-center justify-between'>
+                  <span className='text-xs text-gray-500'>Online Paid</span>
+                  <span className='text-xs font-semibold text-indigo-600'>{DisplayPriceInRupees(order.prepaidAmount || 0)}</span>
+                </div>
+                <div className='flex items-center justify-between'>
+                  <span className='text-xs text-gray-500'>COD Due</span>
+                  <span className='text-xs font-semibold text-amber-600'>{DisplayPriceInRupees(order.codAmount || 0)}</span>
+                </div>
+              </>
+            )}
             {order?.paymentId && order.paymentId !== '' && (
               <div className='flex items-center justify-between'>
                 <span className='text-xs text-gray-500'>Transaction ID</span>
@@ -1021,18 +1041,22 @@ const addr = {
 
                   {/* Refund Info Message */}
                   {(() => {
-                    const isCOD = order?.payment_status?.toUpperCase().includes('CASH') || order?.payment_status?.toUpperCase() === 'COD'
+                    const ps = order?.payment_status?.toUpperCase() || ''
+                    const isCOD = ps.includes('CASH') || ps === 'COD'
+                    const isPartialCOD = ps === 'PARTIAL COD'
                     return (
-                      <div className={`rounded-xl p-3 flex items-start gap-2.5 border ${isCOD ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}`}>
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isCOD ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                      <div className={`rounded-xl p-3 flex items-start gap-2.5 border ${isCOD ? 'bg-amber-50 border-amber-200' : isPartialCOD ? 'bg-indigo-50 border-indigo-200' : 'bg-blue-50 border-blue-200'}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isCOD ? 'bg-amber-100' : isPartialCOD ? 'bg-indigo-100' : 'bg-blue-100'}`}>
                           {isCOD
                             ? <FaMoneyBillWave className='text-amber-600' size={13} />
+                            : isPartialCOD
+                            ? <FaCreditCard className='text-indigo-600' size={13} />
                             : <FaCreditCard className='text-blue-600' size={13} />
                           }
                         </div>
                         <div>
-                          <p className={`text-xs font-bold mb-0.5 ${isCOD ? 'text-amber-800' : 'text-blue-800'}`}>
-                            {isCOD ? 'Refund to Wallet' : 'Refund to Original Payment Method'}
+                          <p className={`text-xs font-bold mb-0.5 ${isCOD ? 'text-amber-800' : isPartialCOD ? 'text-indigo-800' : 'text-blue-800'}`}>
+                            {isCOD ? 'Refund to Wallet' : isPartialCOD ? 'Prepaid Refund to Razorpay + COD portion to Wallet' : 'Refund to Original Payment Method'}
                           </p>
                           {isCOD
                             ? <>

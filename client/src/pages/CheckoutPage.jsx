@@ -194,9 +194,11 @@ const CheckoutPage = () => {
     const status = serverOrder?.payment_status || ''
     const resolvedMethod = status === 'CASH ON DELIVERY' ? 'COD'
       : status === 'PAID' ? 'Razorpay'
+      : status === 'PARTIAL COD' ? 'Partial COD'
       : method
     return {
       text: 'Order',
+      orderId: serverOrder?.orderId || '',
       address: addr,
       items: itemsSnapshot,
       totalAmount: serverOrder?.totalAmt ?? totalFallback,
@@ -205,6 +207,9 @@ const CheckoutPage = () => {
       couponCode: serverOrder?.couponCode || '',
       couponDiscount: serverOrder?.couponDiscount || 0,
       paymentMethod: resolvedMethod,
+      prepaidAmount: serverOrder?.prepaidAmount || 0,
+      codAmount: serverOrder?.codAmount || 0,
+      partialCodPercent: serverOrder?.partialCodPercent || 0,
       estimatedDelivery: deliveryInfo?.estimatedTime,
       orderDate: serverOrder?.createdAt || new Date().toISOString(),
     }
@@ -424,6 +429,107 @@ const CheckoutPage = () => {
       const razorpay = new window.Razorpay(options)
       razorpay.open()
     } catch (error) { toast.dismiss(); AxiosToastError(error) }
+  }
+
+  const handlePartialCodPayment = async () => {
+    const selectedAddr = addressList[selectAddress]
+    if (!selectedAddr?._id || !selectedAddr?.status) { setShowAddressPopup(true); return }
+    try {
+      setCodLoading(true)
+      const scriptLoaded = await loadRazorpayScript()
+      if (!scriptLoaded) { toast.error('Failed to load Razorpay. Check your internet connection.'); return }
+      const configRes = await Axios({ url: '/api/config/razorpay-key', method: 'get' })
+      const razorpayKeyId = configRes.data?.keyId
+      if (!razorpayKeyId) { toast.error('Razorpay is not configured. Please contact support.'); return }
+
+      const toastId = toast.loading('Initializing partial COD...')
+      const response = await Axios({ ...SummaryApi.partialCodOrder, data: { totalAmt: payableAmount, list_items: cartItemsList } })
+      toast.dismiss(toastId)
+
+      if (!response.data.success) { toast.error('Failed to create partial COD order.'); return }
+      const razorpayOrder = response.data.data
+      const partialAmount = response.data.partialAmount || Math.ceil(payableAmount * 0.3)
+      const codAmount = response.data.codAmount || Math.floor(payableAmount * 0.7)
+
+      const options = {
+        key: razorpayKeyId,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: siteName,
+        description: `Partial COD \u2014 \u20b9${partialAmount} online`,
+        image: '/logo.png',
+        order_id: razorpayOrder.id,
+
+        one_click_checkout: true,
+        show_coupons: true,
+
+        prefill: {
+          name:         user?.name   || selectedAddr?.name   || '',
+          email:        user?.email  || '',
+          contact:      (user?.mobile || selectedAddr?.mobile) ? `+91${String(user?.mobile || selectedAddr?.mobile).replace(/\D/g, '').slice(-10)}` : '',
+          coupon_code:  appliedCoupon?.code || '',
+          ...(response.data.freeGift && {
+            promotional_tag: [{ tag: 'free gift item', variant_id: response.data.freeGift.giftVariantId }]
+          }),
+        },
+
+        ...(selectedAddr && {
+          customer_details: {
+            name:    user?.name   || selectedAddr?.name   || '',
+            contact: (user?.mobile || selectedAddr?.mobile) ? `+91${String(user?.mobile || selectedAddr?.mobile).replace(/\D/g, '').slice(-10)}` : '',
+            email:   user?.email  || '',
+            shipping_address: {
+              line1:   selectedAddr.address_line || '',
+              line2:   selectedAddr.landmark     || '',
+              city:    selectedAddr.city         || '',
+              state:   selectedAddr.state        || '',
+              zipcode: String(selectedAddr.pincode || ''),
+              country: 'IN',
+            }
+          }
+        }),
+
+        handler: async (paymentResponse) => {
+          try {
+            const itemsSnapshot        = [...cartItemsList]
+            const selectedAddrSnapshot = addressList[selectAddress]
+
+            const verifyToastId = toast.loading('Verifying partial payment...')
+            const verifyRes = await Axios({
+              ...SummaryApi.partialCodVerify,
+              data: {
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature,
+                list_items: cartItemsList,
+                addressId: selectedAddrSnapshot?._id,
+                subTotalAmt: totalPrice,
+                deliveryCharge,
+                totalAmt: payableAmount,
+                discountAmt: couponDiscount,
+                couponCode: appliedCoupon?.code || '',
+                couponDiscount,
+                walletDeduction,
+                loyaltyPointsUsed,
+                loyaltyDiscount,
+              }
+            })
+            toast.dismiss(verifyToastId)
+            if (verifyRes.data.success) {
+              toast.success(`Partial COD order placed! \u20b9${partialAmount} paid online, \u20b9${codAmount} on delivery.`)
+              if (fetchCartItem) fetchCartItem()
+              if (fetchOrder) fetchOrder()
+              navigate('/success', { state: buildSuccessState(verifyRes.data.data, selectedAddrSnapshot, itemsSnapshot, payableAmount, 'Partial COD') })
+            } else { toast.error('Partial payment verification failed.') }
+          } catch (err) { toast.dismiss(); AxiosToastError(err) }
+        },
+        theme: { color: '#6366f1' },
+        modal: { ondismiss: () => toast.error('Partial COD cancelled.'), escape: true }
+      }
+      const razorpay = new window.Razorpay(options)
+      razorpay.open()
+    } catch (error) { toast.dismiss(); AxiosToastError(error) }
+    finally { setCodLoading(false) }
   }
 
   const activeAddresses = addressList.filter(a => a.status)
@@ -705,6 +811,34 @@ const CheckoutPage = () => {
                     ? 'Place Order (Fully Discounted)'
                     : `Pay ${DisplayPriceInRupees(payableAmount)} with Razorpay`}
                 </button>
+
+                {/* Partial COD — Pay 30% online + 70% COD */}
+                {codEnabled && payableAmount > 0 && (
+                  <button
+                    onClick={handlePartialCodPayment}
+                    disabled={codLoading}
+                    className='w-full border-2 border-indigo-500 text-indigo-600 hover:bg-indigo-500 hover:text-white active:scale-95 rounded-xl font-bold transition-all py-4 text-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2'
+                  >
+                    {codLoading ? (
+                      <>
+                        <svg className='animate-spin h-5 w-5' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'>
+                          <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'/>
+                          <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v8z'/>
+                        </svg>
+                        Initializing...
+                      </>
+                    ) : (
+                      <span className='flex flex-col items-center gap-0.5'>
+                        <span className='flex items-center gap-2'>
+                          <SiRazorpay size={16} /> Partial COD
+                        </span>
+                        <span className='text-[10px] font-normal opacity-80'>
+                          Pay {DisplayPriceInRupees(Math.ceil(payableAmount * 0.3))} online + {DisplayPriceInRupees(Math.floor(payableAmount * 0.7))} on delivery
+                        </span>
+                      </span>
+                    )}
+                  </button>
+                )}
 
                 {codEnabled ? (
                   <button

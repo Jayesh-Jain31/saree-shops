@@ -45,6 +45,7 @@ const Success = () => {
     if (status === 'CASH ON DELIVERY') return 'COD'
     if (status === 'PAID') return 'Online'
     if (status === 'WALLET') return 'Wallet'
+    if (status === 'PARTIAL COD') return 'Partial COD'
     return state.paymentMethod || 'Online'
   }
 
@@ -55,6 +56,9 @@ const Success = () => {
   const couponDiscount = serverOrder?.couponDiscount ?? state.couponDiscount ?? 0
   const couponCode     = serverOrder?.couponCode   ?? state.couponCode   ?? ''
   const paymentMethod  = resolvePaymentMethod()
+  const prepaidAmount  = serverOrder?.prepaidAmount  ?? state.prepaidAmount  ?? 0
+  const codAmount      = serverOrder?.codAmount      ?? state.codAmount      ?? 0
+  const partialCodPercent = serverOrder?.partialCodPercent ?? state.partialCodPercent ?? 0
   const orderDate      = serverOrder?.createdAt   || state.orderDate
 
   // Prefer serverOrder.items — it includes the auto-appended free gift item
@@ -221,11 +225,25 @@ const Success = () => {
                   <span>{paymentMethod === 'COD' ? 'Grand Total' : 'Total Paid'}</span>
                   <span>{DisplayPriceInRupees(totalAmount)}</span>
                 </div>
+                {paymentMethod === 'Partial COD' && (
+                  <div className='space-y-1 pt-1 border-t mt-1'>
+                    <div className='flex justify-between text-xs text-indigo-600'>
+                      <span>Online Paid</span>
+                      <span className='font-semibold'>{DisplayPriceInRupees(prepaidAmount)}</span>
+                    </div>
+                    <div className='flex justify-between text-xs text-amber-600'>
+                      <span>COD (on delivery)</span>
+                      <span className='font-semibold'>{DisplayPriceInRupees(codAmount)}</span>
+                    </div>
+                  </div>
+                )}
                 <div className='flex items-center gap-1.5 pt-1 text-gray-500'>
                   <FaCreditCard size={11} />
                   <span>
                     {paymentMethod === 'COD'
                       ? 'Cash on Delivery'
+                      : paymentMethod === 'Partial COD'
+                      ? `Partial COD — ${partialCodPercent}% online + rest on delivery`
                       : paymentMethod === 'Wallet'
                       ? 'Paid via Wallet'
                       : `Paid via Razorpay`}

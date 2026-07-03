@@ -915,9 +915,9 @@ export async function cancelOrderController(request, response) {
             }
         } catch {}
 
-        const isCOD = !order.paymentId ||
-            (order.payment_status || '').toUpperCase().includes('CASH') ||
-            (order.payment_status || '').toUpperCase() === 'COD'
+        const ps = (order.payment_status || '').toUpperCase()
+        const isCOD = !order.paymentId || ps.includes('CASH') || ps === 'COD'
+        const isPartialCOD = ps === 'PARTIAL COD'
 
         let walletRefunded = 0
         let razorpayRefundInitiated = false
@@ -942,26 +942,48 @@ export async function cancelOrderController(request, response) {
             }
         }
 
-        // Online payment: trigger Razorpay refund for the online-paid portion
+        // Online or Partial COD: trigger Razorpay refund for the prepaid portion
         let refundError = null
 
         if (!isCOD && order.paymentId) {
-            const onlinePaid = Math.max(0, (order.totalAmt || 0) - (order.walletDeduction || 0))
-            if (onlinePaid > 0) {
+            const refundAmount = isPartialCOD
+                ? Math.max(0, (order.prepaidAmount || 0))
+                : Math.max(0, (order.totalAmt || 0) - (order.walletDeduction || 0))
+            if (refundAmount > 0) {
                 try {
                     const rzRefund = await Razorpay.payments.refund(order.paymentId, {
-                        amount: Math.round(onlinePaid * 100),
+                        amount: Math.round(refundAmount * 100),
                         speed: "normal",
                         notes: { reason: `Cancelled order #${order.orderId}`, orderId: order.orderId }
                     })
                     razorpayRefundInitiated = true
-                    console.log(`[Refund] Razorpay refund OK — refundId: ${rzRefund?.id}, order: ${order.orderId}, amount: ₹${onlinePaid}`)
+                    console.log(`[Refund] Razorpay refund OK — refundId: ${rzRefund?.id}, order: ${order.orderId}, amount: ₹${refundAmount}`)
                 } catch (rzErr) {
                     const rzErrMsg = rzErr?.error?.description || rzErr?.message || String(rzErr)
                     refundError = rzErrMsg
-                    console.error(`[Refund] Razorpay refund FAILED — order: ${order.orderId}, paymentId: ${order.paymentId}, amount: ₹${onlinePaid}, error: ${rzErrMsg}`)
+                    console.error(`[Refund] Razorpay refund FAILED — order: ${order.orderId}, paymentId: ${order.paymentId}, amount: ₹${refundAmount}, error: ${rzErrMsg}`)
                     console.error(`[Refund] Full error:`, JSON.stringify(rzErr?.error || rzErr))
                 }
+            }
+        }
+
+        // Partial COD: also refund the COD portion to wallet (since it was never collected)
+        if (isPartialCOD && order.codAmount > 0) {
+            try {
+                let wallet = await WalletModel.findOne({ userId: order.userId })
+                if (!wallet) wallet = await WalletModel.create({ userId: order.userId, balance: 0, transactions: [] })
+                wallet.balance += order.codAmount
+                wallet.transactions.unshift({
+                    type: 'credit',
+                    amount: order.codAmount,
+                    description: `COD portion refunded for cancelled order #${order.orderId}`,
+                    reference: order._id.toString(),
+                    balanceAfter: wallet.balance
+                })
+                await wallet.save()
+                walletRefunded += order.codAmount
+            } catch (walletErr) {
+                console.error('COD portion wallet refund failed:', walletErr.message)
             }
         }
 
@@ -990,6 +1012,279 @@ export async function cancelOrderController(request, response) {
             message: error.message || error,
             error: true,
             success: false
+        })
+    }
+}
+
+// ─── Partial COD ────────────────────────────────────────────────────────────
+
+// Default partial COD percentage (30%)
+const PARTIAL_COD_PERCENT = 30
+
+export async function partialCodOrderController(request, response) {
+    try {
+        const { totalAmt, list_items = [] } = request.body
+
+        if (!totalAmt || totalAmt <= 0) {
+            return response.status(400).json({
+                message: "Invalid order amount",
+                error: true,
+                success: false
+            })
+        }
+
+        const partialAmount = Math.max(1, Math.ceil((totalAmt * PARTIAL_COD_PERCENT) / 100))
+
+        // Build line_items for Magic Checkout (mandatory)
+        const line_items = list_items.map(item => {
+            const variantPrice = item.variant?.price ?? item.productId?.price ?? 0
+            const discountedPrice = pricewithDiscount(variantPrice, item.productId?.discount || 0)
+            const unitAmount = Math.round(discountedPrice * 100)
+            return {
+                sku: `${item.productId?._id || 'item'}_${item.variant?.name || 'default'}`,
+                variant_id: `var_${item.productId?._id || 'x'}_${(item.variant?.name || 'def').replace(/\s+/g, '_')}`,
+                name: `${item.productId?.name || 'Product'}${item.variant?.name ? ` (${item.variant.name})` : ''}`,
+                unit_amount: unitAmount,
+                quantity: item.quantity || 1,
+                image_url: item.variant?.image || item.productId?.image?.[0] || '',
+            }
+        })
+
+        // Auto-append active free gift if cart qualifies
+        const freeGift = await getActiveFreeGiftInternal(totalAmt || 0)
+        let freeGiftData = null
+        if (freeGift) {
+            const giftPrice = Math.round((freeGift.productId?.price || 0) * 100)
+            const giftVariantId = `gift_${freeGift.productId?._id || 'gift'}`
+            line_items.push({
+                sku: giftVariantId,
+                variant_id: giftVariantId,
+                name: `${freeGift.productId?.name || 'Free Gift'} (Free Gift)`,
+                unit_amount: giftPrice,
+                quantity: 1,
+                image_url: freeGift.productId?.image?.[0] || '',
+            })
+            freeGiftData = {
+                giftVariantId,
+                title: freeGift.title || 'Free Gift',
+                productId: freeGift.productId,
+            }
+        }
+
+        const options = {
+            amount: Math.round(partialAmount * 100),
+            currency: "INR",
+            receipt: `partial_${Date.now()}`,
+            line_items,
+        }
+
+        const razorpayOrder = await Razorpay.orders.create(options)
+
+        return response.status(200).json({
+            error: false,
+            success: true,
+            data: razorpayOrder,
+            freeGift: freeGiftData,
+            partialCodPercent: PARTIAL_COD_PERCENT,
+            partialAmount,
+            codAmount: totalAmt - partialAmount,
+        })
+
+    } catch (error) {
+        return response.status(500).json({
+            message: error?.error?.description || error.message || "Razorpay order creation failed",
+            error: true,
+            success: false,
+        })
+    }
+}
+
+export async function partialCodVerifyController(request, response) {
+    try {
+        const userId = request.userId
+        const {
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature,
+            list_items,
+            addressId,
+            subTotalAmt,
+            deliveryCharge = 0,
+            totalAmt,
+            discountAmt = 0,
+            couponCode = "",
+            couponDiscount = 0,
+            walletDeduction = 0,
+            loyaltyPointsUsed = 0,
+            loyaltyDiscount = 0,
+        } = request.body
+
+        // Verify signature
+        const body = razorpay_order_id + "|" + razorpay_payment_id
+        const expectedSignature = crypto
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .update(body)
+            .digest("hex")
+
+        if (expectedSignature !== razorpay_signature) {
+            return response.status(400).json({
+                message: "Payment verification failed. Invalid signature.",
+                error: true,
+                success: false,
+            })
+        }
+
+        const items = list_items.map(el => ({
+            productId: el.productId._id,
+            product_details: {
+                name:     el.productId.name,
+                image:    el.productId.image,
+                discount: el.productId.discount || 0,
+            },
+            variant: {
+                name:  el.variant?.name || '',
+                image: el.variant?.image || '',
+            },
+            quantity: el.quantity || 1,
+            price: el.variant?.price ?? el.productId.price ?? 0,
+        }))
+
+        // Auto-append active free gift if cart qualifies
+        const freeGiftVerify = await getActiveFreeGiftInternal(subTotalAmt || 0)
+        if (freeGiftVerify) {
+            items.push({
+                productId: freeGiftVerify.productId._id,
+                product_details: { name: freeGiftVerify.productId.name, image: freeGiftVerify.productId.image, discount: 0 },
+                quantity: 1,
+                price: 0,
+                isFreeGift: true,
+            })
+        }
+
+        if (loyaltyPointsUsed > 0) {
+            await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
+        }
+
+        // Address handling (same logic as razorpayVerifyController)
+        let delivery_address_snapshot = {}
+        const addrDoc = await AddressModel.findById(addressId).lean()
+        delivery_address_snapshot = addrDoc ? {
+            name:         addrDoc.name         || '',
+            mobile:       addrDoc.mobile        || '',
+            address_line: addrDoc.address_line  || '',
+            city:         addrDoc.city          || '',
+            state:        addrDoc.state         || '',
+            pincode:      String(addrDoc.pincode || ''),
+            country:      addrDoc.country       || 'India',
+            landmark:     addrDoc.landmark      || '',
+        } : {}
+
+        const partialAmount = Math.max(1, Math.ceil((totalAmt * PARTIAL_COD_PERCENT) / 100))
+        const codAmount = totalAmt - partialAmount
+        const pendingLoyaltyPts = await getPendingPointsCount(subTotalAmt).catch(() => 0)
+
+        const order = await OrderModel.create({
+            userId:    userId,
+            orderId:   `ORD-${new mongoose.Types.ObjectId()}`,
+            items:     items,
+            paymentId: razorpay_payment_id,
+            payment_status: "PARTIAL COD",
+            delivery_address: null,
+            delivery_address_snapshot,
+
+            subTotalAmt:   subTotalAmt || 0,
+            deliveryCharge: deliveryCharge || 0,
+            totalAmt:       totalAmt || 0,
+
+            discountAmt:     couponDiscount,
+            couponCode:      couponCode || '',
+            couponDiscount:  couponDiscount,
+
+            walletDeduction:    walletDeduction,
+            loyaltyPointsUsed:  loyaltyPointsUsed,
+            loyaltyDiscount:    loyaltyDiscount,
+
+            prepaidAmount: partialAmount,
+            codAmount: codAmount,
+            partialCodPercent: PARTIAL_COD_PERCENT,
+
+            orderStatus: "Confirmed",
+            loyaltyPointsPending:  pendingLoyaltyPts,
+            loyaltyPointsProcessed: false,
+        })
+
+        // Debit wallet server-side
+        if (walletDeduction > 0) {
+            try {
+                await debitWalletInternal(userId, walletDeduction, `Partial COD order ${order.orderId}`, order.orderId)
+            } catch (walletErr) {
+                console.error(`[Partial COD] Wallet debit failed for order ${order.orderId}:`, walletErr.message)
+            }
+        }
+
+        await CartProductModel.deleteMany({ userId: userId })
+        await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
+        await decrementStock(order.items)
+        creditReferralReward(userId).catch(() => {})
+        createNotification(userId, `Your Partial COD order ${order.orderId} placed! ₹${partialAmount} paid online, ₹${codAmount} on delivery.`, 'success', '/dashboard/myorders').catch(() => {})
+
+        try {
+            const user = await UserModel.findById(userId)
+            const address = await AddressModel.findById(addressId)
+            const mobile = user?.mobile || address?.mobile
+
+            if (user?.email) {
+                await sendEmail({
+                    sendTo: user.email,
+                    subject: `Order Confirmed - ${order.orderId}`,
+                    html: orderConfirmationTemplate({
+                        orderId: order.orderId,
+                        items: order.items,
+                        totalAmt: order.totalAmt,
+                        payment_status: order.payment_status,
+                    })
+                })
+            }
+            if (mobile) {
+                sendOrderConfirmationWhatsApp({
+                    mobile,
+                    name: user?.name || address?.name,
+                    orderId: order.orderId,
+                    totalAmt: order.totalAmt,
+                    paymentMethod: order.payment_status,
+                    items: order.items,
+                }).catch(() => {})
+            }
+            SettingModel.findOne({ key: 'admin_whatsapp_number' }).then(setting => {
+                if (setting?.value) {
+                    sendAdminNewOrderAlert(setting.value, {
+                        orderId: order.orderId,
+                        customerName: user?.name || address?.name,
+                        customerMobile: mobile,
+                        totalAmt: order.totalAmt,
+                        paymentMethod: order.payment_status,
+                        itemCount: order.items?.length,
+                        prepaidAmount: order.prepaidAmount,
+                        codAmount: order.codAmount,
+                    }).catch(() => {})
+                }
+            }).catch(() => {})
+        } catch (emailErr) {
+            if(process.env.NODE_ENV !== 'production') console.log("Order confirmation email failed:", emailErr.message)
+        }
+
+        return response.json({
+            message: `Partial COD order placed! ₹${partialAmount} paid online, ₹${codAmount} will be collected on delivery.`,
+            error: false,
+            success: true,
+            data: order,
+        })
+
+    } catch (error) {
+        return response.status(500).json({
+            message: error.message || error,
+            error: true,
+            success: false,
         })
     }
 }

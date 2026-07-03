@@ -36,61 +36,35 @@ const CollapsibleSection = ({ title, children, defaultOpen = false }) => {
 };
 
 const ProductDescriptionTabs = ({ data }) => {
-  const highlights = [
-    'Premium quality fabric',
-    'Elegant design & craftsmanship',
-    'Perfect for special occasions',
-    'Easy to drape & comfortable',
-    'Comes with matching blouse piece',
-  ];
+  const details = data?.more_details || {};
+  const hasDetails = Object.keys(details).length > 0;
 
   return (
     <div>
-      {/* Tab-like header */}
-      <div className="flex items-center gap-4 px-4 pt-3 pb-2 border-b border-gray-200">
-        <span className="text-sm font-bold text-rose-600 border-b-2 border-rose-600 pb-2">Details</span>
-        <span className="text-sm font-medium text-gray-500 pb-2">Explore</span>
-        <span className="text-sm font-medium text-gray-500 pb-2">Reviews</span>
-      </div>
-
-      <CollapsibleSection title="Top highlights" defaultOpen={false}>
-        <div className="flex flex-wrap gap-2">
-          {highlights.map((h, i) => (
-            <span key={i} className="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100">{h}</span>
-          ))}
+      {/* Amazon-style key-value rows */}
+      {hasDetails ? (
+        <div>
+          <div className="flex items-center gap-4 px-4 pt-3 pb-2 border-b border-gray-200">
+            <span className="text-sm font-bold text-rose-600 border-b-2 border-rose-600 pb-2">Details</span>
+            <span className="text-sm font-medium text-gray-500 pb-2">Explore</span>
+            <span className="text-sm font-medium text-gray-500 pb-2">Reviews</span>
+          </div>
+          <div className="px-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
+              {Object.entries(details).map(([key, val], i) => (
+                <div key={i} className="flex items-start gap-2 py-2.5 border-b border-gray-100 last:border-0">
+                  <span className="text-sm font-medium text-gray-500 min-w-[110px] flex-shrink-0">{key}</span>
+                  <span className="text-sm text-gray-800">{val}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </CollapsibleSection>
-
-      {data?.more_details && Object.keys(data.more_details).length > 0 && (
-        <CollapsibleSection title="Product specifications" defaultOpen={false}>
-          <div className="space-y-2">
-            {Object.entries(data.more_details).map(([key, val], i) => (
-              <div key={i} className="flex items-start gap-3 text-sm py-1.5 border-b border-gray-50 last:border-0">
-                <span className="font-medium text-gray-700 min-w-[100px] flex-shrink-0">{key}</span>
-                <span className="text-gray-600">{val}</span>
-              </div>
-            ))}
-          </div>
-        </CollapsibleSection>
+      ) : (
+        <div className="px-4 py-4">
+          <p className="text-sm text-gray-400 text-center">No specifications available</p>
+        </div>
       )}
-
-      <CollapsibleSection title="About the Brand" defaultOpen={false}>
-        <p className="text-sm text-gray-600 leading-relaxed">
-          Our sarees are crafted with love using premium fabrics sourced directly from weavers across India.
-          Each piece reflects traditional artistry blended with modern elegance.
-        </p>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Product Description" defaultOpen={true}>
-        <p className="text-sm text-gray-600 leading-relaxed">{data.description}</p>
-        {data.image?.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 mt-3">
-            {data.image.slice(0, 4).map((img, i) => (
-              <img key={i} src={img} alt={`Product ${i + 1}`} className="w-full rounded-lg object-cover aspect-[4/5]" loading="lazy" />
-            ))}
-          </div>
-        )}
-      </CollapsibleSection>
     </div>
   );
 };
