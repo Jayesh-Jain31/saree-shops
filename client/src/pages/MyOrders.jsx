@@ -68,8 +68,9 @@ const PaymentBadge = ({ status }) => {
 const OrderCard = ({ order, onClick }) => {
   const items = order?.items || []
   const totalItems = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
-  const previewImages = items.slice(0, 4).map(item => item.product_details?.image?.[0]).filter(Boolean)
+  const previewImages = items.slice(0, 4).map(item => item.variant?.image || item.product_details?.image?.[0]).filter(Boolean)
   const firstName = items[0]?.product_details?.name || 'Order'
+  const firstVariant = items[0]?.variant?.name || ''
 
   return (
     <div
@@ -102,8 +103,8 @@ const OrderCard = ({ order, onClick }) => {
               <div className='min-w-0'>
                 <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-1'>
                   {items.length === 1
-                    ? firstName
-                    : `${firstName} + ${items.length - 1} more item${items.length - 1 > 1 ? 's' : ''}`
+                    ? (firstVariant ? `${firstName} (${firstVariant})` : firstName)
+                    : (firstVariant ? `${firstName} (${firstVariant}) + ${items.length - 1} more item${items.length - 1 > 1 ? 's' : ''}` : `${firstName} + ${items.length - 1} more item${items.length - 1 > 1 ? 's' : ''}`)
                   }
                 </p>
                 <p className='text-[11px] font-mono text-gray-400 mt-0.5'>{order?.orderId}</p>

@@ -147,7 +147,7 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     ${order.paymentId ? `<span style="font-size:11px;color:#999;margin-left:8px;font-family:monospace">${esc(order.paymentId)}</span>` : ''}</div>
     <h3>Items</h3>
     <table><thead><tr><th>#</th><th>Product</th><th class="tr">Qty</th><th class="tr">Price</th></tr></thead><tbody>
-    ${items.map((item, i) => `<tr><td>${i+1}</td><td>${esc(item.product_details?.name || 'Product')}${item.isFreeGift ? ' <span style="display:inline-block;background:#fce7f3;color:#be185d;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">🎁 FREE GIFT</span>' : ''}</td><td class="tr">${item.quantity || 1}</td><td class="tr">${item.isFreeGift ? `<span style="text-decoration:line-through;color:#9ca3af;font-size:11px;margin-right:3px;">₹${item.price || 0}</span><span style="color:#be185d;font-weight:700;">₹0</span>` : `₹${pricewithDiscount(item.price || 0, item.product_details?.discount ?? 0)}`}</td></tr>`).join('')}
+    ${items.map((item, i) => `<tr><td>${i+1}</td><td>${esc(item.product_details?.name || 'Product')}${item.variant?.name ? ` <span style="display:inline-block;background:#fce7f3;color:#be185d;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">${esc(item.variant.name)}</span>` : ''}${item.isFreeGift ? ' <span style="display:inline-block;background:#fce7f3;color:#be185d;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">🎁 FREE GIFT</span>' : ''}</td><td class="tr">${item.quantity || 1}</td><td class="tr">${item.isFreeGift ? `<span style="text-decoration:line-through;color:#9ca3af;font-size:11px;margin-right:3px;">₹${item.price || 0}</span><span style="color:#be185d;font-weight:700;">₹0</span>` : `₹${pricewithDiscount(item.price || 0, item.product_details?.discount ?? 0)}`}</td></tr>`).join('')}
     </tbody></table>
     <div class="totals">${order.couponCode && order.couponDiscount > 0 ? `<div class="trow"><span>Coupon (${order.couponCode})</span><span style="color:#16a34a">- ₹${order.couponDiscount}</span></div>` : ''}${order.walletDeduction > 0 ? `<div class="trow"><span>Wallet used</span><span style="color:#2563eb">- ₹${order.walletDeduction}</span></div>` : ''}${!order.couponCode && !order.walletDeduction && order.discountAmt > 0 ? `<div class="trow"><span>Discount</span><span style="color:#16a34a">- ₹${order.discountAmt}</span></div>` : ''}<div class="trow"><span>Delivery</span><span>${order.deliveryCharge > 0 ? `₹${order.deliveryCharge}` : 'FREE'}</span></div>
     <div class="trow grand"><span>Grand Total</span><span>₹${order.totalAmt}</span></div></div>
@@ -358,12 +358,13 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
                         ${productUrl ? 'hover:bg-green-50 cursor-pointer' : ''}`}
                     >
                       <div className={`w-12 h-12 rounded-lg border flex-shrink-0 p-0.5 overflow-hidden ${item.isFreeGift ? 'bg-white border-rose-200' : 'bg-white'}`}>
-                        <img src={item.product_details?.image?.[0]} alt='' className='w-full h-full object-contain' />
+                        <img src={item.variant?.image || item.product_details?.image?.[0]} alt='' className='w-full h-full object-contain' />
                       </div>
                       <div className='flex-1 min-w-0'>
                         <div className='flex items-center gap-1.5 flex-wrap'>
                           <p className={`text-xs font-semibold line-clamp-1 ${item.isFreeGift ? 'text-rose-700' : productUrl ? 'text-green-700' : 'text-gray-700'}`}>
                             {item.product_details?.name}
+                            {item.variant?.name && <span className="text-[9px] text-rose-600 bg-rose-50 px-1 py-0.5 rounded-full font-medium ml-1">{item.variant.name}</span>}
                           </p>
                           {item.isFreeGift && (
                             <span className='inline-flex items-center gap-0.5 text-[9px] font-bold uppercase bg-rose-500 text-white px-1.5 py-0.5 rounded-full tracking-wide flex-shrink-0'>
@@ -522,8 +523,9 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
 /* ─────────── ORDER ROW CARD ─────────── */
 const OrderRow = ({ order, onClick }) => {
   const items = order?.items || []
-  const preview = items[0]?.product_details?.image?.[0]
+  const preview = items[0]?.variant?.image || items[0]?.product_details?.image?.[0]
   const firstName = items[0]?.product_details?.name || 'Order'
+  const firstVariant = items[0]?.variant?.name || ''
   const totalItems = items.reduce((s, i) => s + (i.quantity || 1), 0)
   const cfg = statusConfig[order.orderStatus] || statusConfig['Pending']
 
@@ -546,7 +548,10 @@ const OrderRow = ({ order, onClick }) => {
           <div className='flex items-start justify-between gap-2'>
             <div className='min-w-0'>
               <p className='font-semibold text-gray-800 text-sm line-clamp-1'>
-                {items.length === 1 ? firstName : `${firstName} +${items.length - 1}`}
+                {items.length === 1
+                  ? (firstVariant ? `${firstName} (${firstVariant})` : firstName)
+                  : (firstVariant ? `${firstName} (${firstVariant}) +${items.length - 1}` : `${firstName} +${items.length - 1}`)
+                }
               </p>
               <p className='text-[10px] font-mono text-gray-400'>{order.orderId}</p>
             </div>

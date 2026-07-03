@@ -392,6 +392,7 @@ const OrderDetails = () => {
                   <td>${i + 1}</td>
                   <td>
                     ${esc(item.product_details?.name || 'Product')}
+                    ${item.variant?.name ? ` <span style="display:inline-block;background:#fce7f3;color:#be185d;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">${esc(item.variant.name)}</span>` : ''}
                     ${item.isFreeGift ? '<span class="badge-gift">🎁 FREE GIFT</span>' : ''}
                   </td>
                   <td class="text-right">${item.quantity || 1}</td>
@@ -592,17 +593,22 @@ const addr = {
                   <div className='w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 relative'>
                     <div className='w-full h-full rounded-lg border bg-gray-50 overflow-hidden p-1'>
                       <img
-                        src={item.product_details?.image?.[0]}
+                        src={item.variant?.image || item.product_details?.image?.[0]}
                         alt={item.product_details?.name}
                         className='w-full h-full object-contain'
                       />
                     </div>
-                    
+
                   </div>
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-center gap-1.5 flex-wrap'>
                       <p className='font-semibold text-gray-800 text-sm leading-snug line-clamp-2'>
                         {item.product_details?.name}
+                        {item.variant?.name && (
+                          <span className="text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-full font-medium ml-1">
+                            {item.variant.name}
+                          </span>
+                        )}
                       </p>
                       {item.isFreeGift && (
                         <span className='text-[9px] font-bold uppercase bg-rose-500 text-white px-1.5 py-0.5 rounded-full tracking-wide flex-shrink-0'>
@@ -924,14 +930,14 @@ const addr = {
                               </div>
                               <div className='w-10 h-10 rounded-lg border bg-white flex-shrink-0 overflow-hidden'>
                                 <img
-                                  src={item.product_details?.image?.[0]}
+                                  src={item.variant?.image || item.product_details?.image?.[0]}
                                   alt={item.product_details?.name}
                                   className='w-full h-full object-contain'
                                   onError={e => { e.target.style.display = 'none' }}
                                 />
                               </div>
                               <div className='flex-1 min-w-0'>
-                                <p className='text-sm font-semibold text-gray-800 line-clamp-1'>{item.product_details?.name}</p>
+                                <p className='text-sm font-semibold text-gray-800 line-clamp-1'>{item.product_details?.name} {item.variant?.name && <span className="text-[10px] text-rose-600 bg-rose-50 px-1.5 rounded-full font-medium ml-1">{item.variant.name}</span>}</p>
                                 <p className='text-xs text-gray-500'>Qty: {item.quantity} · ₹{(pricewithDiscount(item.price, item.product_details?.discount ?? 0) * item.quantity).toLocaleString('en-IN')}</p>
                               </div>
                             </button>

@@ -85,14 +85,17 @@ const GlobalProvider = ({children}) => {
       setTotalQty(qty)
       
       const tPrice = cartItem.reduce((preve,curr)=>{
-          const priceAfterDiscount = pricewithDiscount(curr?.productId?.price,curr?.productId?.discount)
+          // Use variant price if available, else product price
+          const basePrice = curr?.variant?.price ?? curr?.productId?.price ?? 0
+          const priceAfterDiscount = pricewithDiscount(basePrice, curr?.productId?.discount)
 
           return preve + (priceAfterDiscount * curr.quantity)
       },0)
       setTotalPrice(tPrice)
 
       const notDiscountPrice = cartItem.reduce((preve,curr)=>{
-        return preve + (curr?.productId?.price * curr.quantity)
+        const basePrice = curr?.variant?.price ?? curr?.productId?.price ?? 0
+        return preve + (basePrice * curr.quantity)
       },0)
       setNotDiscountTotalPrice(notDiscountPrice)
   },[cartItem])

@@ -23,6 +23,9 @@ const AddToCartButton = ({ data, compact = false }) => {
   const maxStock = data?.stock ?? Infinity
   const atMaxStock = qty >= maxStock
 
+  // Build a consistent variant key for matching cart items
+  const variantName = data?.variant?.name || ''
+
   const handleADDTocart = async (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -36,9 +39,17 @@ const AddToCartButton = ({ data, compact = false }) => {
     }
     try {
       setLoading(true)
+      const payload = { productId: data?._id }
+      if (variantName) {
+        payload.variant = {
+          name: variantName,
+          price: data.variant?.price ?? null,
+          image: data.variant?.image || ''
+        }
+      }
       const response = await Axios({
         ...SummaryApi.addTocart,
-        data: { productId: data?._id }
+        data: payload
       })
       const { data: responseData } = response
       if (responseData.success) {
@@ -53,9 +64,20 @@ const AddToCartButton = ({ data, compact = false }) => {
   }
 
   useEffect(() => {
-    const checkingitem = cartItem.some(item => item.productId._id === data._id)
+    // Match by productId AND variant name (or lack of variant)
+    const checkingitem = cartItem.some(item => {
+      const sameProduct = item.productId?._id === data._id
+      const itemVariantName = item.variant?.name || ''
+      const sameVariant = itemVariantName === variantName
+      return sameProduct && sameVariant
+    })
     setIsAvailableCart(checkingitem)
-    const product = cartItem.find(item => item.productId._id === data._id)
+    const product = cartItem.find(item => {
+      const sameProduct = item.productId?._id === data._id
+      const itemVariantName = item.variant?.name || ''
+      const sameVariant = itemVariantName === variantName
+      return sameProduct && sameVariant
+    })
     setQty(product?.quantity ?? 0)
     setCartItemsDetails(product)
   }, [data, cartItem])

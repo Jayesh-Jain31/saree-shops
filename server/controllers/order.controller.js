@@ -28,11 +28,25 @@ import { getActiveFreeGiftInternal } from "./freeGift.controller.js";
 
 // Helper: decrement stock for each ordered item + low stock alert
 async function decrementStock(items) {
-    const updated = await Promise.all(items.map(item =>
-        ProductModel.findByIdAndUpdate(item.productId, {
+    const updated = await Promise.all(items.map(async item => {
+        const variantName = item.variant?.name
+        if (variantName) {
+            // Decrement specific variant stock
+            return ProductModel.findOneAndUpdate(
+                { _id: item.productId, 'variants.name': variantName },
+                { $inc: { 'variants.$[elem].stock': -item.quantity } },
+                {
+                    arrayFilters: [{ 'elem.name': variantName }],
+                    new: true,
+                    select: 'name stock variants'
+                }
+            )
+        }
+        // Decrement base product stock
+        return ProductModel.findByIdAndUpdate(item.productId, {
             $inc: { stock: -item.quantity }
         }, { new: true, select: 'name stock' })
-    ))
+    }))
     try {
         const thresholdSetting = await SettingModel.findOne({ key: 'low_stock_threshold' })
         const threshold = thresholdSetting ? parseInt(thresholdSetting.value) || 5 : 5
@@ -90,8 +104,12 @@ export async function CashOnDeliveryOrderController(request, response) {
                 image:    el.productId.image,
                 discount: el.productId.discount || 0,
             },
+            variant: {
+                name:  el.variant?.name || '',
+                image: el.variant?.image || '',
+            },
             quantity: el.quantity || 1,
-            price: el.productId.price || 0,
+            price: el.variant?.price ?? el.productId.price ?? 0,
         }))
 
         // Auto-append active free gift if cart qualifies
@@ -515,8 +533,12 @@ console.log("POPUP ADDRESSES:", popupAddresses)
                 image:    el.productId.image,
                 discount: el.productId.discount || 0,
             },
+            variant: {
+                name:  el.variant?.name || '',
+                image: el.variant?.image || '',
+            },
             quantity: el.quantity || 1,
-            price: el.productId.price || 0,
+            price: el.variant?.price ?? el.productId.price ?? 0,
         }))
 
         // Auto-append active free gift if cart qualifies

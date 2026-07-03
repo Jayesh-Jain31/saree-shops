@@ -774,14 +774,17 @@ const CheckoutPage = () => {
                 {cartItemsList.map((item, i) => (
                   <div key={i} className='flex items-center gap-3 px-4 py-3'>
                     <div className='w-12 h-12 rounded-xl bg-gray-50 border overflow-hidden flex-shrink-0'>
-                      <img src={item?.productId?.image?.[0]} alt='' className='w-full h-full object-contain p-0.5' />
+                      <img src={item?.variant?.image || item?.productId?.image?.[0]} alt='' className='w-full h-full object-contain p-0.5' />
                     </div>
                     <div className='flex-1 min-w-0'>
                       <p className='text-xs font-medium text-gray-800 line-clamp-1'>{item?.productId?.name}</p>
-                      <p className='text-xs text-gray-500'>Qty: {item?.quantity}</p>
+                      {item?.variant?.name && (
+                        <span className='text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-full font-medium'>{item.variant.name}</span>
+                      )}
+                      <p className='text-xs text-gray-500 mt-0.5'>Qty: {item?.quantity}</p>
                     </div>
                     <p className='text-xs font-bold text-gray-900 flex-shrink-0'>
-                      {DisplayPriceInRupees(pricewithDiscount(item?.productId?.price, item?.productId?.discount) * item?.quantity)}
+                      {DisplayPriceInRupees(pricewithDiscount(item?.variant?.price ?? item?.productId?.price, item?.productId?.discount) * item?.quantity)}
                     </p>
                   </div>
                 ))}

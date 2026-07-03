@@ -5,8 +5,8 @@ import ProductModel from "../models/product.model.js";
 export const addToCartItemController = async(request,response)=>{
     try {
         const  userId = request.userId
-        const { productId } = request.body
-        
+        const { productId, variant } = request.body
+
         if(!productId){
             return response.status(402).json({
                 message : "Provide productId",
@@ -15,10 +15,15 @@ export const addToCartItemController = async(request,response)=>{
             })
         }
 
-        const checkItemCart = await CartProductModel.findOne({
+        // Build variant match query: same product + same variant name (or no variant)
+        const variantName = variant?.name || null
+        const matchQuery = {
             userId : userId,
-            productId : productId
-        })
+            productId : productId,
+            'variant.name': variantName || { $in: [null, ''] }
+        }
+
+        const checkItemCart = await CartProductModel.findOne(matchQuery)
 
         if(checkItemCart){
             return response.status(400).json({
@@ -26,9 +31,25 @@ export const addToCartItemController = async(request,response)=>{
             })
         }
 
-        // Check stock before adding
+        // Check stock: use variant stock if variant selected, else product stock
         const product = await ProductModel.findById(productId)
-        if (product && product.stock <= 0) {
+        if (!product) {
+            return response.status(404).json({
+                message : "Product not found",
+                error : true,
+                success : false
+            })
+        }
+
+        let stockToCheck = product.stock
+        if (variantName && product.variants && product.variants.length > 0) {
+            const matchedVariant = product.variants.find(v => v.name === variantName)
+            if (matchedVariant && matchedVariant.stock !== undefined && matchedVariant.stock !== null) {
+                stockToCheck = matchedVariant.stock
+            }
+        }
+
+        if (stockToCheck <= 0) {
             return response.status(400).json({
                 message : "Product is out of stock",
                 error : true,
@@ -39,12 +60,17 @@ export const addToCartItemController = async(request,response)=>{
         const cartItem = new CartProductModel({
             quantity : 1,
             userId : userId,
-            productId : productId
+            productId : productId,
+            variant: variant ? {
+                name: variant.name || '',
+                price: variant.price ?? null,
+                image: variant.image || ''
+            } : null
         })
         const save = await cartItem.save()
 
         const updateCartUser = await UserModel.updateOne({ _id : userId},{
-            $push : { 
+            $push : {
                 shopping_cart : productId
             }
         })
@@ -56,7 +82,7 @@ export const addToCartItemController = async(request,response)=>{
             success : true
         })
 
-        
+
     } catch (error) {
         return response.status(500).json({
             message : error.message || error,
@@ -91,7 +117,7 @@ export const getCartItemController = async(request,response)=>{
 
 export const updateCartItemQtyController = async(request,response)=>{
     try {
-        const userId = request.userId 
+        const userId = request.userId
         const { _id, qty } = request.body
 
         if(!_id || !qty){
@@ -100,14 +126,24 @@ export const updateCartItemQtyController = async(request,response)=>{
             })
         }
 
-        // Validate qty against available stock
+        // Validate qty against available stock (variant-aware)
         const cartItemDoc = await CartProductModel.findOne({ _id, userId }).populate('productId')
-        if (cartItemDoc && cartItemDoc.productId && qty > cartItemDoc.productId.stock) {
-            return response.status(400).json({
-                message : `Only ${cartItemDoc.productId.stock} item(s) available in stock`,
-                error : true,
-                success : false
-            })
+        if (cartItemDoc && cartItemDoc.productId) {
+            const product = cartItemDoc.productId
+            let maxStock = product.stock ?? Infinity
+            if (cartItemDoc.variant?.name && product.variants && product.variants.length > 0) {
+                const matchedVariant = product.variants.find(v => v.name === cartItemDoc.variant.name)
+                if (matchedVariant && matchedVariant.stock !== undefined && matchedVariant.stock !== null) {
+                    maxStock = matchedVariant.stock
+                }
+            }
+            if (qty > maxStock) {
+                return response.status(400).json({
+                    message : `Only ${maxStock} item(s) available in stock`,
+                    error : true,
+                    success : false
+                })
+            }
         }
 
         const updateCartitem = await CartProductModel.updateOne({
@@ -120,7 +156,7 @@ export const updateCartItemQtyController = async(request,response)=>{
         return response.json({
             message : "Update cart",
             success : true,
-            error : false, 
+            error : false,
             data : updateCartitem
         })
 
@@ -136,8 +172,8 @@ export const updateCartItemQtyController = async(request,response)=>{
 export const deleteCartItemQtyController = async(request,response)=>{
     try {
       const userId = request.userId
-      const { _id } = request.body 
-      
+      const { _id } = request.body
+
       if(!_id){
         return response.status(400).json({
             message : "Provide _id",
