@@ -713,7 +713,7 @@ const ProductDisplayPage = () => {
         )}
       </div>
 
-      <YouMayAlsoLike currentProductId={data._id} />
+      <YouMayAlsoLike productId={data._id} />
       <RecentlyViewed />
       <ProductQA productId={data._id} />
 
