@@ -358,3 +358,5 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
     </section>
   )
 }
+
+export default EditProductAdmin
