@@ -348,17 +348,26 @@ export async function razorpayOrderController(request, response) {
         // Build line_items for Magic Checkout (mandatory)
         const line_items = list_items.map(item => {
             const product  = item.productId || {}
-            const price    = Math.round((product.price || 0) * 100)          // paise
+            const variant  = item.variant || {}
+            // Use variant price if available, else product price
+            const basePrice = variant.price ?? product.price ?? 0
+            const price    = Math.round(basePrice * 100)          // paise
             const discount = product.discount || 0
             const offerPrice = Math.round(price * (1 - discount / 100))      // paise after discount
+            // Include variant name in display name if available
+            const displayName = variant.name
+                ? `${product.name || 'Product'} (${variant.name})`
+                : (product.name || 'Product')
             return {
                 sku:          String(product._id || ''),
-                variant_id:   String(product._id || ''),
+                variant_id:   variant.name ? `${String(product._id || '')}_${variant.name}` : String(product._id || ''),
                 price,
                 offer_price:  offerPrice,
                 quantity:     item.quantity || 1,
-                name:         product.name  || 'Product',
-                ...(product.image?.[0] && { image_url: product.image[0] })
+                name:         displayName,
+                ...(variant.image
+                    ? { image_url: variant.image.replace(/^http:\/\//i, 'https://') }
+                    : product.image?.[0] && { image_url: product.image[0].replace(/^http:\/\//i, 'https://') })
             }
         })
 
