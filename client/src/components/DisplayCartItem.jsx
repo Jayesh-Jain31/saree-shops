@@ -325,22 +325,29 @@ const DisplayCartItem = ({ close }) => {
               {/* Cart Items */}
               <div className='bg-white border rounded-2xl overflow-hidden divide-y divide-gray-50'>
                 {cartItem.map((item) => {
-                  const discountedPrice = pricewithDiscount(item?.productId?.price, item?.productId?.discount)
+                  const basePrice = item?.variant?.price ?? item?.productId?.price ?? 0
+                  const discountedPrice = pricewithDiscount(basePrice, item?.productId?.discount)
+                  const variantName = item?.variant?.name || ''
                   return (
                     <div key={item?._id + 'cartItem'} className='flex items-center gap-3 p-3'>
                       <div className='w-16 h-16 min-w-16 rounded-xl overflow-hidden bg-gray-50 border flex-shrink-0'>
-                        <img src={item?.productId?.image?.[0]} alt={item?.productId?.name} className='w-full h-full object-contain p-1' />
+                        <img src={item?.variant?.image || item?.productId?.image?.[0]} alt={item?.productId?.name} className='w-full h-full object-contain p-1' />
                       </div>
                       <div className='flex-1 min-w-0'>
-                        <p className='text-sm font-medium text-gray-800 line-clamp-2 leading-tight'>{item?.productId?.name}</p>
-                        {item?.productId?.unit && <p className='text-xs text-gray-400 mt-0.5'>{item?.productId?.unit}</p>}
+                        <p className='text-sm font-medium text-gray-800 line-clamp-2 leading-tight'>
+                          {item?.productId?.name}
+                          {variantName && (
+                            <span className="text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-full font-medium ml-1">{variantName}</span>
+                          )}
+                        </p>
+                        {item?.productId?.unit && !variantName && <p className='text-xs text-gray-400 mt-0.5'>{item?.productId?.unit}</p>}
                         <div className='flex items-center gap-1.5 mt-1'>
                           <p className='text-sm font-bold text-gray-900'>{DisplayPriceInRupees(discountedPrice)}</p>
-                          {item?.productId?.discount > 0 && <p className='text-xs text-gray-400 line-through'>{DisplayPriceInRupees(item?.productId?.price)}</p>}
+                          {item?.productId?.discount > 0 && <p className='text-xs text-gray-400 line-through'>{DisplayPriceInRupees(basePrice)}</p>}
                         </div>
                       </div>
                       <div className='w-24 flex-shrink-0'>
-                        <AddToCartButton data={item?.productId} />
+                        <AddToCartButton data={{ ...item?.productId, variant: item?.variant, price: basePrice, stock: item?.productId?.stock }} />
                       </div>
                     </div>
                   )
