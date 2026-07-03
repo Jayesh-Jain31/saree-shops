@@ -39,10 +39,7 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
   const [openAddField, setOpenAddField] = useState(false)
   const [fieldName, setFieldName] = useState('')
 
-  // <-- ADDED: newVariant now includes 'image' field
-  const [newVariant, setNewVariant] = useState({ name: '', price: '', stock: '', image: '' })
-  // <-- ADDED: track uploading state for variant image
-  const [variantImageUploading, setVariantImageUploading] = useState(false)
+  const [newVariant, setNewVariant] = useState({ name: '', price: '', stock: '' })
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -58,19 +55,6 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
     const imageUrl = ImageResponse.data.url
     setData(prev => ({ ...prev, image: [...prev.image, imageUrl] }))
     setImageLoading(false)
-  }
-
-  // <-- ADDED: handle variant image upload (separate from main product images)
-  const handleVariantImageUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    setVariantImageUploading(true)
-    const response = await uploadImage(file)
-    const { data: ImageResponse } = response
-    const imageUrl = ImageResponse.data.url
-    setNewVariant(prev => ({ ...prev, image: imageUrl }))
-    setVariantImageUploading(false)
-    toast.success('Variant image uploaded')
   }
 
   const handleDeleteImage = (index) => {
@@ -113,7 +97,6 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
     setOpenAddField(false)
   }
 
-  // <-- MODIFIED: handleAddVariant now includes the image URL
   const handleAddVariant = () => {
     if (!newVariant.name.trim()) return
     setData(prev => ({
@@ -122,11 +105,9 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
         name: newVariant.name.trim(),
         price: newVariant.price ? Number(newVariant.price) : null,
         stock: newVariant.stock ? Number(newVariant.stock) : null,
-        image: newVariant.image || '',   // <-- ADDED: include variant image
       }]
     }))
-    // Reset newVariant (including image)
-    setNewVariant({ name: '', price: '', stock: '', image: '' })
+    setNewVariant({ name: '', price: '', stock: '' })
   }
 
   const handleRemoveVariant = (index) => {
@@ -295,10 +276,6 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
                   <div className='space-y-2'>
                     {data.variants.map((v, i) => (
                       <div key={i} className='flex items-center gap-2 bg-gray-50 border rounded-xl px-3 py-2'>
-                        {/* <-- ADDED: show variant image thumbnail if exists */}
-                        {v.image && (
-                          <img src={v.image} alt={v.name} className='w-8 h-8 rounded-full object-cover border border-gray-300 flex-shrink-0' />
-                        )}
                         <div className='flex-1'>
                           <p className='text-sm font-semibold text-gray-800'>{v.name}</p>
                           <p className='text-xs text-gray-500'>
@@ -315,7 +292,7 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
                   </div>
                 )}
 
-                {/* <-- MODIFIED: Add new variant with image upload */}
+                {/* Add new variant */}
                 <div className='bg-white border-2 border-dashed border-purple-200 rounded-xl p-3 space-y-2'>
                   <p className='text-xs font-semibold text-purple-700 mb-2'>Add New Variant</p>
                   <div className='grid grid-cols-3 gap-2'>
@@ -341,31 +318,6 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
                         onChange={e => setNewVariant(p => ({ ...p, stock: e.target.value }))}
                         className='w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-purple-400 mt-0.5' />
                     </div>
-                  </div>
-                  {/* <-- ADDED: image upload for variant */}
-                  <div className='flex items-center gap-3 mt-1'>
-                    <label className='flex items-center gap-1.5 cursor-pointer bg-gray-100 hover:bg-gray-200 transition px-3 py-1.5 rounded-lg text-xs font-medium text-gray-700 border border-gray-300'>
-                      {variantImageUploading ? (
-                        <Loading />
-                      ) : (
-                        <>
-                          <FaCloudUploadAlt size={14} /> Upload Variant Image
-                        </>
-                      )}
-                      <input type='file' accept='image/*' className='hidden' onChange={handleVariantImageUpload} />
-                    </label>
-                    {newVariant.image && (
-                      <div className='relative inline-block'>
-                        <img src={newVariant.image} alt='Variant' className='w-8 h-8 rounded-full object-cover border border-purple-300' />
-                        <button
-                          type='button'
-                          onClick={() => setNewVariant(p => ({ ...p, image: '' }))}
-                          className='absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] font-bold'
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
                   </div>
                   <button type='button' onClick={handleAddVariant}
                     disabled={!newVariant.name.trim()}
@@ -406,5 +358,3 @@ const EditProductAdmin = ({ close, data: propsData, fetchProductData }) => {
     </section>
   )
 }
-
-export default EditProductAdmin
