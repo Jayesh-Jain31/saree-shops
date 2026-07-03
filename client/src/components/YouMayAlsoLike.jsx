@@ -11,10 +11,9 @@ import { valideURLConvert } from '../utils/valideURLConvert'
 const YouMayAlsoLike = ({ productId }) => {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [currentPage, setCurrentPage] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const containerRef = useRef(null)
-  const autoSlideRef = useRef(null)
+  const scrollRef = useRef(null)
+  const autoScrollRef = useRef(null)
 
   useEffect(() => {
     if (!productId) return
@@ -25,36 +24,35 @@ const YouMayAlsoLike = ({ productId }) => {
       .finally(() => setLoading(false))
   }, [productId])
 
-  // Auto-slide every 3 seconds
+  // Auto-scroll every 3 seconds
   useEffect(() => {
     if (products.length <= 3 || isPaused) {
-      if (autoSlideRef.current) clearInterval(autoSlideRef.current)
+      if (autoScrollRef.current) clearInterval(autoScrollRef.current)
       return
     }
-    autoSlideRef.current = setInterval(() => {
-      setCurrentPage(prev => (prev + 1) % totalPages)
+    autoScrollRef.current = setInterval(() => {
+      if (scrollRef.current) {
+        const el = scrollRef.current
+        const itemWidth = el.firstChild?.offsetWidth + 12 || 200
+        const maxScroll = el.scrollWidth - el.clientWidth
+        if (el.scrollLeft >= maxScroll - 5) {
+          el.scrollTo({ left: 0, behavior: 'smooth' })
+        } else {
+          el.scrollBy({ left: itemWidth, behavior: 'smooth' })
+        }
+      }
     }, 3000)
-    return () => clearInterval(autoSlideRef.current)
+    return () => clearInterval(autoScrollRef.current)
   }, [products.length, isPaused])
 
-  const totalPages = Math.ceil(products.length / 3)
-
-  const goToPage = useCallback((page) => {
-    if (page < 0) page = totalPages - 1
-    if (page >= totalPages) page = 0
-    setCurrentPage(page)
-  }, [totalPages])
-
-  const handleTouchStart = useCallback(() => {
-    setIsPaused(true)
+  const scroll = useCallback((dir) => {
+    if (!scrollRef.current) return
+    const el = scrollRef.current
+    const itemWidth = el.firstChild?.offsetWidth + 12 || 200
+    el.scrollBy({ left: dir * itemWidth, behavior: 'smooth' })
   }, [])
 
-  const handleTouchEnd = useCallback(() => {
-    // Resume auto-slide after 5 seconds of inactivity
-    setTimeout(() => setIsPaused(false), 5000)
-  }, [])
-
-  const currentProducts = products.slice(currentPage * 3, currentPage * 3 + 3)
+  const canScroll = products.length > 3
 
   if (loading) return (
     <div className='mt-10 px-4'>
@@ -62,9 +60,9 @@ const YouMayAlsoLike = ({ productId }) => {
         <div className='w-8 h-8 rounded-full bg-gray-100 animate-pulse' />
         <div className='w-40 h-5 bg-gray-100 rounded animate-pulse' />
       </div>
-      <div className='grid grid-cols-3 gap-3'>
+      <div className='flex gap-3'>
         {[...Array(3)].map((_, i) => (
-          <div key={i} className='rounded-2xl bg-gray-100 animate-pulse aspect-[3/4.5]' />
+          <div key={i} className='min-w-[160px] w-[160px] rounded-2xl bg-gray-100 animate-pulse h-60' />
         ))}
       </div>
     </div>
@@ -80,27 +78,17 @@ const YouMayAlsoLike = ({ productId }) => {
           <span className='text-xl'>✨</span>
           <h2 className='text-lg font-bold text-gray-800'>You May Also Like</h2>
         </div>
-        {totalPages > 1 && (
+        {canScroll && (
           <div className='flex items-center gap-1.5'>
             <button
-              onClick={() => goToPage(currentPage - 1)}
+              onClick={() => scroll(-1)}
               className='w-7 h-7 rounded-full bg-white border shadow-sm flex items-center justify-center text-gray-500 hover:bg-gray-50 active:scale-95 transition-all'
               aria-label='Previous'
             >
               <FaChevronLeft size={10} />
             </button>
-            <div className='flex items-center gap-1'>
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goToPage(i)}
-                  className={`w-2 h-2 rounded-full transition-all ${i === currentPage ? 'bg-rose-500 w-4' : 'bg-gray-300'}`}
-                  aria-label={`Go to page ${i + 1}`}
-                />
-              ))}
-            </div>
             <button
-              onClick={() => goToPage(currentPage + 1)}
+              onClick={() => scroll(1)}
               className='w-7 h-7 rounded-full bg-white border shadow-sm flex items-center justify-center text-gray-500 hover:bg-gray-50 active:scale-95 transition-all'
               aria-label='Next'
             >
@@ -110,23 +98,23 @@ const YouMayAlsoLike = ({ productId }) => {
         )}
       </div>
 
-      {/* Grid */}
+      {/* Horizontal scrollable row */}
       <div
-        ref={containerRef}
-        className='grid grid-cols-3 gap-3'
+        ref={scrollRef}
+        className='flex gap-3 overflow-x-auto scrollbar-none scroll-smooth pb-2 -mx-1 px-1'
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setTimeout(() => setIsPaused(false), 5000)}
       >
-        {currentProducts.map(product => {
+        {products.map(product => {
           const discountedPrice = pricewithDiscount(product.price, product.discount)
           const hasDiscount = product.discount > 0
           return (
             <Link
               key={product._id}
               to={`/product/${valideURLConvert(product.name)}-${product._id}`}
-              className='bg-white rounded-2xl border shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all overflow-hidden group'
+              className='min-w-[160px] w-[160px] sm:min-w-[180px] sm:w-[180px] flex-shrink-0 bg-white rounded-2xl border shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all overflow-hidden group'
             >
               <div className='relative'>
                 <div className='w-full aspect-[3/4] bg-gray-50 overflow-hidden'>
@@ -148,7 +136,7 @@ const YouMayAlsoLike = ({ productId }) => {
                   </span>
                 )}
               </div>
-              <div className='p-2 sm:p-3'>
+              <div className='p-2.5 sm:p-3'>
                 <p className='text-[11px] sm:text-xs font-semibold text-gray-800 line-clamp-2 leading-tight mb-1'>
                   {product.name}
                 </p>

@@ -8,12 +8,92 @@ import SummaryApi from '../common/SummaryApi';
 import Axios from '../utils/Axios';
 import AxiosToastError from '../utils/AxiosToastError';
 import { FaAngleRight, FaAngleLeft, FaXmark, FaExpand } from 'react-icons/fa6';
-import { FaHeart, FaRegHeart, FaWhatsapp, FaLink, FaShareAlt, FaTruck, FaShieldAlt, FaMedal, FaBolt, FaMapMarkerAlt, FaCheckCircle, FaTimesCircle, FaStar, FaRegStar, FaCheckDouble, FaTag, FaFire, FaLeaf, FaFeatherAlt, FaMagic, FaGem, FaCommentDots } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaWhatsapp, FaLink, FaShareAlt, FaTruck, FaShieldAlt, FaMedal, FaBolt, FaMapMarkerAlt, FaCheckCircle, FaTimesCircle, FaStar, FaRegStar, FaCheckDouble, FaTag, FaFire, FaLeaf, FaFeatherAlt, FaMagic, FaGem, FaCommentDots, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees';
 import { pricewithDiscount } from '../utils/PriceWithDiscount';
 import AddToCartButton from '../components/AddToCartButton';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
+
+const CollapsibleSection = ({ title, children, defaultOpen = false }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-gray-100 last:border-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-gray-50/50 transition-colors"
+      >
+        <span className="text-sm font-semibold text-gray-800">{title}</span>
+        {open ? <FaChevronUp size={12} className="text-gray-400" /> : <FaChevronDown size={12} className="text-gray-400" />}
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ProductDescriptionTabs = ({ data }) => {
+  const highlights = [
+    'Premium quality fabric',
+    'Elegant design & craftsmanship',
+    'Perfect for special occasions',
+    'Easy to drape & comfortable',
+    'Comes with matching blouse piece',
+  ];
+
+  return (
+    <div>
+      {/* Tab-like header */}
+      <div className="flex items-center gap-4 px-4 pt-3 pb-2 border-b border-gray-200">
+        <span className="text-sm font-bold text-rose-600 border-b-2 border-rose-600 pb-2">Details</span>
+        <span className="text-sm font-medium text-gray-500 pb-2">Explore</span>
+        <span className="text-sm font-medium text-gray-500 pb-2">Reviews</span>
+      </div>
+
+      <CollapsibleSection title="Top highlights" defaultOpen={false}>
+        <div className="flex flex-wrap gap-2">
+          {highlights.map((h, i) => (
+            <span key={i} className="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100">{h}</span>
+          ))}
+        </div>
+      </CollapsibleSection>
+
+      {data?.more_details && Object.keys(data.more_details).length > 0 && (
+        <CollapsibleSection title="Product specifications" defaultOpen={false}>
+          <div className="space-y-2">
+            {Object.entries(data.more_details).map(([key, val], i) => (
+              <div key={i} className="flex items-start gap-3 text-sm py-1.5 border-b border-gray-50 last:border-0">
+                <span className="font-medium text-gray-700 min-w-[100px] flex-shrink-0">{key}</span>
+                <span className="text-gray-600">{val}</span>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      <CollapsibleSection title="About the Brand" defaultOpen={false}>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          Our sarees are crafted with love using premium fabrics sourced directly from weavers across India.
+          Each piece reflects traditional artistry blended with modern elegance.
+        </p>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Product Description" defaultOpen={true}>
+        <p className="text-sm text-gray-600 leading-relaxed">{data.description}</p>
+        {data.image?.length > 0 && (
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            {data.image.slice(0, 4).map((img, i) => (
+              <img key={i} src={img} alt={`Product ${i + 1}`} className="w-full rounded-lg object-cover aspect-[4/5]" loading="lazy" />
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+    </div>
+  );
+};
 
 const addToRecentlyViewed = (product) => {
   try {
@@ -241,11 +321,11 @@ const ProductDisplayPage = () => {
               <img 
                 src={mainImageSrc} 
                 alt={selectedVariant?.name || data.name} 
-                className="w-full h-auto aspect-square object-cover cursor-zoom-in transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-auto aspect-[3/4] object-cover cursor-zoom-in transition-transform duration-700 group-hover:scale-105"
                 onClick={() => setLightboxOpen(true)}
               />
             ) : (
-              <div className="w-full aspect-square bg-rose-50/50 flex items-center justify-center text-rose-300">
+              <div className="w-full aspect-[3/4] bg-rose-50/50 flex items-center justify-center text-rose-300">
                 <span className="text-sm">No Image</span>
               </div>
             )}
@@ -350,18 +430,6 @@ const ProductDisplayPage = () => {
             </div>
           )}
 
-          {data.description && (
-            <div className="hidden lg:block bg-white p-6 rounded-2xl border border-rose-100/50 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-3">Description</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">{data.description}</p>
-              {data?.more_details && Object.keys(data.more_details).map((el, i) => (
-                <div key={i} className="mt-3 flex items-start gap-2 text-sm">
-                  <span className="font-medium text-gray-700 min-w-[100px]">{el}:</span>
-                  <span className="text-gray-600">{data.more_details[el]}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* ============ RIGHT: INFO ============ */}
@@ -407,60 +475,57 @@ const ProductDisplayPage = () => {
           </div>
 
           {/* ============================================================
-              🛒  AMAZON-STYLE VARIANT CARDS (UPDATED) 
+              🛒  AMAZON-STYLE HORIZONTAL VARIANT SCROLL
               ============================================================ */}
           {variants.length > 0 && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-700">Select Variant:</span>
-                {selectedVariant && (
-                  <span className="text-xs text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full font-medium border border-rose-200">
-                    {selectedVariant.name || `Variant ${selectedVariantIndex + 1}`}
-                  </span>
-                )}
-              </div>
-              
-              {/* Grid of variant cards (like Amazon) */}
-              <div className="flex flex-wrap gap-3">
+              <p className="text-sm font-semibold text-gray-700">
+                {selectedVariant ? (
+                  <span>Colour: <span className="font-bold text-gray-900">{selectedVariant.name}</span></span>
+                ) : 'Select Colour:'}
+              </p>
+
+              {/* Horizontal scrollable variant cards */}
+              <div className="flex gap-3 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
                 {variants.map((v, index) => {
                   const isActive = selectedVariantIndex === index;
+                  const variantPrice = v.price ?? data.price ?? 0;
+                  const variantMRP = data.price ?? variantPrice;
                   return (
                     <button
                       key={index}
                       type="button"
                       onClick={() => setSelectedVariantIndex(isActive ? null : index)}
-                      className={`group w-20 sm:w-24 p-1.5 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-1 ${
-                        isActive 
-                          ? 'border-rose-500 bg-rose-50 shadow-md shadow-rose-200/50' 
-                          : 'border-gray-200 bg-white hover:border-rose-300 hover:shadow-sm'
+                      className={`group flex-shrink-0 w-24 sm:w-28 rounded-xl border-2 overflow-hidden transition-all duration-200 text-left ${
+                        isActive
+                          ? 'border-rose-500 bg-white shadow-md'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
                     >
-                      <div className="w-full aspect-square rounded-lg bg-gray-100 overflow-hidden">
+                      <div className="w-full aspect-[3/4] bg-gray-50 overflow-hidden">
                         {v.image ? (
-                          <img 
-                            src={v.image} 
-                            alt={v.name} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                          <img
+                            src={v.image}
+                            alt={v.name}
+                            className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-400 text-[10px] font-medium">
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]">
                             No img
                           </div>
                         )}
                       </div>
-                      <span className={`text-[11px] font-medium truncate w-full text-center px-0.5 leading-tight ${
-                        isActive ? 'text-rose-600' : 'text-gray-700'
-                      }`}>
-                        {v.name || `Variant ${index + 1}`}
-                      </span>
-                      {isActive && (
-                        <span className="text-[9px] font-bold text-rose-500 flex items-center gap-0.5">
-                          <FaCheckCircle size={9} /> Selected
-                        </span>
-                      )}
-                      {v.price && (
-                        <span className="text-[9px] text-gray-500 font-medium">₹{v.price}</span>
-                      )}
+                      <div className="p-2">
+                        <p className={`text-[11px] font-medium truncate ${isActive ? 'text-rose-600' : 'text-gray-800'}`}>
+                          {v.name || `Variant ${index + 1}`}
+                        </p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[11px] font-bold text-gray-800">₹{variantPrice.toLocaleString('en-IN')}</span>
+                          {data.discount > 0 && variantMRP > variantPrice && (
+                            <span className="text-[9px] text-gray-400 line-through">₹{variantMRP.toLocaleString('en-IN')}</span>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
@@ -614,16 +679,10 @@ const ProductDisplayPage = () => {
             ))}
           </div>
 
+          {/* ============ COLLAPSIBLE DESCRIPTION SECTIONS ============ */}
           {data.description && (
-            <div className="lg:hidden bg-white p-5 rounded-2xl border border-rose-100/50 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-3">Description</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">{data.description}</p>
-              {data?.more_details && Object.keys(data.more_details).map((el, i) => (
-                <div key={i} className="mt-3 flex items-start gap-2 text-sm">
-                  <span className="font-medium text-gray-700 min-w-[100px]">{el}:</span>
-                  <span className="text-gray-600">{data.more_details[el]}</span>
-                </div>
-              ))}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <ProductDescriptionTabs data={data} />
             </div>
           )}
         </div>
@@ -678,35 +737,43 @@ const ProductDisplayPage = () => {
         {reviewsLoading ? (
           <div className="text-center py-8 text-gray-400">Loading reviews...</div>
         ) : sortedReviews.length > 0 ? (
-          <div className="space-y-4">
-            {sortedReviews.map((review, idx) => (
-              <div key={idx} className="bg-white p-5 rounded-2xl border border-rose-100/50 shadow-sm">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-500 font-semibold">
+          <div>
+            {/* Horizontal scrollable review cards */}
+            <div className="flex gap-3 overflow-x-auto scrollbar-none pb-2 -mx-1 px-1">
+              {sortedReviews.slice(0, 10).map((review, idx) => (
+                <div key={idx} className="flex-shrink-0 w-72 sm:w-80 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-sm">
                       {review.user?.name?.[0] || 'U'}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{review.user?.name || 'Anonymous'}</p>
-                      <div className="flex text-amber-400 text-xs">
-                        {[1, 2, 3, 4, 5].map(s => (
-                          s <= Math.round(review.rating) ? <FaStar key={s} /> : <FaRegStar key={s} />
-                        ))}
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{review.user?.name || 'Anonymous'}</p>
+                      <p className="text-[10px] text-gray-400">{new Date(review.createdAt || review.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-400">{new Date(review.createdAt || review.date).toLocaleDateString()}</span>
-                </div>
-                {review.comment && <p className="text-sm text-gray-600 mt-2">{review.comment}</p>}
-                {review.images?.length > 0 && (
-                  <div className="flex gap-2 mt-3">
-                    {review.images.map((img, i) => (
-                      <img key={i} src={img} alt={`Review ${i}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                  <div className="flex text-amber-400 text-xs mb-1.5">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      s <= Math.round(review.rating) ? <FaStar key={s} /> : <FaRegStar key={s} />
                     ))}
                   </div>
-                )}
-              </div>
-            ))}
+                  {review.comment && (
+                    <p className="text-sm text-gray-600 leading-relaxed line-clamp-3">{review.comment}</p>
+                  )}
+                  {review.images?.length > 0 && (
+                    <div className="flex gap-1.5 mt-2">
+                      {review.images.slice(0, 3).map((img, i) => (
+                        <img key={i} src={img} alt={`Review ${i}`} className="w-12 h-12 object-cover rounded-lg border border-gray-200" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {sortedReviews.length > 10 && (
+              <p className="text-center text-xs text-gray-400 mt-3">
+                Showing 10 of {sortedReviews.length} reviews
+              </p>
+            )}
           </div>
         ) : (
           <div className="text-center py-8 text-gray-400 bg-white rounded-2xl border border-rose-100/50">No reviews yet. Be the first to review!</div>
@@ -783,15 +850,6 @@ const ProductDisplayPage = () => {
         </div>
       )}
 
-      <style jsx>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
     </div>
   );
 };
