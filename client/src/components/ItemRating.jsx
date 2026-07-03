@@ -8,24 +8,20 @@ const ItemRating = ({ orderId, productId, productName, initialRating = 0, onRate
   const pid = String(productId || '')
   const oid = String(orderId || '')
 
-  const [submitted, setSubmitted] = useState(false)
   const [savedRating, setSavedRating] = useState(initialRating)
   const [hover, setHover] = useState(0)
   const [loading, setLoading] = useState(false)
   const submitting = useRef(false)
 
   useEffect(() => {
-    if (initialRating > 0) {
-      setSubmitted(true)
-      setSavedRating(initialRating)
-    }
+    setSavedRating(initialRating)
   }, [initialRating])
 
   const handleRate = async (star) => {
-    if (submitting.current || loading || submitted) return
+    if (submitting.current || loading || star === savedRating) return
     submitting.current = true
     setLoading(true)
-    setSubmitted(true)
+    const prev = savedRating
     setSavedRating(star)
     try {
       await Axios({
@@ -35,8 +31,7 @@ const ItemRating = ({ orderId, productId, productName, initialRating = 0, onRate
       toast.success(`Rated ${productName || 'item'}!`)
       if (onRated) onRated(pid, star)
     } catch {
-      setSubmitted(false)
-      setSavedRating(0)
+      setSavedRating(prev)
       toast.error('Could not save rating, please try again')
     } finally {
       setLoading(false)
@@ -44,20 +39,13 @@ const ItemRating = ({ orderId, productId, productName, initialRating = 0, onRate
     }
   }
 
-  if (submitted) {
-    return (
-      <div className='flex items-center gap-1 mt-1.5'>
-        {[1, 2, 3, 4, 5].map(s => (
-          <FaStar key={s} size={16} className={s <= savedRating ? 'text-yellow-400' : 'text-gray-200'} />
-        ))}
-        <span className='text-[11px] text-gray-400 font-medium ml-1'>Rated</span>
-      </div>
-    )
-  }
+  const alreadyRated = savedRating > 0
 
   return (
     <div className='flex items-center gap-0.5 mt-1.5' onClick={e => e.stopPropagation()}>
-      <span className='text-[11px] text-gray-400 mr-1'>Rate:</span>
+      <span className='text-[11px] text-gray-400 mr-1'>
+        {alreadyRated ? 'Your rating:' : 'Rate:'}
+      </span>
       {[1, 2, 3, 4, 5].map(s => (
         <button
           key={s}
@@ -68,9 +56,19 @@ const ItemRating = ({ orderId, productId, productName, initialRating = 0, onRate
           className='transition-transform hover:scale-125 active:scale-95 disabled:opacity-50'
           type='button'
         >
-          <FaStar size={16} className={(hover || savedRating) >= s ? 'text-yellow-400' : 'text-gray-200'} />
+          <FaStar
+            size={16}
+            className={
+              (hover || savedRating) >= s
+                ? 'text-yellow-400'
+                : 'text-gray-200'
+            }
+          />
         </button>
       ))}
+      {alreadyRated && (
+        <span className='text-[10px] text-green-500 font-medium ml-1'>Saved</span>
+      )}
     </div>
   )
 }
