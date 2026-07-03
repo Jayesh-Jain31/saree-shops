@@ -8,7 +8,7 @@ import SummaryApi from '../common/SummaryApi';
 import Axios from '../utils/Axios';
 import AxiosToastError from '../utils/AxiosToastError';
 import { FaAngleRight, FaAngleLeft, FaXmark, FaExpand } from 'react-icons/fa6';
-import { FaHeart, FaRegHeart, FaWhatsapp, FaLink, FaShareAlt, FaTruck, FaShieldAlt, FaMedal, FaBolt, FaMapMarkerAlt, FaCheckCircle, FaTimesCircle, FaPalette, FaStar, FaRegStar, FaBell, FaCheckDouble, FaTag, FaFire, FaLeaf, FaFeatherAlt, FaMagic, FaGem, FaUserCircle, FaThumbsUp, FaCommentDots } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaWhatsapp, FaLink, FaShareAlt, FaTruck, FaShieldAlt, FaMedal, FaBolt, FaMapMarkerAlt, FaCheckCircle, FaTimesCircle, FaPalette, FaStar, FaRegStar, FaCheckDouble, FaTag, FaFire, FaLeaf, FaFeatherAlt, FaMagic, FaGem, FaUserCircle, FaThumbsUp, FaCommentDots } from 'react-icons/fa';
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees';
 import { pricewithDiscount } from '../utils/PriceWithDiscount';
 import AddToCartButton from '../components/AddToCartButton';
@@ -64,7 +64,15 @@ const ProductDisplayPage = () => {
   const [wishlisted, setWishlisted] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [notifyRequested, setNotifyRequested] = useState(false);
-  const [selectedVariant, setSelectedVariant] = useState(null);
+  
+  // ---------- FIXED VARIANT LOGIC ----------
+  // Track the INDEX of the selected variant instead of the object
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState(null);
+  // Derive the actual variant object from the index
+  const variants = data.variants || [];
+  const selectedVariant = selectedVariantIndex !== null ? variants[selectedVariantIndex] : null;
+  // -----------------------------------------
+
   const [ratingDist, setRatingDist] = useState({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -135,7 +143,8 @@ const ProductDisplayPage = () => {
   }, [productId]);
 
   useEffect(() => {
-    setSelectedVariant(null);
+    // Reset variant selection when product changes
+    setSelectedVariantIndex(null);
     setRatingDist({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
     setReviews([]);
     fetchProductDetails();
@@ -209,9 +218,9 @@ const ProductDisplayPage = () => {
     }
   };
 
+  // Display price and stock based on selected variant (using derived `selectedVariant`)
   const displayPrice = selectedVariant ? selectedVariant.price : pricewithDiscount(data.price, data.discount);
   const displayStock = selectedVariant ? selectedVariant.stock : data.stock;
-  const variants = data.variants || [];
   const isBestseller = (data.reviewCount || 0) >= 1 || data.avgRating >= 4;
   const totalReviews = reviews.length;
   const maxDistCount = Math.max(1, ...Object.values(ratingDist));
@@ -244,14 +253,12 @@ const ProductDisplayPage = () => {
               </div>
             )}
             
-            {/* Discount Badge */}
             {data.discount > 0 && !selectedVariant && (
               <div className="absolute top-4 left-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg z-10">
                 {data.discount}% OFF
               </div>
             )}
 
-            {/* Wishlist Button */}
             <button 
               onClick={toggleWishlist}
               className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 border border-rose-100 z-10 hover:shadow-rose-200/50"
@@ -259,7 +266,6 @@ const ProductDisplayPage = () => {
               {wishlisted ? <FaHeart className="text-rose-500 text-lg" /> : <FaRegHeart className="text-gray-600 text-lg" />}
             </button>
 
-            {/* Share Button */}
             <div className="absolute bottom-4 right-4 z-10">
               <button 
                 onClick={() => setShowShareMenu(!showShareMenu)}
@@ -279,7 +285,6 @@ const ProductDisplayPage = () => {
               )}
             </div>
 
-            {/* Fullscreen Button */}
             <button 
               onClick={() => setLightboxOpen(true)} 
               className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-semibold pl-2.5 pr-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 hover:bg-white active:scale-95 transition-all duration-300 border border-rose-100"
@@ -287,7 +292,6 @@ const ProductDisplayPage = () => {
               <FaExpand className="text-xs" /> View full screen
             </button>
 
-            {/* Image Counter */}
             {data.image.length > 1 && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                 {data.image.map((_, i) => (
@@ -297,7 +301,6 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
-          {/* Thumbnails */}
           {data.image.length > 1 && (
             <div className="relative">
               <div ref={imageContainer} className="flex gap-3 overflow-x-auto pb-2 scroll-smooth no-scrollbar">
@@ -326,7 +329,6 @@ const ProductDisplayPage = () => {
             </div>
           )}
 
-          {/* Description — Desktop */}
           {data.description && (
             <div className="hidden lg:block bg-white p-6 rounded-2xl border border-rose-100/50 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-3">Description</h3>
@@ -343,21 +345,18 @@ const ProductDisplayPage = () => {
 
         {/* ============ RIGHT: INFO ============ */}
         <div className="space-y-6">
-          {/* Bestseller Badge */}
           {isBestseller && (
             <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-semibold px-3 py-1 rounded-full">
               <FaFire className="text-amber-500" /> Bestseller
             </div>
           )}
 
-          {/* Product Name */}
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 leading-tight">{data.name}</h1>
           
           {data.unit && (
             <p className="text-sm text-gray-500 -mt-2">{data.unit}</p>
           )}
 
-          {/* Rating & Views */}
           <div className="flex items-center gap-4 flex-wrap">
             {data.avgRating > 0 && (
               <button 
@@ -386,31 +385,40 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
-          {/* Variants */}
+          {/* ---------- FIXED VARIANTS RENDER ---------- */}
           {variants.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-700">Select Variant</span>
-                {selectedVariant && <span className="text-xs text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">— {selectedVariant.name}</span>}
+                {selectedVariant && <span className="text-xs text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">— {selectedVariant.name || selectedVariant.variant || `Variant ${selectedVariantIndex + 1}`}</span>}
               </div>
               <div className="flex flex-wrap gap-2">
-                {variants.map((v, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedVariant(selectedVariant?.name === v.name ? null : v)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all duration-300 ${selectedVariant?.name === v.name ? 'border-rose-500 bg-rose-500 text-white shadow-lg shadow-rose-200' : 'border-gray-200 text-gray-700 bg-white hover:border-rose-300 hover:shadow-md'}`}
-                  >
-                    {v.name} {v.price ? `· ₹{v.price}` : ''}
-                  </button>
-                ))}
+                {variants.map((v, index) => {
+                  // Check if this index is the selected one
+                  const isActive = selectedVariantIndex === index;
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedVariantIndex(isActive ? null : index)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all duration-300 ${
+                        isActive 
+                          ? 'border-rose-500 bg-rose-500 text-white shadow-lg shadow-rose-200' 
+                          : 'border-gray-200 text-gray-700 bg-white hover:border-rose-300 hover:shadow-md'
+                      }`}
+                    >
+                      {v.name || v.variant || `Variant ${index + 1}`} 
+                      {v.price ? ` · ₹${v.price}` : ''}
+                    </button>
+                  );
+                })}
               </div>
               {selectedVariant && selectedVariant.stock !== undefined && selectedVariant.stock <= 5 && (
                 <p className="text-xs text-rose-500 font-medium">⚠️ Only {selectedVariant.stock} left in this variant</p>
               )}
             </div>
           )}
+          {/* ------------------------------------------- */}
 
-          {/* Price */}
           <div className="flex items-end gap-3">
             <span className="text-3xl font-bold text-gray-800">{DisplayPriceInRupees(displayPrice)}</span>
             {!selectedVariant && data.discount > 0 && (
@@ -422,7 +430,6 @@ const ProductDisplayPage = () => {
           </div>
           <p className="text-xs text-gray-500 -mt-1">Inclusive of all taxes</p>
 
-          {/* Stock Status & Add to Cart */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-2">
             {displayStock > 0 ? (
               <span className="flex items-center gap-1.5 text-emerald-600 text-sm font-medium bg-emerald-50 px-3 py-1.5 rounded-full">
@@ -465,7 +472,6 @@ const ProductDisplayPage = () => {
             </div>
           )}
 
-          {/* Delivery Info */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2 text-gray-600 bg-gray-50 p-2.5 rounded-xl">
               <FaTruck className="text-rose-400" /> 2-3 days delivery
@@ -475,7 +481,6 @@ const ProductDisplayPage = () => {
             </div>
           </div>
 
-          {/* Offers */}
           <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 p-4 rounded-xl border border-amber-200/50">
             <h4 className="text-sm font-semibold text-amber-800 flex items-center gap-2 mb-2">
               <FaTag className="text-amber-600" /> Offers for you
@@ -486,7 +491,6 @@ const ProductDisplayPage = () => {
             </ul>
           </div>
 
-          {/* Pincode Check */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
             <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
               <FaMapMarkerAlt className="text-rose-400" /> Check Delivery for Your Area
@@ -531,7 +535,6 @@ const ProductDisplayPage = () => {
             )}
           </div>
 
-          {/* Why You'll Love This */}
           <div>
             <h4 className="text-sm font-semibold text-gray-700 mb-3">Why you'll love this</h4>
             <div className="grid grid-cols-2 gap-2">
@@ -544,7 +547,6 @@ const ProductDisplayPage = () => {
             </div>
           </div>
 
-          {/* Trust Badges */}
           <div className="grid grid-cols-2 gap-2">
             {TRUST_BADGES.map(({ icon: Icon, label, sub, bg, ic }) => (
               <div key={label} className={`flex items-center gap-2 p-2.5 rounded-xl ${bg} border border-rose-100/30`}>
@@ -557,7 +559,6 @@ const ProductDisplayPage = () => {
             ))}
           </div>
 
-          {/* Mobile Description */}
           {data.description && (
             <div className="lg:hidden bg-white p-5 rounded-2xl border border-rose-100/50 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-3">Description</h3>
@@ -594,7 +595,6 @@ const ProductDisplayPage = () => {
           </div>
         </div>
 
-        {/* Rating Distribution */}
         <div className="bg-white p-6 rounded-2xl border border-rose-100/50 shadow-sm mb-8">
           <div className="flex items-center gap-6 flex-wrap">
             <div className="text-center">
@@ -620,7 +620,6 @@ const ProductDisplayPage = () => {
           </div>
         </div>
 
-        {/* Reviews List */}
         {reviewsLoading ? (
           <div className="text-center py-8 text-gray-400">Loading reviews...</div>
         ) : sortedReviews.length > 0 ? (
@@ -659,16 +658,10 @@ const ProductDisplayPage = () => {
         )}
       </div>
 
-      {/* ============ YOU MAY ALSO LIKE ============ */}
       <YouMayAlsoLike currentProductId={data._id} />
-
-      {/* ============ RECENTLY VIEWED ============ */}
       <RecentlyViewed />
-
-      {/* ============ PRODUCT Q&A ============ */}
       <ProductQA productId={data._id} />
 
-      {/* ============ LIGHTBOX ============ */}
       {lightboxOpen && (
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4" onClick={() => { setLightboxOpen(false); setZoom(1); setPanX(0); setPanY(0); }}>
           <div className="relative max-w-5xl w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
