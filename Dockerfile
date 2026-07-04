@@ -1,25 +1,15 @@
-# Multi-stage build for full-stack Node.js app
-# Stage 1: Build frontend
-FROM node:18-alpine AS client-build
-WORKDIR /app
-COPY client/package*.json ./client/
-RUN cd client && npm ci --legacy-peer-deps
-COPY client/ ./client/
-RUN cd client && npm run build
+# Production Dockerfile — Express API server only
+# Frontend is served separately (Vercel). This runs just the backend.
 
-# Stage 2: Production server
-FROM node:18-alpine
+FROM node:18-slim
 WORKDIR /app
 
-# Copy server dependencies
+# Copy & install server deps
 COPY server/package*.json ./server/
-RUN cd server && npm ci --production
+RUN cd server && npm install --production --no-audit --no-fund
 
 # Copy server source
 COPY server/ ./server/
-
-# Copy built frontend from stage 1
-COPY --from=client-build /app/client/dist ./client/dist
 
 ENV NODE_ENV=production
 ENV PORT=5000

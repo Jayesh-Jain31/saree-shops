@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.env
+.env.local
+.git
+.gitignore
+README.md
+attached_assets/
+client/node_modules/
+server/node_modules/
+server/.env
+client/.env
+*.log
+.cache/
+.replit/
+.local/
+.nix/

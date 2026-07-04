@@ -2,10 +2,6 @@ import mongoose from "mongoose";
 import dotenv from 'dotenv'
 dotenv.config()
 
-if(!process.env.MONGODB_URI){
-    throw new Error("Please provide MONGODB_URI in the .env file")
-}
-
 async function ensureIndexes() {
     try {
         const db = mongoose.connection.db
@@ -53,6 +49,10 @@ async function ensureIndexes() {
 }
 
 async function connectDB(){
+    if(!process.env.MONGODB_URI){
+        console.error("MONGODB_URI is not set. Please provide it as an environment variable.")
+        process.exit(1)
+    }
     try {
         await mongoose.connect(process.env.MONGODB_URI)
         console.log("connect DB")
