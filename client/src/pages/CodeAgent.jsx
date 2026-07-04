@@ -329,7 +329,15 @@ export default function CodeAgent() {
 
             setMessages(prev => prev.filter(m => m.id !== thinkingMsg.id).concat(agentMsg))
         } catch (err) {
-            const errMsg = { id: `e-${Date.now()}`, role: 'agent', error: err?.response?.data?.message || 'Failed to reach AI. Check your Gemini API key in Secrets.' }
+            const raw = err?.response?.data?.message || err?.message || 'Failed to reach AI.'
+            const isRateLimit = raw.includes('rate limit') || raw.includes('429') || raw.includes('quota')
+            const errMsg = {
+                id: `e-${Date.now()}`,
+                role: 'agent',
+                error: isRateLimit
+                    ? '⚠️ Gemini API rate limit hit. The free tier allows ~15 requests/minute. Wait a few seconds and try again — your request was not lost.'
+                    : raw,
+            }
             setMessages(prev => prev.filter(m => m.id !== thinkingMsg.id).concat(errMsg))
         } finally {
             setSending(false)
