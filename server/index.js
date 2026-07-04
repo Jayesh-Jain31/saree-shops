@@ -146,7 +146,17 @@ const PORT = process.env.PORT || 8080
 
 app.get('/', (req, res) => {
     res.json({ message: "API is running 🚀" })
-}) 
+})
+
+// Serve built React app for production deployments (Northflank, etc)
+if (process.env.NODE_ENV === 'production') {
+    const clientDistPath = path.join(__dirname, '..', 'client', 'dist')
+    app.use(express.static(clientDistPath))
+    app.get('*', (req, res) => {
+        if (req.path.startsWith('/api/')) return
+        res.sendFile(path.join(clientDistPath, 'index.html'))
+    })
+}
 
 connectDB().then(() => {
     app.listen(PORT, () => {

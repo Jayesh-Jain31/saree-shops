@@ -74,13 +74,6 @@ const DisplayCartItem = ({ close }) => {
   const handleCheckout = async () => {
     if (!user?._id) { toast('Please Login'); return }
 
-    // Wallet covers full amount — go to checkout page for review
-    if (payableAmount <= 0) {
-      if (close) close()
-      navigate('/checkout')
-      return
-    }
-
     setPayLoading(true)
     try {
       const scriptLoaded = await loadRazorpayScript()
@@ -90,7 +83,10 @@ const DisplayCartItem = ({ close }) => {
       const razorpayKeyId = configRes.data?.keyId
       if (!razorpayKeyId) { toast.error('Payment not configured.'); setPayLoading(false); return }
 
-      const orderRes = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: payableAmount, list_items: cartItem } })
+      // Wallet covers full amount: create Razorpay order with full total to open popup for address
+      // Actual payment will be zero; popup is purely for address collection + confirmation
+      const rzpOrderAmt = payableAmount <= 0 ? totalPrice : payableAmount
+      const orderRes = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: rzpOrderAmt, list_items: cartItem } })
       if (!orderRes.data.success) { toast.error('Failed to create payment order.'); setPayLoading(false); return }
 
       const razorpayOrder = orderRes.data.data
@@ -144,27 +140,32 @@ const DisplayCartItem = ({ close }) => {
           try {
             const itemsSnapshot = [...cartItem]
             const addrSnapshot  = defaultAddr
+            // Wallet full cover: totalAmt is 0, full amount deducted from wallet
+            const isWalletFull = payableAmount <= 0
+            const finalPayable = isWalletFull ? 0 : payableAmount
+            const finalWalletDeduction = isWalletFull ? totalPrice : walletDeduction
             const orderData = {
               list_items: itemsSnapshot,
               addressId: addrSnapshot?._id || '',
               subTotalAmt: totalPrice,
-              totalAmt: payableAmount,
-              walletDeduction,
+              totalAmt: finalPayable,
+              walletDeduction: finalWalletDeduction,
               loyaltyPointsUsed,
               loyaltyDiscount,
+              razorpay_order_id: paymentResponse.razorpay_order_id || razorpayOrder.id,
             }
 
             if (paymentResponse.method === 'cod' || !paymentResponse.razorpay_signature) {
-              const codToastId = toast.loading('Placing COD order...')
+              const codToastId = toast.loading(isWalletFull ? 'Placing wallet order...' : 'Placing COD order...')
               const codRes = await Axios({ ...SummaryApi.CashOnDeliveryOrder, data: orderData })
               toast.dismiss(codToastId)
               if (codRes.data.success) {
-                toast.success('COD order placed!')
+                toast.success(isWalletFull ? 'Order placed using wallet!' : 'COD order placed!')
                 if (fetchCartItem) fetchCartItem()
                 if (fetchOrder) fetchOrder()
                 if (close) close()
-                navigate('/success', { state: { text: 'Order', address: addrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge: 0, paymentMethod: 'COD', orderDate: new Date().toISOString() } })
-              } else { toast.error('Failed to place COD order.') }
+                navigate('/success', { state: { text: 'Order', address: addrSnapshot, items: itemsSnapshot, totalAmount: finalPayable, deliveryCharge: 0, paymentMethod: isWalletFull ? 'Wallet' : 'COD', orderDate: new Date().toISOString() } })
+              } else { toast.error(isWalletFull ? 'Failed to place wallet order.' : 'Failed to place COD order.') }
               return
             }
 
@@ -184,7 +185,7 @@ const DisplayCartItem = ({ close }) => {
               if (fetchCartItem) fetchCartItem()
               if (fetchOrder) fetchOrder()
               if (close) close()
-              navigate('/success', { state: { text: 'Order', address: addrSnapshot, items: itemsSnapshot, totalAmount: payableAmount, deliveryCharge: 0, paymentMethod: 'Razorpay', orderDate: new Date().toISOString() } })
+              navigate('/success', { state: { text: 'Order', address: addrSnapshot, items: itemsSnapshot, totalAmount: finalPayable, deliveryCharge: 0, paymentMethod: 'Razorpay', orderDate: new Date().toISOString() } })
             } else { toast.error('Payment verification failed.') }
           } catch (err) { toast.dismiss(); AxiosToastError(err) }
         },
