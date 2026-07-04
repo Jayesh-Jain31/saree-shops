@@ -65,7 +65,9 @@ export const createReturnRequest = async (req, res) => {
             return res.status(400).json({ message: "Return request already submitted for this order", error: true, success: false })
         }
 
-        const isCOD = order.payment_status?.toUpperCase() === 'CASH ON DELIVERY'
+        const ps = order.payment_status?.toUpperCase() || ''
+        const isCOD = ps === 'CASH ON DELIVERY' || ps === 'COD'
+        const isPartialCOD = ps === 'PARTIAL COD'
 
         let returnItems = order.items
         if (selectedItems && Array.isArray(selectedItems) && selectedItems.length > 0) {
@@ -85,8 +87,10 @@ export const createReturnRequest = async (req, res) => {
             description: description || '',
             images: Array.isArray(images) ? images.filter(Boolean) : [],
             totalAmt: returnItems.length === order.items.length ? order.totalAmt : returnTotalAmt,
-            paymentMethod: isCOD ? 'COD' : 'ONLINE',
-            paymentId: order.paymentId || ''
+            paymentMethod: isPartialCOD ? 'PARTIAL_COD' : (isCOD ? 'COD' : 'ONLINE'),
+            paymentId: order.paymentId || '',
+            prepaidAmount: order.prepaidAmount || 0,
+            codAmount: order.codAmount || 0,
         })
 
         try {
@@ -180,12 +184,47 @@ export const updateReturnStatus = async (req, res) => {
 
         if (shouldTriggerRefund) {
             const order = await OrderModel.findById(returnReq.orderId)
-            const isCOD = returnReq.paymentMethod === 'COD' ||
-                (order?.payment_status || '').toUpperCase().includes('CASH') ||
-                (order?.payment_status || '').toUpperCase() === 'COD' ||
-                !order?.paymentId
+            const ps = (order?.payment_status || '').toUpperCase()
+            const isCOD = returnReq.paymentMethod === 'COD' || ps.includes('CASH') || ps === 'COD' || !order?.paymentId
+            const isPartialCOD = returnReq.paymentMethod === 'PARTIAL_COD' || ps === 'PARTIAL COD'
 
-            if (isCOD) {
+            if (isPartialCOD) {
+                // Partial COD: refund prepaid portion via Razorpay, COD portion to wallet
+                try {
+                    const paymentId = returnReq.paymentId || order?.paymentId
+                    const prepaidRefund = Math.min(finalRefundAmount, returnReq.prepaidAmount || order?.prepaidAmount || 0)
+                    const codRefund = Math.max(0, finalRefundAmount - prepaidRefund)
+
+                    // 1. Refund prepaid portion via Razorpay
+                    if (prepaidRefund > 0 && paymentId) {
+                        const rzResult = await triggerRazorpayRefund(
+                            paymentId,
+                            prepaidRefund,
+                            `Return approved for order ${returnReq.orderDisplayId} (prepaid portion)`
+                        )
+                        if (rzResult.success) {
+                            console.log(`[Refund] Razorpay prepaid refund ₹${prepaidRefund} for Partial COD return ${returnReq._id}`)
+                        }
+                    }
+
+                    // 2. Credit COD portion to wallet
+                    if (codRefund > 0) {
+                        await creditWalletInternal(
+                            returnReq.userId,
+                            codRefund,
+                            `COD portion refund for return on order ${returnReq.orderDisplayId}`,
+                            `RET-${returnReq._id}`
+                        )
+                        console.log(`[Refund] Wallet credited ₹${codRefund} for Partial COD return ${returnReq._id}`)
+                    }
+
+                    returnReq.status = 'Refunded'
+                    returnReq.refundAmount = finalRefundAmount
+                    autoAction = 'partial_cod_refund_done'
+                } catch (e) {
+                    console.error('[Refund] Partial COD refund failed:', e.message)
+                }
+            } else if (isCOD) {
                 // COD: auto-credit wallet immediately
                 try {
                     await creditWalletInternal(
@@ -216,13 +255,29 @@ export const updateReturnStatus = async (req, res) => {
             }
         }
 
-        if (newStatus === 'Refunded' && prevStatus !== 'Refunded' && autoAction !== 'wallet_credited') {
+        if (newStatus === 'Refunded' && prevStatus !== 'Refunded' && !['wallet_credited','partial_cod_refund_done'].includes(autoAction)) {
             const order = await OrderModel.findById(returnReq.orderId)
-            const isCOD = returnReq.paymentMethod === 'COD' ||
-                (order?.payment_status || '').toUpperCase().includes('CASH') ||
-                !order?.paymentId
+            const ps = (order?.payment_status || '').toUpperCase()
+            const isCOD = returnReq.paymentMethod === 'COD' || ps.includes('CASH') || !order?.paymentId
+            const isPartialCOD = returnReq.paymentMethod === 'PARTIAL_COD' || ps === 'PARTIAL COD'
 
-            if (isCOD) {
+            if (isPartialCOD) {
+                // Fallback: if status manually set to Refunded, credit COD portion + try Razorpay for prepaid
+                try {
+                    const paymentId = returnReq.paymentId || order?.paymentId
+                    const prepaidRefund = Math.min(finalRefundAmount, returnReq.prepaidAmount || order?.prepaidAmount || 0)
+                    const codRefund = Math.max(0, finalRefundAmount - prepaidRefund)
+                    if (prepaidRefund > 0 && paymentId) {
+                        await triggerRazorpayRefund(paymentId, prepaidRefund, `Return refund prepaid for order ${returnReq.orderDisplayId}`)
+                    }
+                    if (codRefund > 0) {
+                        await creditWalletInternal(returnReq.userId, codRefund, `COD portion refund for return on order ${returnReq.orderDisplayId}`, `RET-${returnReq._id}`)
+                    }
+                    autoAction = 'partial_cod_refund_done'
+                } catch (e) {
+                    console.error('[Refund] Partial COD manual refund failed:', e.message)
+                }
+            } else if (isCOD) {
                 try {
                     await creditWalletInternal(
                         returnReq.userId,

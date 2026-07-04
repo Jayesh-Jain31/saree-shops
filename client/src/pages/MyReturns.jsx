@@ -84,10 +84,12 @@ const DetailModal = ({ ret, onClose }) => {
   const order = ret.orderId && typeof ret.orderId === 'object' ? ret.orderId : null
   const addr = order?.delivery_address
 
+  const ps = order?.payment_status?.toUpperCase() || ''
   const paymentMethod = ret.paymentMethod ||
-    (order?.payment_status?.toUpperCase() === 'CASH ON DELIVERY' ? 'COD' : 'Online')
+    (ps === 'CASH ON DELIVERY' || ps === 'COD' ? 'COD' : ps === 'PARTIAL COD' ? 'Partial COD' : 'Online')
   const paymentId = ret.paymentId || order?.paymentId || null
   const isCOD = paymentMethod?.toUpperCase() === 'COD'
+  const isPartialCOD = ps === 'PARTIAL COD' || paymentMethod === 'Partial COD'
 
   const formatDate = (d) => d
     ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -129,7 +131,9 @@ const DetailModal = ({ ret, onClose }) => {
               <div className='flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2'>
                 <FaCheckCircle className='text-green-500 flex-shrink-0' size={14} />
                 <p className='text-sm font-bold text-green-700'>
-                  {DisplayPriceInRupees(ret.refundAmount)} refunded {isCOD ? 'to your wallet' : 'to original payment method'}
+                  {isPartialCOD
+                    ? `${DisplayPriceInRupees(ret.refundAmount)} refunded (prepaid to Razorpay + COD to wallet)`
+                    : `${DisplayPriceInRupees(ret.refundAmount)} refunded ${isCOD ? 'to your wallet' : 'to original payment method'}`}
                 </p>
               </div>
             )}
@@ -198,9 +202,9 @@ const DetailModal = ({ ret, onClose }) => {
             <div className='px-4 py-3 space-y-2.5'>
               <div className='flex items-center justify-between'>
                 <span className='text-xs text-gray-500'>Payment Method</span>
-                <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${isCOD ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
-                  {isCOD ? <FaMoneyBillWave size={11} /> : <FaCreditCard size={11} />}
-                  {isCOD ? 'Cash on Delivery' : 'Online Payment'}
+                <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${isCOD ? 'bg-yellow-50 text-yellow-700' : isPartialCOD ? 'bg-indigo-50 text-indigo-700' : 'bg-blue-50 text-blue-700'}`}>
+                  {isCOD ? <FaMoneyBillWave size={11} /> : isPartialCOD ? <FaCreditCard size={11} /> : <FaCreditCard size={11} />}
+                  {isCOD ? 'Cash on Delivery' : isPartialCOD ? 'Partial COD' : 'Online Payment'}
                 </span>
               </div>
               {!isCOD && paymentId && (
@@ -334,8 +338,9 @@ const MyReturns = () => {
           {returns.map(ret => {
             const preview = ret.items?.[0]?.product_details?.image?.[0]
             const firstName = ret.items?.[0]?.product_details?.name || 'Item'
-            const isCOD = (ret.paymentMethod?.toUpperCase() === 'COD') ||
-              (typeof ret.orderId === 'object' && ret.orderId?.payment_status?.toUpperCase() === 'CASH ON DELIVERY')
+            const retPs = typeof ret.orderId === 'object' ? (ret.orderId?.payment_status?.toUpperCase() || '') : ''
+            const isCOD = (ret.paymentMethod?.toUpperCase() === 'COD') || retPs.includes('CASH') || retPs === 'COD'
+            const isPartialCOD = retPs === 'PARTIAL COD' || ret.paymentMethod?.toUpperCase() === 'PARTIAL_COD'
 
             return (
               <div
@@ -367,8 +372,8 @@ const MyReturns = () => {
 
                       <div className='flex flex-wrap items-center gap-2 mt-2'>
                         <StatusBadge status={ret.status} />
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${isCOD ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
-                          {isCOD ? '💵 COD' : '💳 Online'}
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${isCOD ? 'bg-yellow-50 text-yellow-700' : isPartialCOD ? 'bg-indigo-50 text-indigo-700' : 'bg-blue-50 text-blue-700'}`}>
+                          {isCOD ? '💵 COD' : isPartialCOD ? '💳 Partial COD' : '💳 Online'}
                         </span>
                         <span className='text-[11px] text-gray-400'>{formatDate(ret.createdAt)}</span>
                       </div>

@@ -6,6 +6,7 @@ import { valideURLConvert } from '../utils/valideURLConvert'
 import { Link, useNavigate } from 'react-router-dom'
 import CategoryWiseProductDisplay from '../components/CategoryWiseProductDisplay'
 import FlashSaleCountdown from '../components/FlashSaleCountdown'
+import SectionBanner from '../components/SectionBanner'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import bannerFallback from '../assets/banner.jpg'
@@ -233,7 +234,15 @@ const Home = () => {
       </div>
 
       {visibleCategories.map((c) => (
-        <CategoryWiseProductDisplay key={c._id + 'CategorywiseProduct'} id={c._id} name={c.name} />
+        <React.Fragment key={c._id + 'CategorywiseProduct'}>
+          <CategoryWiseProductDisplay id={c._id} name={c.name} />
+          {/* Section banner under Silk Sarees category only */}
+          {c.name.toLowerCase().includes('silk') && (
+            <div className='container mx-auto px-4 mb-2'>
+              <SectionBanner placement='section-silk' />
+            </div>
+          )}
+        </React.Fragment>
       ))}
 
     </section>

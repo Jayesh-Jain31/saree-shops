@@ -15,6 +15,7 @@ const bannerSchema = new mongoose.Schema({
     link: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
     displayOrder: { type: Number, default: 0 },
+    placement: { type: String, default: 'hero', enum: ['hero', 'section-silk'] },
 }, { timestamps: true })
 
 const BannerModel = mongoose.model('Banner', bannerSchema)

@@ -66,6 +66,14 @@ const returnSchema = new mongoose.Schema({
     paymentId: {
         type: String,
         default: ''
+    },
+    prepaidAmount: {
+        type: Number,
+        default: 0
+    },
+    codAmount: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true })
 

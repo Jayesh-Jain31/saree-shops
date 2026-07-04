@@ -42,7 +42,9 @@ const DetailDrawer = ({ ret, onClose, onUpdated }) => {
   })
   const [saving, setSaving] = useState(false)
 
-  const isCOD = ret.paymentMethod?.toUpperCase() === 'COD'
+  const retPs = ret.paymentMethod?.toUpperCase() || ''
+  const isCOD = retPs === 'COD'
+  const isPartialCOD = retPs === 'PARTIAL_COD'
   const isRejected = ret.status === REJECTED_STATUS
   const currentStepIdx = FLOW_STEPS.indexOf(ret.status)
 
@@ -219,9 +221,9 @@ const DetailDrawer = ({ ret, onClose, onUpdated }) => {
             <div className='px-4 py-3 space-y-2'>
               <div className='flex justify-between items-center'>
                 <span className='text-xs text-gray-500'>Method</span>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${isCOD ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
-                  {isCOD ? <FaMoneyBillWave size={10} /> : <FaCreditCard size={10} />}
-                  {isCOD ? 'Cash on Delivery' : 'Online'}
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${isCOD ? 'bg-yellow-50 text-yellow-700' : isPartialCOD ? 'bg-indigo-50 text-indigo-700' : 'bg-blue-50 text-blue-700'}`}>
+                  {isCOD ? <FaMoneyBillWave size={10} /> : isPartialCOD ? <FaCreditCard size={10} /> : <FaCreditCard size={10} />}
+                  {isCOD ? 'Cash on Delivery' : isPartialCOD ? 'Partial COD' : 'Online'}
                 </span>
               </div>
               {ret.paymentId && !isCOD && (
@@ -289,6 +291,11 @@ const DetailDrawer = ({ ret, onClose, onUpdated }) => {
                     className='w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 bg-white'
                   />
                 </div>
+                {isPartialCOD && (
+                  <p className='text-[10px] text-indigo-600 mt-1 flex items-center gap-1'>
+                    <FaWallet size={9} /> Partial COD — prepaid refunded via Razorpay, COD portion to wallet automatically
+                  </p>
+                )}
                 {isCOD && (
                   <p className='text-[10px] text-yellow-600 mt-1 flex items-center gap-1'>
                     <FaWallet size={9} /> COD — refund will be credited to customer wallet automatically
@@ -475,7 +482,9 @@ const AdminReturns = () => {
             const preview = ret.items?.[0]?.product_details?.image?.[0]
             const firstName = ret.items?.[0]?.product_details?.name || 'Item'
             const m = STATUS_META[ret.status] || STATUS_META['Pending']
-            const isCOD = ret.paymentMethod?.toUpperCase() === 'COD'
+            const retPs = ret.paymentMethod?.toUpperCase()
+            const isCOD = retPs === 'COD'
+            const isPartialCOD = retPs === 'PARTIAL_COD'
 
             return (
               <div
@@ -531,8 +540,8 @@ const AdminReturns = () => {
                   <div className='flex items-center justify-between mt-3 pt-3 border-t border-gray-50'>
                     <div className='flex items-center gap-2'>
                       <StatusBadge status={ret.status} />
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isCOD ? 'bg-yellow-50 text-yellow-600' : 'bg-blue-50 text-blue-600'}`}>
-                        {isCOD ? '💵 COD' : '💳 Online'}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isCOD ? 'bg-yellow-50 text-yellow-600' : isPartialCOD ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'}`}>
+                        {isCOD ? '💵 COD' : isPartialCOD ? '💳 Partial COD' : '💳 Online'}
                       </span>
                     </div>
                     <div className='text-right'>

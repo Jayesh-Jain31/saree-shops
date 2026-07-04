@@ -19,6 +19,7 @@ const emptyForm = {
   slides: [{ ...emptySlide }],
   isActive: true,
   displayOrder: 0,
+  placement: 'hero',
 }
 
 const SlideEditor = ({ slide, index, total, onChange, onRemove, uploading, onUploadDesktop, onUploadMobile }) => (
@@ -167,6 +168,7 @@ const BannerAdmin = () => {
       slides: normalizeBanner(banner),
       isActive: banner.isActive,
       displayOrder: banner.displayOrder,
+      placement: banner.placement || 'hero',
     })
     setShowForm(true)
   }
@@ -235,6 +237,7 @@ const BannerAdmin = () => {
         link: validSlides[0]?.link || '',
         isActive: form.isActive,
         displayOrder: form.displayOrder,
+        placement: form.placement || 'hero',
       }
       let res
       if (editingId) {
@@ -386,6 +389,9 @@ const BannerAdmin = () => {
                             <span className='text-[10px] px-2 py-0.5 rounded-full font-semibold bg-purple-50 text-purple-700 border border-purple-200'>
                               {slides.length} slide{slides.length !== 1 ? 's' : ''}
                             </span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${banner.placement === 'section-silk' ? 'bg-pink-50 text-pink-700 border-pink-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                              {banner.placement === 'section-silk' ? 'Silk Section' : 'Hero'}
+                            </span>
                             <span className='text-[10px] text-gray-400'>Order: {banner.displayOrder}</span>
                           </div>
                           {slides.length > 1 && (
@@ -437,16 +443,32 @@ const BannerAdmin = () => {
             </div>
 
             <div className='overflow-y-auto flex-1 p-4 space-y-4'>
-              {/* Banner group title */}
-              <div>
-                <label className='block text-xs font-semibold text-gray-600 mb-1.5'>Banner Group Name <span className='font-normal text-gray-400'>(optional)</span></label>
-                <input
-                  type='text'
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder='e.g. "Homepage Hero" or "Seasonal Sale"'
-                  className='w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500'
-                />
+              {/* Banner group title + placement */}
+              <div className='grid grid-cols-2 gap-3'>
+                <div>
+                  <label className='block text-xs font-semibold text-gray-600 mb-1.5'>Banner Group Name <span className='font-normal text-gray-400'>(optional)</span></label>
+                  <input
+                    type='text'
+                    value={form.title}
+                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder='e.g. "Homepage Hero" or "Seasonal Sale"'
+                    className='w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500'
+                  />
+                </div>
+                <div>
+                  <label className='block text-xs font-semibold text-gray-600 mb-1.5'>Placement</label>
+                  <select
+                    value={form.placement || 'hero'}
+                    onChange={e => setForm(f => ({ ...f, placement: e.target.value }))}
+                    className='w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500 bg-white'
+                  >
+                    <option value='hero'>Homepage Hero (Main Banner)</option>
+                    <option value='section-silk'>Silk Sarees Section</option>
+                  </select>
+                  <p className='text-[11px] text-gray-400 mt-1'>
+                    {form.placement === 'section-silk' ? 'Shows under Silk Sarees category on home page' : 'Shows at top of homepage'}
+                  </p>
+                </div>
               </div>
 
               {/* Slides */}
