@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { FiCode, FiSend, FiCheck, FiX, FiChevronDown, FiClock } from 'react-icons/fi'
-import { MdAutoFixHigh } from 'react-icons/md'
+import { FiCode, FiSend, FiCheck, FiX, FiChevronDown, FiClock, FiRotateCcw, FiPlusCircle } from 'react-icons/fi'
+import { MdAutoFixHigh, MdDesignServices } from 'react-icons/md'
+import { HiSparkles } from 'react-icons/hi'
 
 // ── Simple LCS-based line diff ────────────────────────────────────────────────
 function diffLines(oldStr, newStr) {
@@ -14,7 +15,6 @@ function diffLines(oldStr, newStr) {
     for (let i = 1; i <= m; i++)
         for (let j = 1; j <= n; j++)
             dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1])
-
     const result = []
     let i = m, j = n
     while (i > 0 || j > 0) {
@@ -40,9 +40,8 @@ function countChanges(diff) {
     }, { added: 0, removed: 0 })
 }
 
-// Only show ±5 lines of context around changes
 function getVisibleDiff(diff, showAll) {
-    if (showAll) return diff
+    if (showAll) return diff.map((d, i) => ({ ...d, lineNum: i + 1 }))
     const CONTEXT = 5
     const changed = new Set()
     diff.forEach((d, i) => { if (d.type !== 'equal') changed.add(i) })
@@ -64,8 +63,30 @@ function getVisibleDiff(diff, showAll) {
 }
 
 // ── Diff viewer ───────────────────────────────────────────────────────────────
-function DiffViewer({ original, modified }) {
+function DiffViewer({ original, modified, isNewFile }) {
     const [showAll, setShowAll] = useState(false)
+
+    if (isNewFile) {
+        const lines = modified.split('\n')
+        return (
+            <div className='rounded-xl overflow-hidden border border-green-700 bg-gray-950'>
+                <div className='flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-700'>
+                    <span className='text-xs text-green-400 font-mono font-semibold'>✨ New file — full content</span>
+                    <span className='text-xs text-green-400 font-mono'>+{lines.length} lines</span>
+                </div>
+                <div className='overflow-auto max-h-[450px] font-mono text-xs leading-5'>
+                    {lines.map((line, idx) => (
+                        <div key={idx} className='flex bg-green-950 hover:brightness-110'>
+                            <span className='w-8 text-right pr-2 text-gray-600 select-none flex-shrink-0 border-r border-gray-800 py-0.5 pl-2'>{idx + 1}</span>
+                            <span className='w-5 text-center flex-shrink-0 py-0.5 text-green-400 font-bold'>+</span>
+                            <span className='py-0.5 px-2 whitespace-pre flex-1 text-green-300'>{line}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
     const diff = diffLines(original, modified)
     const visible = getVisibleDiff(diff, showAll)
     const { added, removed } = countChanges(diff)
@@ -96,18 +117,14 @@ function DiffViewer({ original, modified }) {
             <div className='overflow-auto max-h-[450px] font-mono text-xs leading-5'>
                 {visible.map((d, idx) => {
                     if (d.type === 'ellipsis') return (
-                        <div key={idx} className='px-4 py-1 text-gray-500 bg-gray-900 border-y border-gray-800 select-none'>
-                            ···
-                        </div>
+                        <div key={idx} className='px-4 py-1 text-gray-500 bg-gray-900 border-y border-gray-800 select-none'>···</div>
                     )
                     const bg = d.type === 'add' ? 'bg-green-950' : d.type === 'remove' ? 'bg-red-950' : ''
                     const prefix = d.type === 'add' ? '+' : d.type === 'remove' ? '-' : ' '
                     const textColor = d.type === 'add' ? 'text-green-300' : d.type === 'remove' ? 'text-red-300' : 'text-gray-400'
                     return (
                         <div key={idx} className={`flex ${bg} hover:brightness-110`}>
-                            <span className='w-8 text-right pr-2 text-gray-600 select-none flex-shrink-0 border-r border-gray-800 py-0.5 pl-2'>
-                                {d.lineNum}
-                            </span>
+                            <span className='w-8 text-right pr-2 text-gray-600 select-none flex-shrink-0 border-r border-gray-800 py-0.5 pl-2'>{d.lineNum}</span>
                             <span className={`w-5 text-center flex-shrink-0 py-0.5 ${textColor} font-bold`}>{prefix}</span>
                             <span className={`py-0.5 px-2 whitespace-pre flex-1 ${textColor}`}>{d.line}</span>
                         </div>
@@ -119,28 +136,57 @@ function DiffViewer({ original, modified }) {
 }
 
 // ── History item ──────────────────────────────────────────────────────────────
-function HistoryItem({ entry }) {
+function HistoryItem({ entry, onUndo, undoing }) {
     return (
         <div className='flex items-start gap-3 p-3 rounded-xl bg-green-50 border border-green-100'>
             <div className='w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5'>
-                <FiCheck size={13} className='text-green-600' />
+                {entry.isNewFile ? <FiPlusCircle size={13} className='text-green-600' /> : <FiCheck size={13} className='text-green-600' />}
             </div>
-            <div className='min-w-0'>
+            <div className='min-w-0 flex-1'>
                 <p className='text-sm text-gray-800 font-medium'>{entry.instruction}</p>
-                <p className='text-xs text-gray-500 mt-0.5 font-mono truncate'>client/src/{entry.file}</p>
+                <div className='flex items-center gap-2 mt-0.5 flex-wrap'>
+                    <p className='text-xs text-gray-500 font-mono truncate'>client/src/{entry.file}</p>
+                    {entry.isNewFile && <span className='text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold'>NEW FILE</span>}
+                    {entry.isRedesign && <span className='text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-semibold'>REDESIGN</span>}
+                </div>
                 <p className='text-[11px] text-gray-400 mt-0.5 flex items-center gap-1'>
                     <FiClock size={10} /> {entry.time}
                 </p>
             </div>
+            <button
+                onClick={() => onUndo(entry)}
+                disabled={undoing === entry.file}
+                title='Undo this change'
+                className='flex items-center gap-1 text-xs text-gray-400 hover:text-orange-500 border border-gray-200 hover:border-orange-300 rounded-lg px-2 py-1.5 transition flex-shrink-0 disabled:opacity-40'
+            >
+                {undoing === entry.file
+                    ? <span className='w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin' />
+                    : <FiRotateCcw size={12} />
+                }
+                Undo
+            </button>
         </div>
     )
 }
+
+// ── Example prompt chips ──────────────────────────────────────────────────────
+const EXAMPLES = [
+    { label: '🎨 Redesign product page', prompt: 'Redesign the product detail page to look more modern and premium' },
+    { label: '📄 Create About Us page', prompt: 'Create a new About Us page with company info, team section, and contact' },
+    { label: '🛒 Add wishlist button to cards', prompt: 'Add a heart wishlist toggle button to product cards' },
+    { label: '🎯 Make header sticky', prompt: 'Make the header sticky on scroll with a shadow' },
+    { label: '💳 Redesign checkout', prompt: 'Redesign the checkout page to look cleaner and more trustworthy' },
+    { label: '✨ Add skeleton loading', prompt: 'Add skeleton loading placeholders to the product listing page' },
+    { label: '📱 Mobile bottom nav', prompt: 'Create a mobile bottom navigation bar component' },
+    { label: '🏷️ Add sale badge to products', prompt: 'Add a "SALE" badge on discounted products in product cards' },
+]
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CodeAgent() {
     const [instruction, setInstruction] = useState('')
     const [loading, setLoading] = useState(false)
     const [applying, setApplying] = useState(false)
+    const [undoing, setUndoing] = useState(null)
     const [preview, setPreview] = useState(null)
     const [history, setHistory] = useState([])
     const [files, setFiles] = useState([])
@@ -180,13 +226,15 @@ export default function CodeAgent() {
         try {
             const res = await Axios({
                 ...SummaryApi.codeAgentApply,
-                data: { file: preview.file, content: preview.modified },
+                data: { file: preview.file, content: preview.modified, original: preview.original },
             })
             if (res.data?.success) {
-                toast.success('Change applied! Vite will hot-reload.')
+                toast.success(res.data.message || 'Change applied! Vite will hot-reload.')
                 setHistory(h => [{
                     instruction,
                     file: preview.file,
+                    isNewFile: preview.isNewFile,
+                    isRedesign: preview.isRedesign,
                     time: new Date().toLocaleTimeString('en-IN'),
                 }, ...h])
                 setPreview(null)
@@ -207,45 +255,73 @@ export default function CodeAgent() {
         toast('Change rejected. Nothing was modified.', { icon: '❌' })
     }
 
+    const handleUndo = async (entry) => {
+        setUndoing(entry.file)
+        try {
+            const res = await Axios({
+                ...SummaryApi.codeAgentUndo,
+                data: { file: entry.file },
+            })
+            if (res.data?.success) {
+                toast.success(res.data.message || 'Change reverted!')
+                setHistory(h => h.filter(e => e !== entry))
+            } else {
+                toast.error(res.data?.message || 'Could not undo')
+            }
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Undo failed')
+        } finally {
+            setUndoing(null)
+        }
+    }
+
     const handleKey = (e) => {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleGenerate()
     }
-
-    const EXAMPLES = [
-        'Change the hero banner background color to deep navy blue',
-        'Add "New Arrival" badge to product cards',
-        'Make the header sticky on scroll',
-        'Change the footer background to dark gray',
-        'Add a loading spinner to the login button',
-    ]
 
     return (
         <div className='max-w-4xl mx-auto px-4 py-6'>
             {/* Header */}
             <div className='flex items-center gap-3 mb-6'>
-                <div className='w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow'>
-                    <MdAutoFixHigh size={22} />
+                <div className='w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow-lg'>
+                    <MdAutoFixHigh size={24} />
                 </div>
                 <div>
                     <h1 className='text-xl font-bold text-gray-800'>Code Editing AI Agent</h1>
-                    <p className='text-sm text-gray-500'>Describe a change → review the diff → approve or reject</p>
+                    <p className='text-sm text-gray-500'>Tell it what to build or change — it reads your code, makes the edit, you approve</p>
                 </div>
+            </div>
+
+            {/* Capability badges */}
+            <div className='flex flex-wrap gap-2 mb-5'>
+                <span className='flex items-center gap-1.5 text-xs bg-violet-50 text-violet-700 border border-violet-200 rounded-full px-3 py-1 font-medium'>
+                    <MdDesignServices size={13} /> Redesign pages
+                </span>
+                <span className='flex items-center gap-1.5 text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-3 py-1 font-medium'>
+                    <FiPlusCircle size={12} /> Create new pages & components
+                </span>
+                <span className='flex items-center gap-1.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-3 py-1 font-medium'>
+                    <HiSparkles size={13} /> Small tweaks & fixes
+                </span>
+                <span className='flex items-center gap-1.5 text-xs bg-orange-50 text-orange-700 border border-orange-200 rounded-full px-3 py-1 font-medium'>
+                    <FiRotateCcw size={12} /> Undo any change
+                </span>
             </div>
 
             {/* Instruction panel */}
             <div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5'>
-                <label className='block text-sm font-semibold text-gray-700 mb-2'>What do you want to change?</label>
+                <label className='block text-sm font-semibold text-gray-700 mb-2'>What do you want to build or change?</label>
                 <textarea
                     ref={textareaRef}
                     value={instruction}
                     onChange={e => setInstruction(e.target.value)}
                     onKeyDown={handleKey}
-                    placeholder='e.g. "Change the hero banner text to Welcome to our store" or "Make product cards have rounded corners"'
+                    placeholder='e.g. "Redesign the product page to look premium" or "Create a new About Us page" or "Add sale badge to product cards"'
                     rows={3}
                     className='w-full text-sm text-gray-800 placeholder-gray-400 border border-gray-200 rounded-xl px-4 py-3 resize-none outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition'
                 />
 
-                {/* File picker (optional) */}
+                {/* File picker */}
                 <div className='mt-3 flex flex-wrap items-center gap-3'>
                     <div className='flex items-center gap-2 flex-1 min-w-[200px]'>
                         <FiCode size={14} className='text-gray-400 flex-shrink-0' />
@@ -266,7 +342,7 @@ export default function CodeAgent() {
                         {loading ? (
                             <span className='flex items-center gap-2'>
                                 <span className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />
-                                Generating…
+                                AI is thinking…
                             </span>
                         ) : (
                             <><FiSend size={14} /> Generate Preview</>
@@ -274,18 +350,25 @@ export default function CodeAgent() {
                     </button>
                 </div>
 
+                {/* Loading hint */}
+                {loading && (
+                    <p className='text-xs text-violet-500 mt-3 animate-pulse'>
+                        ✨ Reading your code and generating changes… this may take 10–30 seconds for big rewrites.
+                    </p>
+                )}
+
                 {/* Example prompts */}
                 {!preview && !loading && (
                     <div className='mt-4'>
-                        <p className='text-[11px] text-gray-400 mb-2 font-medium uppercase tracking-wider'>Examples</p>
+                        <p className='text-[11px] text-gray-400 mb-2 font-medium uppercase tracking-wider'>Try these examples</p>
                         <div className='flex flex-wrap gap-2'>
                             {EXAMPLES.map(ex => (
                                 <button
-                                    key={ex}
-                                    onClick={() => setInstruction(ex)}
+                                    key={ex.prompt}
+                                    onClick={() => setInstruction(ex.prompt)}
                                     className='text-[11px] bg-gray-50 border border-gray-200 text-gray-600 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 rounded-full px-3 py-1 transition'
                                 >
-                                    {ex}
+                                    {ex.label}
                                 </button>
                             ))}
                         </div>
@@ -295,14 +378,24 @@ export default function CodeAgent() {
 
             {/* Preview panel */}
             {preview && (
-                <div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5 animate-fadeIn'>
-                    {/* File + summary */}
+                <div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5'>
+                    {/* File + intent badges + summary */}
                     <div className='flex items-start justify-between gap-4 mb-4'>
                         <div>
-                            <div className='flex items-center gap-2 mb-1'>
+                            <div className='flex items-center gap-2 mb-1 flex-wrap'>
                                 <span className='text-xs font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full font-mono'>
                                     client/src/{preview.file}
                                 </span>
+                                {preview.isNewFile && (
+                                    <span className='text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full'>
+                                        ✨ New file
+                                    </span>
+                                )}
+                                {preview.isRedesign && (
+                                    <span className='text-xs font-semibold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full'>
+                                        🎨 Full redesign
+                                    </span>
+                                )}
                             </div>
                             {preview.summary && (
                                 <p className='text-sm text-gray-600'>{preview.summary}</p>
@@ -310,11 +403,10 @@ export default function CodeAgent() {
                         </div>
                     </div>
 
-                    {/* Diff viewer */}
-                    <DiffViewer original={preview.original} modified={preview.modified} />
+                    <DiffViewer original={preview.original} modified={preview.modified} isNewFile={preview.isNewFile} />
 
                     {/* Approve / Reject */}
-                    <div className='flex items-center gap-3 mt-4'>
+                    <div className='flex items-center gap-3 mt-4 flex-wrap'>
                         <button
                             onClick={handleApprove}
                             disabled={applying}
@@ -332,9 +424,7 @@ export default function CodeAgent() {
                         >
                             <FiX size={15} /> Reject
                         </button>
-                        <p className='text-xs text-gray-400 ml-auto hidden sm:block'>
-                            Ctrl+Enter to generate
-                        </p>
+                        <p className='text-xs text-gray-400 ml-auto hidden sm:block'>Ctrl+Enter to generate</p>
                     </div>
                 </div>
             )}
@@ -346,7 +436,9 @@ export default function CodeAgent() {
                         <FiClock size={14} className='text-gray-400' /> Applied Changes (this session)
                     </p>
                     <div className='grid gap-2'>
-                        {history.map((entry, i) => <HistoryItem key={i} entry={entry} />)}
+                        {history.map((entry, i) => (
+                            <HistoryItem key={i} entry={entry} onUndo={handleUndo} undoing={undoing} />
+                        ))}
                     </div>
                 </div>
             )}

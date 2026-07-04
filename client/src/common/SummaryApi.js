@@ -150,6 +150,7 @@ getProduct : { url : '/api/product/get', method : 'get' },
     codeAgentFiles        : { url : '/api/code-agent/files', method : 'get' },
     codeAgentSuggest      : { url : '/api/code-agent/suggest', method : 'post' },
     codeAgentApply        : { url : '/api/code-agent/apply', method : 'post' },
+    codeAgentUndo         : { url : '/api/code-agent/undo', method : 'post' },
     aiAgentChat           : { url : '/api/ai-agent/chat', method : 'post' },
 }
 
