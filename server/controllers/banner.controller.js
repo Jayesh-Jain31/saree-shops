@@ -4,7 +4,18 @@ export async function getBannersController(request, response) {
     try {
         const { placement } = request.query
         const filter = { isActive: true }
-        if (placement) filter.placement = placement
+        if (placement) {
+            if (placement === 'hero') {
+                // Legacy banners created before the placement field existed
+                // default to hero behavior — include them too
+                filter.$or = [
+                    { placement: 'hero' },
+                    { placement: { $exists: false } }
+                ]
+            } else {
+                filter.placement = placement
+            }
+        }
         const banners = await BannerModel.find(filter).sort({ displayOrder: 1, createdAt: -1 })
         return response.json({ message: 'Banners', data: banners, error: false, success: true })
     } catch (error) {
