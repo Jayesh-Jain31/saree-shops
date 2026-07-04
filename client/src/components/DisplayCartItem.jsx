@@ -75,38 +75,9 @@ const DisplayCartItem = ({ close }) => {
     if (!user?._id) { toast('Please Login'); return }
     const activeAddresses = addressList.filter(a => a.status)
     if (!activeAddresses.length) {
-      toast.error('Please add a delivery address first.')
+      toast('Please add your delivery address in checkout')
       if (close) close()
-      navigate('/dashboard/address')
-      return
-    }
-
-    // Fully covered by wallet/points — place free order directly
-    if (payableAmount <= 0) {
-      setPayLoading(true)
-      try {
-        const defaultAddr = activeAddresses[0]
-        const res = await Axios({
-          ...SummaryApi.CashOnDeliveryOrder,
-          data: {
-            list_items: cartItem,
-            addressId: defaultAddr._id,
-            subTotalAmt: totalPrice,
-            totalAmt: 0,
-            walletDeduction,
-            loyaltyPointsUsed,
-            loyaltyDiscount,
-          }
-        })
-        if (res.data.success) {
-          toast.success('Order placed using wallet balance!')
-          if (fetchCartItem) fetchCartItem()
-          if (fetchOrder) fetchOrder()
-          if (close) close()
-          navigate('/success', { state: { text: 'Order', address: defaultAddr, items: cartItem, totalAmount: 0, deliveryCharge: 0, paymentMethod: 'Wallet', orderDate: new Date().toISOString() } })
-        }
-      } catch (err) { AxiosToastError(err) }
-      finally { setPayLoading(false) }
+      navigate('/checkout')
       return
     }
 

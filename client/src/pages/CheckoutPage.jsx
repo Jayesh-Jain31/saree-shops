@@ -293,24 +293,42 @@ const CheckoutPage = () => {
     } catch (error) { AxiosToastError(error) }
   }
 
+  const handlePlaceFreeOrder = async () => {
+    const selectedAddr = addressList[selectAddress]
+    if (!selectedAddr?._id || !selectedAddr?.status) { setShowAddressPopup(true); return }
+    try {
+      const response = await Axios({
+        ...SummaryApi.CashOnDeliveryOrder,
+        data: {
+          list_items: cartItemsList,
+          addressId: selectedAddr._id,
+          subTotalAmt: totalPrice,
+          deliveryCharge,
+          totalAmt: 0,
+          discountAmt: couponDiscount,
+          couponCode: appliedCoupon?.code || '',
+          couponDiscount,
+          walletDeduction,
+          loyaltyPointsUsed,
+          loyaltyDiscount,
+        }
+      })
+      if (response.data.success) {
+        const itemsSnapshot = [...cartItemsList]
+        toast.success('Order placed using wallet balance!')
+        if (fetchCartItem) fetchCartItem()
+        if (fetchOrder) fetchOrder()
+        navigate('/success', { state: buildSuccessState(response.data.data, selectedAddr, itemsSnapshot, 0, 'Wallet') })
+      }
+    } catch (error) { AxiosToastError(error) }
+  }
+
   const handleRazorpayPayment = async () => {
     const selectedAddr = addressList[selectAddress]
     if (!selectedAddr?._id || !selectedAddr?.status) { setShowAddressPopup(true); return }
+    // Wallet covers full amount — place order directly without payment gateway
     if (payableAmount <= 0) {
-      try {
-        const response = await Axios({
-          ...SummaryApi.CashOnDeliveryOrder,
-          data: { list_items: cartItemsList, addressId: addressList[selectAddress]?._id, subTotalAmt: totalPrice, deliveryCharge, totalAmt: 0, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || "", couponDiscount: couponDiscount, walletDeduction: walletDeduction, loyaltyPointsUsed: loyaltyPointsUsed, loyaltyDiscount: loyaltyDiscount }
-        })
-        if (response.data.success) {
-          const itemsSnapshot = [...cartItemsList]
-          const selectedAddrSnapshot = addressList[selectAddress]
-          toast.success('Order placed using wallet balance!')
-          if (fetchCartItem) fetchCartItem()
-          if (fetchOrder) fetchOrder()
-          navigate('/success', { state: buildSuccessState(response.data.data, selectedAddrSnapshot, itemsSnapshot, 0, 'Wallet') })
-        }
-      } catch (error) { AxiosToastError(error) }
+      await handlePlaceFreeOrder()
       return
     }
     try {
@@ -568,8 +586,12 @@ const CheckoutPage = () => {
               </div>
 
               {activeAddresses.length === 0 ? (
-                <div className='p-6 text-center'>
-                  <p className='text-gray-500 text-sm'>No saved addresses. Please add one.</p>
+                <div className='p-4'>
+                  <div className='bg-orange-50 border border-orange-200 rounded-xl p-3 mb-4 flex items-start gap-2'>
+                    <span className='text-orange-500 text-sm'>⚠️</span>
+                    <p className='text-sm text-orange-700 font-medium'>Please fill in your delivery address below to continue</p>
+                  </div>
+                  <AddAddress close={() => {}} inline={true} />
                 </div>
               ) : (
                 <div className='p-4 space-y-2.5'>
