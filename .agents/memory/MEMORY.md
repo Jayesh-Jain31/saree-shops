@@ -1,0 +1,3 @@
+- [Firebase version](firebase-version.md) — firebase@12.x blocked by Replit security policy; downgraded to 10.14.1 to pass.
+- [Razorpay lazy-init](razorpay-lazy.md) — Razorpay client must lazy-init via Proxy so server starts without crashing when keys are missing.
+- [Resend lazy-init](resend-lazy.md) — Resend client must lazy-init; throwing at module load crashes the server if RESEND_API is absent.

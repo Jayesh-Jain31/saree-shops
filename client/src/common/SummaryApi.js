@@ -147,6 +147,10 @@ getProduct : { url : '/api/product/get', method : 'get' },
     getScheduledBlasts    : { url : '/api/blast/list', method : 'get' },
     cancelScheduledBlast  : { url : '/api/blast/cancel', method : 'put' },
     deleteScheduledBlast  : { url : '/api/blast', method : 'delete' },
+    codeAgentFiles        : { url : '/api/code-agent/files', method : 'get' },
+    codeAgentSuggest      : { url : '/api/code-agent/suggest', method : 'post' },
+    codeAgentApply        : { url : '/api/code-agent/apply', method : 'post' },
+    aiAgentChat           : { url : '/api/ai-agent/chat', method : 'post' },
 }
 
 export default SummaryApi

@@ -40,6 +40,7 @@ import { startBlastCron } from './utils/blastCron.js'
 import notificationRouter from './route/notification.route.js'
 import freeGiftRouter from './route/freeGift.route.js'
 import aiAgentRouter from './route/aiAgent.route.js'
+import codeAgentRouter from './route/codeAgent.route.js'
 import blastRouter from './route/scheduledBlast.route.js'
 import marketingRouter from './route/marketing.route.js'
 
@@ -135,6 +136,7 @@ app.use('/api/bundle', bundleRouter)
 app.use('/api/notification', notificationRouter)
 app.use('/api/free-gift', freeGiftRouter)
 app.use('/api/ai-agent', aiAgentRouter)
+app.use('/api/code-agent', codeAgentRouter)
 app.use('/api/blast', blastRouter)
 app.use('/api/marketing', marketingRouter)
 
