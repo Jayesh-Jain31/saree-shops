@@ -73,9 +73,9 @@ const DisplayCartItem = ({ close }) => {
 
   const handleCheckout = async () => {
     if (!user?._id) { toast('Please Login'); return }
-    const activeAddresses = addressList.filter(a => a.status)
-    if (!activeAddresses.length) {
-      toast('Please add your delivery address in checkout')
+
+    // Wallet covers full amount — go to checkout page for review
+    if (payableAmount <= 0) {
       if (close) close()
       navigate('/checkout')
       return
@@ -93,9 +93,9 @@ const DisplayCartItem = ({ close }) => {
       const orderRes = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: payableAmount, list_items: cartItem } })
       if (!orderRes.data.success) { toast.error('Failed to create payment order.'); setPayLoading(false); return }
 
-      const razorpayOrder  = orderRes.data.data
-      const rzpFreeGift    = orderRes.data.freeGift || null
-      const defaultAddr    = activeAddresses[0]
+      const razorpayOrder = orderRes.data.data
+      const rzpFreeGift   = orderRes.data.freeGift || null
+      const defaultAddr   = addressList.filter(a => a.status)[0] || null
       const customerMobile = user?.mobile || defaultAddr?.mobile || ''
       const customerName   = user?.name   || defaultAddr?.name   || ''
       const customerEmail  = user?.email  || ''
@@ -114,25 +114,25 @@ const DisplayCartItem = ({ close }) => {
           name:    customerName,
           email:   customerEmail,
           contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
-          // Razorpay Magic Checkout: tag the free gift line_item so it shows "free gift item" badge + ₹0
-          // Must use giftVariantId (prefixed) to match the line_item and avoid merging with cart item
           ...(rzpFreeGift && {
             promotional_tag: [{ tag: 'free gift item', variant_id: rzpFreeGift.giftVariantId }]
           }),
         },
-        customer_details: {
-          name:    customerName,
-          contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
-          email:   customerEmail,
-          shipping_address: {
-            line1:   defaultAddr.address_line || '',
-            line2:   defaultAddr.landmark     || '',
-            city:    defaultAddr.city         || '',
-            state:   defaultAddr.state        || '',
-            zipcode: String(defaultAddr.pincode || ''),
-            country: 'IN',
+        ...(defaultAddr && {
+          customer_details: {
+            name:    customerName,
+            contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
+            email:   customerEmail,
+            shipping_address: {
+              line1:   defaultAddr.address_line || '',
+              line2:   defaultAddr.landmark     || '',
+              city:    defaultAddr.city         || '',
+              state:   defaultAddr.state        || '',
+              zipcode: String(defaultAddr.pincode || ''),
+              country: 'IN',
+            }
           }
-        },
+        }),
         config: {
           display: {
             blocks: { cod: { name: 'Cash on Delivery', instruments: [{ method: 'cod' }] } },
@@ -146,7 +146,7 @@ const DisplayCartItem = ({ close }) => {
             const addrSnapshot  = defaultAddr
             const orderData = {
               list_items: itemsSnapshot,
-              addressId: addrSnapshot._id,
+              addressId: addrSnapshot?._id || '',
               subTotalAmt: totalPrice,
               totalAmt: payableAmount,
               walletDeduction,
