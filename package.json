@@ -1,0 +1,15 @@
+{
+  "name": "saree-shops",
+  "version": "1.0.0",
+  "description": "Saree Shops Express API server",
+  "engines": {
+    "node": "18.x"
+  },
+  "scripts": {
+    "postinstall": "cd server && npm ci --no-audit --no-fund",
+    "start": "cd server && node index.js"
+  },
+  "cacheDirectories": [
+    "server/node_modules"
+  ]
+}
