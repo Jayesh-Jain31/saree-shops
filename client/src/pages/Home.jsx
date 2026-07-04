@@ -20,7 +20,7 @@ const BannerCarousel = () => {
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        const res = await Axios({ ...SummaryApi.getBanners })
+        const res = await Axios({ ...SummaryApi.getBanners, params: { placement: 'hero' } })
         if (res.data.success && res.data.data.length > 0) {
           const allSlides = []
           for (const banner of res.data.data) {
