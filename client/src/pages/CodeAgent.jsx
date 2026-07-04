@@ -1,83 +1,62 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
 import toast from 'react-hot-toast'
-import { FiCode, FiSend, FiCheck, FiX, FiChevronDown, FiClock, FiRotateCcw, FiPlusCircle } from 'react-icons/fi'
-import { MdAutoFixHigh, MdDesignServices } from 'react-icons/md'
+import {
+    FiSend, FiCheck, FiX, FiChevronDown, FiChevronUp,
+    FiRotateCcw, FiPlusCircle, FiImage, FiTrash2, FiZap,
+    FiCode, FiRefreshCw, FiAlertCircle,
+} from 'react-icons/fi'
+import { MdAutoFixHigh } from 'react-icons/md'
 import { HiSparkles } from 'react-icons/hi'
 
-// ── Simple LCS-based line diff ────────────────────────────────────────────────
-function diffLines(oldStr, newStr) {
-    const a = oldStr.split('\n')
-    const b = newStr.split('\n')
-    const m = a.length, n = b.length
+// ── LCS diff engine ──────────────────────────────────────────────────────────
+function diffLines(a, b) {
+    const aL = a.split('\n'), bL = b.split('\n')
+    const m = aL.length, n = bL.length
     const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1))
     for (let i = 1; i <= m; i++)
         for (let j = 1; j <= n; j++)
-            dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1])
-    const result = []
-    let i = m, j = n
+            dp[i][j] = aL[i-1] === bL[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1])
+    const result = []; let i = m, j = n
     while (i > 0 || j > 0) {
-        if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
-            result.unshift({ type: 'equal', line: a[i-1] })
-            i--; j--
-        } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
-            result.unshift({ type: 'add', line: b[j-1] })
-            j--
-        } else {
-            result.unshift({ type: 'remove', line: a[i-1] })
-            i--
-        }
+        if (i > 0 && j > 0 && aL[i-1] === bL[j-1]) { result.unshift({ t: '=', l: aL[i-1] }); i--; j-- }
+        else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) { result.unshift({ t: '+', l: bL[j-1] }); j-- }
+        else { result.unshift({ t: '-', l: aL[i-1] }); i-- }
     }
     return result
 }
 
-function countChanges(diff) {
-    return diff.reduce((acc, d) => {
-        if (d.type === 'add') acc.added++
-        if (d.type === 'remove') acc.removed++
-        return acc
-    }, { added: 0, removed: 0 })
-}
-
-function getVisibleDiff(diff, showAll) {
-    if (showAll) return diff.map((d, i) => ({ ...d, lineNum: i + 1 }))
-    const CONTEXT = 5
-    const changed = new Set()
-    diff.forEach((d, i) => { if (d.type !== 'equal') changed.add(i) })
-    const visible = new Set()
-    changed.forEach(i => {
-        for (let k = Math.max(0, i - CONTEXT); k <= Math.min(diff.length - 1, i + CONTEXT); k++)
-            visible.add(k)
-    })
-    const result = []
-    let prev = -1
+function visibleDiff(diff, all) {
+    if (all) return diff.map((d, i) => ({ ...d, n: i + 1 }))
+    const C = 4, changed = new Set()
+    diff.forEach((d, i) => { if (d.t !== '=') changed.add(i) })
+    const vis = new Set()
+    changed.forEach(i => { for (let k = Math.max(0, i - C); k <= Math.min(diff.length - 1, i + C); k++) vis.add(k) })
+    const r = []; let prev = -1
     diff.forEach((d, i) => {
-        if (visible.has(i)) {
-            if (prev !== -1 && i > prev + 1) result.push({ type: 'ellipsis' })
-            result.push({ ...d, lineNum: i + 1 })
-            prev = i
-        }
+        if (!vis.has(i)) return
+        if (prev !== -1 && i > prev + 1) r.push({ t: '…' })
+        r.push({ ...d, n: i + 1 }); prev = i
     })
-    return result
+    return r
 }
 
-// ── Diff viewer ───────────────────────────────────────────────────────────────
+// ── Diff viewer ──────────────────────────────────────────────────────────────
 function DiffViewer({ original, modified, isNewFile }) {
-    const [showAll, setShowAll] = useState(false)
-
+    const [all, setAll] = useState(false)
     if (isNewFile) {
         const lines = modified.split('\n')
         return (
-            <div className='rounded-xl overflow-hidden border border-green-700 bg-gray-950'>
-                <div className='flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-700'>
-                    <span className='text-xs text-green-400 font-mono font-semibold'>✨ New file — full content</span>
-                    <span className='text-xs text-green-400 font-mono'>+{lines.length} lines</span>
+            <div className='rounded-lg overflow-hidden border border-green-800 bg-[#0d1117] text-xs font-mono'>
+                <div className='flex items-center justify-between px-3 py-1.5 bg-[#161b22] border-b border-green-900'>
+                    <span className='text-green-400 font-semibold'>✨ New file</span>
+                    <span className='text-green-500'>+{lines.length} lines</span>
                 </div>
-                <div className='overflow-auto max-h-[450px] font-mono text-xs leading-5'>
+                <div className='overflow-auto max-h-72 leading-5'>
                     {lines.map((line, idx) => (
-                        <div key={idx} className='flex bg-green-950 hover:brightness-110'>
-                            <span className='w-8 text-right pr-2 text-gray-600 select-none flex-shrink-0 border-r border-gray-800 py-0.5 pl-2'>{idx + 1}</span>
+                        <div key={idx} className='flex bg-[#0d1b12] hover:brightness-110'>
+                            <span className='w-9 text-right pr-2 text-gray-600 select-none border-r border-gray-800 py-0.5 pl-2 flex-shrink-0'>{idx + 1}</span>
                             <span className='w-5 text-center flex-shrink-0 py-0.5 text-green-400 font-bold'>+</span>
                             <span className='py-0.5 px-2 whitespace-pre flex-1 text-green-300'>{line}</span>
                         </div>
@@ -86,47 +65,35 @@ function DiffViewer({ original, modified, isNewFile }) {
             </div>
         )
     }
-
     const diff = diffLines(original, modified)
-    const visible = getVisibleDiff(diff, showAll)
-    const { added, removed } = countChanges(diff)
-    const hasChanges = added > 0 || removed > 0
-
-    if (!hasChanges) {
-        return (
-            <div className='text-center py-8 text-gray-400 text-sm'>
-                No changes detected — the file already matches your request.
-            </div>
-        )
-    }
-
+    const { added, removed } = diff.reduce((a, d) => { if (d.t === '+') a.added++; else if (d.t === '-') a.removed++; return a }, { added: 0, removed: 0 })
+    if (added === 0 && removed === 0) return <p className='text-xs text-gray-400 py-2 text-center'>No visible changes detected.</p>
+    const vis = visibleDiff(diff, all)
     return (
-        <div className='rounded-xl overflow-hidden border border-gray-200 bg-gray-950'>
-            <div className='flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-700'>
-                <span className='text-xs text-gray-400 font-mono'>Diff Preview</span>
-                <div className='flex items-center gap-3 text-xs'>
-                    <span className='text-green-400 font-mono'>+{added}</span>
-                    <span className='text-red-400 font-mono'>-{removed}</span>
-                    {!showAll && diff.length > 10 && (
-                        <button onClick={() => setShowAll(true)} className='text-gray-400 hover:text-white flex items-center gap-1 transition'>
-                            Show all <FiChevronDown size={12} />
+        <div className='rounded-lg overflow-hidden border border-gray-700 bg-[#0d1117] text-xs font-mono'>
+            <div className='flex items-center justify-between px-3 py-1.5 bg-[#161b22] border-b border-gray-700'>
+                <span className='text-gray-400'>Changes</span>
+                <div className='flex items-center gap-3'>
+                    <span className='text-green-400'>+{added}</span>
+                    <span className='text-red-400'>-{removed}</span>
+                    {diff.length > 8 && (
+                        <button onClick={() => setAll(v => !v)} className='text-gray-500 hover:text-gray-200 flex items-center gap-0.5 transition'>
+                            {all ? <><FiChevronUp size={11}/> Less</> : <><FiChevronDown size={11}/> All</>}
                         </button>
                     )}
                 </div>
             </div>
-            <div className='overflow-auto max-h-[450px] font-mono text-xs leading-5'>
-                {visible.map((d, idx) => {
-                    if (d.type === 'ellipsis') return (
-                        <div key={idx} className='px-4 py-1 text-gray-500 bg-gray-900 border-y border-gray-800 select-none'>···</div>
-                    )
-                    const bg = d.type === 'add' ? 'bg-green-950' : d.type === 'remove' ? 'bg-red-950' : ''
-                    const prefix = d.type === 'add' ? '+' : d.type === 'remove' ? '-' : ' '
-                    const textColor = d.type === 'add' ? 'text-green-300' : d.type === 'remove' ? 'text-red-300' : 'text-gray-400'
+            <div className='overflow-auto max-h-72 leading-5'>
+                {vis.map((d, i) => {
+                    if (d.t === '…') return <div key={i} className='px-3 py-0.5 text-gray-600 bg-[#161b22] border-y border-gray-800 select-none'>···</div>
+                    const bg = d.t === '+' ? 'bg-[#0d1b12]' : d.t === '-' ? 'bg-[#1b0d0d]' : ''
+                    const tc = d.t === '+' ? 'text-green-300' : d.t === '-' ? 'text-red-300' : 'text-gray-500'
+                    const prefix = d.t === '+' ? '+' : d.t === '-' ? '-' : ' '
                     return (
-                        <div key={idx} className={`flex ${bg} hover:brightness-110`}>
-                            <span className='w-8 text-right pr-2 text-gray-600 select-none flex-shrink-0 border-r border-gray-800 py-0.5 pl-2'>{d.lineNum}</span>
-                            <span className={`w-5 text-center flex-shrink-0 py-0.5 ${textColor} font-bold`}>{prefix}</span>
-                            <span className={`py-0.5 px-2 whitespace-pre flex-1 ${textColor}`}>{d.line}</span>
+                        <div key={i} className={`flex ${bg} hover:brightness-110`}>
+                            <span className='w-9 text-right pr-2 text-gray-700 select-none border-r border-gray-800 py-0.5 pl-2 flex-shrink-0'>{d.n}</span>
+                            <span className={`w-5 text-center flex-shrink-0 py-0.5 font-bold ${tc}`}>{prefix}</span>
+                            <span className={`py-0.5 px-2 whitespace-pre flex-1 ${tc}`}>{d.l}</span>
                         </div>
                     )
                 })}
@@ -135,136 +102,295 @@ function DiffViewer({ original, modified, isNewFile }) {
     )
 }
 
-// ── History item ──────────────────────────────────────────────────────────────
-function HistoryItem({ entry, onUndo, undoing }) {
+// ── File change card inside a chat message ───────────────────────────────────
+function ChangeCard({ change, onApprove, onReject, status }) {
+    const [open, setOpen] = useState(true)
+    const approved = status === 'approved'
+    const rejected = status === 'rejected'
+    const pending = !approved && !rejected
+
     return (
-        <div className='flex items-start gap-3 p-3 rounded-xl bg-green-50 border border-green-100'>
-            <div className='w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5'>
-                {entry.isNewFile ? <FiPlusCircle size={13} className='text-green-600' /> : <FiCheck size={13} className='text-green-600' />}
+        <div className={`rounded-xl border mt-2 overflow-hidden transition-all ${approved ? 'border-green-300 bg-green-50' : rejected ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}>
+            {/* Header */}
+            <div className='flex items-center gap-2 px-3 py-2 cursor-pointer select-none' onClick={() => setOpen(v => !v)}>
+                <FiCode size={13} className={approved ? 'text-green-500' : rejected ? 'text-red-400' : 'text-violet-500'} />
+                <span className='text-xs font-mono font-semibold text-gray-700 flex-1 truncate'>client/src/{change.file}</span>
+                {change.isNewFile && <span className='text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold'>NEW</span>}
+                {approved && <span className='text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-bold flex items-center gap-1'><FiCheck size={9}/> Applied</span>}
+                {rejected && <span className='text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded-full font-bold flex items-center gap-1'><FiX size={9}/> Rejected</span>}
+                {open ? <FiChevronUp size={13} className='text-gray-400 flex-shrink-0'/> : <FiChevronDown size={13} className='text-gray-400 flex-shrink-0'/>}
             </div>
-            <div className='min-w-0 flex-1'>
-                <p className='text-sm text-gray-800 font-medium'>{entry.instruction}</p>
-                <div className='flex items-center gap-2 mt-0.5 flex-wrap'>
-                    <p className='text-xs text-gray-500 font-mono truncate'>client/src/{entry.file}</p>
-                    {entry.isNewFile && <span className='text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold'>NEW FILE</span>}
-                    {entry.isRedesign && <span className='text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-semibold'>REDESIGN</span>}
+
+            {open && (
+                <div className='px-3 pb-3'>
+                    {change.description && <p className='text-xs text-gray-500 mb-2'>{change.description}</p>}
+                    <DiffViewer original={change.original} modified={change.content} isNewFile={change.isNewFile} />
+                    {pending && (
+                        <div className='flex gap-2 mt-3'>
+                            <button onClick={onApprove} className='flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-semibold transition shadow-sm'>
+                                <FiCheck size={12}/> Apply this change
+                            </button>
+                            <button onClick={onReject} className='flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-500 text-xs font-semibold transition'>
+                                <FiX size={12}/> Skip
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <p className='text-[11px] text-gray-400 mt-0.5 flex items-center gap-1'>
-                    <FiClock size={10} /> {entry.time}
-                </p>
-            </div>
-            <button
-                onClick={() => onUndo(entry)}
-                disabled={undoing === entry.file}
-                title='Undo this change'
-                className='flex items-center gap-1 text-xs text-gray-400 hover:text-orange-500 border border-gray-200 hover:border-orange-300 rounded-lg px-2 py-1.5 transition flex-shrink-0 disabled:opacity-40'
-            >
-                {undoing === entry.file
-                    ? <span className='w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin' />
-                    : <FiRotateCcw size={12} />
-                }
-                Undo
-            </button>
+            )}
         </div>
     )
 }
 
-// ── Example prompt chips ──────────────────────────────────────────────────────
-const EXAMPLES = [
-    { label: '🎨 Redesign product page', prompt: 'Redesign the product detail page to look more modern and premium' },
-    { label: '📄 Create About Us page', prompt: 'Create a new About Us page with company info, team section, and contact' },
-    { label: '🛒 Add wishlist button to cards', prompt: 'Add a heart wishlist toggle button to product cards' },
-    { label: '🎯 Make header sticky', prompt: 'Make the header sticky on scroll with a shadow' },
-    { label: '💳 Redesign checkout', prompt: 'Redesign the checkout page to look cleaner and more trustworthy' },
-    { label: '✨ Add skeleton loading', prompt: 'Add skeleton loading placeholders to the product listing page' },
-    { label: '📱 Mobile bottom nav', prompt: 'Create a mobile bottom navigation bar component' },
-    { label: '🏷️ Add sale badge to products', prompt: 'Add a "SALE" badge on discounted products in product cards' },
+// ── Chat message bubble ──────────────────────────────────────────────────────
+function AgentMessage({ msg, onApproveChange, onRejectChange, changeStatuses }) {
+    return (
+        <div className='flex gap-3 mb-4'>
+            <div className='w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow mt-0.5'>
+                <MdAutoFixHigh size={16}/>
+            </div>
+            <div className='flex-1 min-w-0'>
+                {msg.thinking && (
+                    <div className='flex items-center gap-2 text-xs text-violet-500 mb-2 animate-pulse'>
+                        <span className='flex gap-1'>
+                            <span className='w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce' style={{animationDelay:'0ms'}}/>
+                            <span className='w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce' style={{animationDelay:'150ms'}}/>
+                            <span className='w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce' style={{animationDelay:'300ms'}}/>
+                        </span>
+                        {msg.thinkingText || 'Thinking…'}
+                    </div>
+                )}
+                {msg.explanation && (
+                    <div className='bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-700 leading-relaxed'>
+                        {msg.explanation}
+                    </div>
+                )}
+                {msg.error && (
+                    <div className='flex items-start gap-2 bg-red-50 border border-red-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-red-600'>
+                        <FiAlertCircle size={15} className='mt-0.5 flex-shrink-0'/> {msg.error}
+                    </div>
+                )}
+                {(msg.changes || []).map((ch, i) => (
+                    <ChangeCard
+                        key={i}
+                        change={ch}
+                        status={changeStatuses?.[`${msg.id}-${i}`]}
+                        onApprove={() => onApproveChange(msg.id, i, ch)}
+                        onReject={() => onRejectChange(msg.id, i)}
+                    />
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function UserMessage({ msg }) {
+    return (
+        <div className='flex gap-3 mb-4 justify-end'>
+            <div className='max-w-[80%]'>
+                {msg.imageDataUrl && (
+                    <div className='mb-1 flex justify-end'>
+                        <img src={msg.imageDataUrl} alt='attachment' className='max-h-40 max-w-xs rounded-xl border border-gray-200 shadow-sm'/>
+                    </div>
+                )}
+                <div className='bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm'>
+                    {msg.text}
+                </div>
+            </div>
+            <div className='w-8 h-8 rounded-xl bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold flex-shrink-0 mt-0.5'>
+                You
+            </div>
+        </div>
+    )
+}
+
+// ── Undo stack panel ──────────────────────────────────────────────────────────
+function UndoStack({ stack, onUndo, undoing }) {
+    if (stack.length === 0) return null
+    return (
+        <div className='border-t border-gray-100 bg-gray-50 p-3'>
+            <p className='text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2'>Applied Changes — click ↩ to undo</p>
+            <div className='flex flex-col gap-1.5 max-h-48 overflow-y-auto'>
+                {[...stack].reverse().map((c) => (
+                    <div key={c.id} className='flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5'>
+                        <FiCode size={11} className='text-violet-400 flex-shrink-0'/>
+                        <div className='flex-1 min-w-0'>
+                            <p className='text-xs font-mono text-gray-600 truncate'>{c.file}</p>
+                            <p className='text-[10px] text-gray-400 truncate'>{c.instruction}</p>
+                        </div>
+                        {c.isNewFile && <span className='text-[9px] bg-green-100 text-green-700 px-1 rounded font-bold'>NEW</span>}
+                        <button
+                            onClick={() => onUndo(c.id)}
+                            disabled={undoing === c.id}
+                            title='Undo this change'
+                            className='flex items-center gap-1 text-[11px] text-gray-400 hover:text-orange-500 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded px-1.5 py-0.5 transition disabled:opacity-40 flex-shrink-0'
+                        >
+                            {undoing === c.id
+                                ? <span className='w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin'/>
+                                : <FiRotateCcw size={11}/>
+                            }
+                            Undo
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+// ── Starter prompts ───────────────────────────────────────────────────────────
+const STARTERS = [
+    { icon: '🎨', text: 'Redesign the product detail page to look premium and modern' },
+    { icon: '📄', text: 'Create a new About Us page with team section and company values' },
+    { icon: '🐛', text: 'The cart is not updating quantity — find and fix the bug' },
+    { icon: '📱', text: 'Create a sticky mobile bottom navigation bar component' },
+    { icon: '✨', text: 'Add skeleton loading to the home page product grid' },
+    { icon: '💳', text: 'Redesign the checkout page to look cleaner and more trustworthy' },
 ]
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CodeAgent() {
-    const [instruction, setInstruction] = useState('')
-    const [loading, setLoading] = useState(false)
-    const [applying, setApplying] = useState(false)
+    const [sessionId, setSessionId] = useState(null)
+    const [messages, setMessages] = useState([])
+    const [changeStatuses, setChangeStatuses] = useState({})
+    const [undoStack, setUndoStack] = useState([])
+    const [input, setInput] = useState('')
+    const [sending, setSending] = useState(false)
     const [undoing, setUndoing] = useState(null)
-    const [preview, setPreview] = useState(null)
-    const [history, setHistory] = useState([])
-    const [files, setFiles] = useState([])
-    const [selectedFile, setSelectedFile] = useState('')
+    const [image, setImage] = useState(null) // { dataUrl, base64, mimeType, name }
+    const chatEndRef = useRef(null)
+    const fileInputRef = useRef(null)
     const textareaRef = useRef(null)
 
-    useEffect(() => {
-        Axios({ ...SummaryApi.codeAgentFiles })
-            .then(r => { if (r.data?.success) setFiles(r.data.files) })
-            .catch(() => {})
+    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+    // ── Image handling ──────────────────────────────────────────────────────
+    const handleImageFile = (file) => {
+        if (!file || !file.type.startsWith('image/')) return
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            const dataUrl = e.target.result
+            const base64 = dataUrl.split(',')[1]
+            setImage({ dataUrl, base64, mimeType: file.type, name: file.name })
+        }
+        reader.readAsDataURL(file)
+    }
+
+    const handlePaste = useCallback((e) => {
+        const items = e.clipboardData?.items
+        if (!items) return
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                handleImageFile(item.getAsFile())
+                break
+            }
+        }
     }, [])
 
-    const handleGenerate = async () => {
-        if (!instruction.trim() || loading) return
-        setLoading(true)
-        setPreview(null)
+    useEffect(() => {
+        document.addEventListener('paste', handlePaste)
+        return () => document.removeEventListener('paste', handlePaste)
+    }, [handlePaste])
+
+    // ── Send message ────────────────────────────────────────────────────────
+    const sendMessage = async () => {
+        if (!input.trim() || sending) return
+        const text = input.trim()
+        const imgSnapshot = image
+        setInput('')
+        setImage(null)
+        setSending(true)
+
+        const userMsg = { id: `u-${Date.now()}`, role: 'user', text, imageDataUrl: imgSnapshot?.dataUrl }
+        const thinkingMsg = { id: `t-${Date.now()}`, role: 'agent', thinking: true, thinkingText: 'Reading your codebase…' }
+        setMessages(prev => [...prev, userMsg, thinkingMsg])
+
         try {
             const res = await Axios({
-                ...SummaryApi.codeAgentSuggest,
-                data: { instruction: instruction.trim(), targetFile: selectedFile || undefined },
+                ...SummaryApi.codeAgentChat,
+                data: {
+                    sessionId,
+                    message: text,
+                    imageBase64: imgSnapshot?.base64 || undefined,
+                    imageMimeType: imgSnapshot?.mimeType || undefined,
+                },
             })
-            if (res.data?.success) {
-                setPreview(res.data)
-            } else {
-                toast.error(res.data?.message || 'AI could not generate a suggestion')
+
+            const data = res.data
+            const newSid = data.sessionId || sessionId
+            if (newSid && newSid !== sessionId) setSessionId(newSid)
+
+            const agentMsg = {
+                id: `a-${Date.now()}`,
+                role: 'agent',
+                explanation: data.explanation,
+                changes: data.changes || [],
+                error: data.success === false ? (data.message || 'Unknown error') : null,
             }
+
+            setMessages(prev => prev.filter(m => m.id !== thinkingMsg.id).concat(agentMsg))
         } catch (err) {
-            toast.error(err?.response?.data?.message || 'Failed to reach AI. Check your Gemini API key.')
+            const errMsg = { id: `e-${Date.now()}`, role: 'agent', error: err?.response?.data?.message || 'Failed to reach AI. Check your Gemini API key in Secrets.' }
+            setMessages(prev => prev.filter(m => m.id !== thinkingMsg.id).concat(errMsg))
         } finally {
-            setLoading(false)
+            setSending(false)
         }
     }
 
-    const handleApprove = async () => {
-        if (!preview || applying) return
-        setApplying(true)
+    // ── Apply a single change ───────────────────────────────────────────────
+    const handleApproveChange = async (msgId, changeIdx, change) => {
+        const key = `${msgId}-${changeIdx}`
+        setChangeStatuses(s => ({ ...s, [key]: 'applying' }))
+
+        // Find instruction from message
+        const userMsg = messages.slice().reverse().find(m => m.role === 'user')
+        const instruction = userMsg?.text || 'Applied change'
+
         try {
             const res = await Axios({
-                ...SummaryApi.codeAgentApply,
-                data: { file: preview.file, content: preview.modified, original: preview.original },
-            })
-            if (res.data?.success) {
-                toast.success(res.data.message || 'Change applied! Vite will hot-reload.')
-                setHistory(h => [{
+                ...SummaryApi.codeAgentApplyBatch,
+                data: {
+                    sessionId,
+                    changes: [{ file: change.file, content: change.content }],
                     instruction,
-                    file: preview.file,
-                    isNewFile: preview.isNewFile,
-                    isRedesign: preview.isRedesign,
-                    time: new Date().toLocaleTimeString('en-IN'),
-                }, ...h])
-                setPreview(null)
-                setInstruction('')
-                setSelectedFile('')
+                },
+            })
+            if (res.data?.success) {
+                setChangeStatuses(s => ({ ...s, [key]: 'approved' }))
+                const applied = res.data.applied || []
+                setUndoStack(prev => [...prev, ...applied.map(a => ({
+                    id: a.changeId,
+                    file: a.file,
+                    isNewFile: a.isNewFile,
+                    instruction,
+                }))])
+                toast.success(`Applied: ${change.file}`)
             } else {
-                toast.error(res.data?.message || 'Failed to apply change')
+                setChangeStatuses(s => ({ ...s, [key]: undefined }))
+                toast.error(res.data?.message || 'Failed to apply')
             }
         } catch (err) {
+            setChangeStatuses(s => ({ ...s, [key]: undefined }))
             toast.error(err?.response?.data?.message || 'Failed to apply change')
-        } finally {
-            setApplying(false)
         }
     }
 
-    const handleReject = () => {
-        setPreview(null)
-        toast('Change rejected. Nothing was modified.', { icon: '❌' })
+    const handleRejectChange = (msgId, changeIdx) => {
+        const key = `${msgId}-${changeIdx}`
+        setChangeStatuses(s => ({ ...s, [key]: 'rejected' }))
+        toast('Skipped this change.', { icon: '⏭' })
     }
 
-    const handleUndo = async (entry) => {
-        setUndoing(entry.file)
+    // ── Undo a change ───────────────────────────────────────────────────────
+    const handleUndo = async (changeId) => {
+        setUndoing(changeId)
         try {
             const res = await Axios({
                 ...SummaryApi.codeAgentUndo,
-                data: { file: entry.file },
+                data: { sessionId, changeId },
             })
             if (res.data?.success) {
-                toast.success(res.data.message || 'Change reverted!')
-                setHistory(h => h.filter(e => e !== entry))
+                setUndoStack(prev => prev.filter(c => c.id !== changeId))
+                toast.success(res.data.message || 'Change reverted')
             } else {
                 toast.error(res.data?.message || 'Could not undo')
             }
@@ -275,173 +401,157 @@ export default function CodeAgent() {
         }
     }
 
-    const handleKey = (e) => {
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleGenerate()
+    // ── New session ─────────────────────────────────────────────────────────
+    const startNewSession = () => {
+        setSessionId(null)
+        setMessages([])
+        setChangeStatuses({})
+        setUndoStack([])
+        setInput('')
+        setImage(null)
+        toast('Started a new session', { icon: '🔄' })
     }
 
+    const handleKey = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    }
+
+    const isEmpty = messages.length === 0
+
     return (
-        <div className='max-w-4xl mx-auto px-4 py-6'>
-            {/* Header */}
-            <div className='flex items-center gap-3 mb-6'>
-                <div className='w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow-lg'>
-                    <MdAutoFixHigh size={24} />
+        <div className='h-[calc(100vh-80px)] flex flex-col max-w-4xl mx-auto'>
+            {/* ── Header ──────────────────────────────────────────────────── */}
+            <div className='flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0'>
+                <div className='w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow'>
+                    <MdAutoFixHigh size={20}/>
                 </div>
-                <div>
-                    <h1 className='text-xl font-bold text-gray-800'>Code Editing AI Agent</h1>
-                    <p className='text-sm text-gray-500'>Tell it what to build or change — it reads your code, makes the edit, you approve</p>
+                <div className='flex-1 min-w-0'>
+                    <h1 className='text-base font-bold text-gray-800'>Code AI Agent</h1>
+                    <p className='text-xs text-gray-400'>
+                        {sessionId ? <span className='text-green-500 font-mono'>● Session active</span> : 'Start typing to begin a session'}
+                    </p>
                 </div>
-            </div>
-
-            {/* Capability badges */}
-            <div className='flex flex-wrap gap-2 mb-5'>
-                <span className='flex items-center gap-1.5 text-xs bg-violet-50 text-violet-700 border border-violet-200 rounded-full px-3 py-1 font-medium'>
-                    <MdDesignServices size={13} /> Redesign pages
-                </span>
-                <span className='flex items-center gap-1.5 text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-3 py-1 font-medium'>
-                    <FiPlusCircle size={12} /> Create new pages & components
-                </span>
-                <span className='flex items-center gap-1.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-3 py-1 font-medium'>
-                    <HiSparkles size={13} /> Small tweaks & fixes
-                </span>
-                <span className='flex items-center gap-1.5 text-xs bg-orange-50 text-orange-700 border border-orange-200 rounded-full px-3 py-1 font-medium'>
-                    <FiRotateCcw size={12} /> Undo any change
-                </span>
-            </div>
-
-            {/* Instruction panel */}
-            <div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5'>
-                <label className='block text-sm font-semibold text-gray-700 mb-2'>What do you want to build or change?</label>
-                <textarea
-                    ref={textareaRef}
-                    value={instruction}
-                    onChange={e => setInstruction(e.target.value)}
-                    onKeyDown={handleKey}
-                    placeholder='e.g. "Redesign the product page to look premium" or "Create a new About Us page" or "Add sale badge to product cards"'
-                    rows={3}
-                    className='w-full text-sm text-gray-800 placeholder-gray-400 border border-gray-200 rounded-xl px-4 py-3 resize-none outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition'
-                />
-
-                {/* File picker */}
-                <div className='mt-3 flex flex-wrap items-center gap-3'>
-                    <div className='flex items-center gap-2 flex-1 min-w-[200px]'>
-                        <FiCode size={14} className='text-gray-400 flex-shrink-0' />
-                        <select
-                            value={selectedFile}
-                            onChange={e => setSelectedFile(e.target.value)}
-                            className='text-xs text-gray-600 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-violet-300 w-full bg-white'
-                        >
-                            <option value=''>Auto-detect file (recommended)</option>
-                            {files.map(f => <option key={f} value={f}>{f}</option>)}
-                        </select>
-                    </div>
+                <div className='flex items-center gap-2'>
+                    {sessionId && (
+                        <span className='hidden sm:flex items-center gap-1 text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1'>
+                            <HiSparkles size={11} className='text-violet-400'/> {undoStack.length} changes
+                        </span>
+                    )}
                     <button
-                        onClick={handleGenerate}
-                        disabled={!instruction.trim() || loading}
-                        className='flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white text-sm font-semibold shadow hover:opacity-90 disabled:opacity-40 transition'
+                        onClick={startNewSession}
+                        className='flex items-center gap-1.5 text-xs text-gray-500 hover:text-violet-600 border border-gray-200 hover:border-violet-300 bg-white rounded-lg px-3 py-1.5 transition'
                     >
-                        {loading ? (
-                            <span className='flex items-center gap-2'>
-                                <span className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />
-                                AI is thinking…
-                            </span>
-                        ) : (
-                            <><FiSend size={14} /> Generate Preview</>
-                        )}
+                        <FiRefreshCw size={12}/> New session
                     </button>
                 </div>
+            </div>
 
-                {/* Loading hint */}
-                {loading && (
-                    <p className='text-xs text-violet-500 mt-3 animate-pulse'>
-                        ✨ Reading your code and generating changes… this may take 10–30 seconds for big rewrites.
-                    </p>
-                )}
-
-                {/* Example prompts */}
-                {!preview && !loading && (
-                    <div className='mt-4'>
-                        <p className='text-[11px] text-gray-400 mb-2 font-medium uppercase tracking-wider'>Try these examples</p>
-                        <div className='flex flex-wrap gap-2'>
-                            {EXAMPLES.map(ex => (
+            {/* ── Chat thread ─────────────────────────────────────────────── */}
+            <div className='flex-1 overflow-y-auto px-4 py-4 bg-white'>
+                {/* Empty state */}
+                {isEmpty && (
+                    <div className='flex flex-col items-center justify-center h-full gap-6 pb-6'>
+                        <div className='text-center'>
+                            <div className='w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow-lg mx-auto mb-4'>
+                                <MdAutoFixHigh size={32}/>
+                            </div>
+                            <h2 className='text-lg font-bold text-gray-800 mb-1'>What do you want to build?</h2>
+                            <p className='text-sm text-gray-400 max-w-sm'>Describe a change, redesign, new feature, or paste an error. I'll read your code and make the changes — you approve each one.</p>
+                        </div>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-xl'>
+                            {STARTERS.map((s, i) => (
                                 <button
-                                    key={ex.prompt}
-                                    onClick={() => setInstruction(ex.prompt)}
-                                    className='text-[11px] bg-gray-50 border border-gray-200 text-gray-600 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 rounded-full px-3 py-1 transition'
+                                    key={i}
+                                    onClick={() => setInput(s.text)}
+                                    className='text-left flex items-start gap-2.5 bg-gray-50 hover:bg-violet-50 border border-gray-200 hover:border-violet-200 rounded-xl px-3 py-2.5 transition group'
                                 >
-                                    {ex.label}
+                                    <span className='text-base flex-shrink-0 mt-0.5'>{s.icon}</span>
+                                    <span className='text-xs text-gray-600 group-hover:text-violet-700 leading-relaxed'>{s.text}</span>
                                 </button>
                             ))}
                         </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Preview panel */}
-            {preview && (
-                <div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5'>
-                    {/* File + intent badges + summary */}
-                    <div className='flex items-start justify-between gap-4 mb-4'>
-                        <div>
-                            <div className='flex items-center gap-2 mb-1 flex-wrap'>
-                                <span className='text-xs font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full font-mono'>
-                                    client/src/{preview.file}
-                                </span>
-                                {preview.isNewFile && (
-                                    <span className='text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full'>
-                                        ✨ New file
-                                    </span>
-                                )}
-                                {preview.isRedesign && (
-                                    <span className='text-xs font-semibold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full'>
-                                        🎨 Full redesign
-                                    </span>
-                                )}
-                            </div>
-                            {preview.summary && (
-                                <p className='text-sm text-gray-600'>{preview.summary}</p>
-                            )}
+                        <div className='flex flex-wrap justify-center gap-3 text-xs text-gray-400'>
+                            <span className='flex items-center gap-1'><FiImage size={12} className='text-violet-400'/> Paste screenshot</span>
+                            <span className='flex items-center gap-1'><FiZap size={12} className='text-violet-400'/> Multi-file edits</span>
+                            <span className='flex items-center gap-1'><FiRotateCcw size={12} className='text-violet-400'/> Undo any change</span>
+                            <span className='flex items-center gap-1'><FiAlertCircle size={12} className='text-violet-400'/> Fix errors</span>
                         </div>
                     </div>
+                )}
 
-                    <DiffViewer original={preview.original} modified={preview.modified} isNewFile={preview.isNewFile} />
+                {/* Messages */}
+                {messages.map((msg) => {
+                    if (msg.role === 'user') return <UserMessage key={msg.id} msg={msg}/>
+                    return (
+                        <AgentMessage
+                            key={msg.id}
+                            msg={msg}
+                            changeStatuses={changeStatuses}
+                            onApproveChange={handleApproveChange}
+                            onRejectChange={handleRejectChange}
+                        />
+                    )
+                })}
+                <div ref={chatEndRef}/>
+            </div>
 
-                    {/* Approve / Reject */}
-                    <div className='flex items-center gap-3 mt-4 flex-wrap'>
-                        <button
-                            onClick={handleApprove}
-                            disabled={applying}
-                            className='flex items-center gap-2 px-6 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-semibold shadow transition disabled:opacity-50'
-                        >
-                            {applying ? (
-                                <span className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />
-                            ) : <FiCheck size={15} />}
-                            Approve & Apply
+            {/* ── Undo stack ───────────────────────────────────────────────── */}
+            <UndoStack stack={undoStack} onUndo={handleUndo} undoing={undoing}/>
+
+            {/* ── Input area ──────────────────────────────────────────────── */}
+            <div className='flex-shrink-0 border-t border-gray-100 bg-white px-3 py-3'>
+                {/* Image preview */}
+                {image && (
+                    <div className='flex items-center gap-2 mb-2 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2'>
+                        <img src={image.dataUrl} alt='preview' className='h-10 w-10 object-cover rounded-lg border border-violet-300'/>
+                        <div className='flex-1 min-w-0'>
+                            <p className='text-xs font-medium text-violet-700 truncate'>{image.name || 'Image attached'}</p>
+                            <p className='text-[10px] text-violet-400'>AI will use this as visual context</p>
+                        </div>
+                        <button onClick={() => setImage(null)} className='text-violet-400 hover:text-red-400 transition p-1'>
+                            <FiTrash2 size={13}/>
                         </button>
-                        <button
-                            onClick={handleReject}
-                            disabled={applying}
-                            className='flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 text-sm font-semibold transition disabled:opacity-50'
-                        >
-                            <FiX size={15} /> Reject
-                        </button>
-                        <p className='text-xs text-gray-400 ml-auto hidden sm:block'>Ctrl+Enter to generate</p>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* History */}
-            {history.length > 0 && (
-                <div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-5'>
-                    <p className='text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2'>
-                        <FiClock size={14} className='text-gray-400' /> Applied Changes (this session)
-                    </p>
-                    <div className='grid gap-2'>
-                        {history.map((entry, i) => (
-                            <HistoryItem key={i} entry={entry} onUndo={handleUndo} undoing={undoing} />
-                        ))}
-                    </div>
+                <div className='flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-100 transition'>
+                    {/* Image upload button */}
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        title='Attach image (or Ctrl+V to paste)'
+                        className='flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 text-gray-400 hover:text-violet-500 transition mb-0.5'
+                    >
+                        <FiImage size={16}/>
+                    </button>
+                    <input ref={fileInputRef} type='file' accept='image/*' className='hidden' onChange={e => { handleImageFile(e.target.files[0]); e.target.value = '' }}/>
+
+                    {/* Text input */}
+                    <textarea
+                        ref={textareaRef}
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={handleKey}
+                        placeholder='Describe what you want to build, fix, or change… (Enter to send, Shift+Enter for new line)'
+                        rows={1}
+                        style={{ resize: 'none', maxHeight: '120px', overflowY: 'auto' }}
+                        className='flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none leading-relaxed py-1.5'
+                        onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                    />
+
+                    {/* Send button */}
+                    <button
+                        onClick={sendMessage}
+                        disabled={!input.trim() || sending}
+                        className='flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow hover:opacity-90 disabled:opacity-30 transition mb-0.5'
+                    >
+                        {sending
+                            ? <span className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin'/>
+                            : <FiSend size={15}/>
+                        }
+                    </button>
                 </div>
-            )}
+                <p className='text-[10px] text-gray-300 text-center mt-1.5'>AI reads your actual source files · Changes only apply when you click "Apply this change"</p>
+            </div>
         </div>
     )
 }

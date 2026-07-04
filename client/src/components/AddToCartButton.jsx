@@ -142,7 +142,7 @@ const AddToCartButton = ({ data, compact = false }) => {
         ) : (
           <button
             onClick={handleADDTocart}
-            className="border-2 border-primary text-primary bg-white w-full h-8 font-bold rounded-xl text-xs tracking-wide hover:bg-primary hover:text-white active:scale-95 transition-all duration-150"
+            className="border-2 border-amber-500 text-white bg-amber-500 w-full h-8 font-bold rounded-xl text-xs tracking-wide hover:bg-amber-600 hover:border-amber-600 active:scale-95 transition-all duration-150"
           >
             {loading ? <Loading /> : 'ADD'}
           </button>
@@ -188,7 +188,7 @@ const AddToCartButton = ({ data, compact = false }) => {
       ) : (
         <button
           onClick={handleADDTocart}
-          className="border-2 border-primary text-primary bg-white w-full h-9 font-bold rounded-xl text-sm tracking-wide hover:bg-primary hover:text-white active:scale-95 transition-all duration-150"
+          className="border-2 border-amber-500 text-white bg-amber-500 w-full h-9 font-bold rounded-xl text-sm tracking-wide hover:bg-amber-600 hover:border-amber-600 active:scale-95 transition-all duration-150"
         >
           {loading ? <Loading /> : 'ADD'}
         </button>

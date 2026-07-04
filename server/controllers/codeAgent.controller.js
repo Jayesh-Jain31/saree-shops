@@ -2,20 +2,31 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { randomUUID } from 'crypto'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-
 const CLIENT_SRC = path.resolve(__dirname, '..', '..', 'client', 'src')
 
-// In-memory backup store: filePath -> { content, instruction }
-const backupStore = new Map()
+// ── Session store ─────────────────────────────────────────────────────────────
+// sessions[id] = {
+//   messages: [{ role, text, changesApplied?, timestamp }],
+//   changeStack: [{ id, file, before, isNewFile, instruction, timestamp }]
+// }
+const sessions = new Map()
 
-function getGenAI() {
-    if (!process.env.GEMINI_API_KEY) return null
-    return new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+function getSession(sessionId) {
+    if (!sessionId || !sessions.has(sessionId)) return null
+    return sessions.get(sessionId)
 }
 
+function createSession() {
+    const id = randomUUID()
+    sessions.set(id, { messages: [], changeStack: [] })
+    return id
+}
+
+// ── File helpers ──────────────────────────────────────────────────────────────
 function getEditableFiles(dir = CLIENT_SRC, base = CLIENT_SRC, results = []) {
     let items
     try { items = fs.readdirSync(dir) } catch { return results }
@@ -23,257 +34,341 @@ function getEditableFiles(dir = CLIENT_SRC, base = CLIENT_SRC, results = []) {
         if (['node_modules', '.git', 'dist', 'assets'].includes(item)) continue
         const full = path.join(dir, item)
         const stat = fs.statSync(full)
-        if (stat.isDirectory()) {
-            getEditableFiles(full, base, results)
-        } else if (/\.(jsx?|css)$/.test(item) && !item.includes('.min.')) {
-            results.push(path.relative(base, full))
-        }
+        if (stat.isDirectory()) getEditableFiles(full, base, results)
+        else if (/\.(jsx?|css)$/.test(item) && !item.includes('.min.')) results.push(path.relative(base, full))
     }
     return results
 }
 
-function detectIntent(instruction) {
-    const lower = instruction.toLowerCase()
-    const isCreate = /\b(create|add|build|make)\b.*(new\s+)?(page|component|section|feature|screen)\b/.test(lower)
-        || /\bnew\s+(page|component|section)\b/.test(lower)
-    const isRedesign = /\b(redesign|rebuild|rewrite|revamp|redo|restyle|overhaul|completely\s+change|makeover)\b/.test(lower)
-    return { isCreate, isRedesign }
+function safeReadFile(relPath) {
+    try {
+        const full = path.join(CLIENT_SRC, relPath)
+        if (!full.startsWith(CLIENT_SRC)) return null
+        const content = fs.readFileSync(full, 'utf-8')
+        // Cap at 12000 chars to avoid token overflow
+        return content.length > 12000 ? content.slice(0, 12000) + '\n// ... (truncated for context)' : content
+    } catch { return null }
+}
+
+function genAI() {
+    if (!process.env.GEMINI_API_KEY) return null
+    return new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+}
+
+// ── App context for AI ────────────────────────────────────────────────────────
+const APP_CONTEXT = `You are an expert React developer working inside a Blinkit-clone quick-commerce e-commerce app.
+
+Tech stack:
+- React 18 + Vite, Tailwind CSS (utility-first styling), React Router v6
+- Redux Toolkit (state management), React Hot Toast (notifications)
+- React Icons (import from react-icons/fi, react-icons/md, react-icons/fa, react-icons/hi, react-icons/bi)
+- Axios for API calls (import from '../utils/Axios'), SummaryApi for endpoint definitions
+- Backend: Express + MongoDB (APIs at /api/*)
+
+Design style: Clean, modern, mobile-first, pink/red primary color (#f43f5e), similar to Blinkit/Zepto UI.
+Code style: 2-space indentation, single quotes, no semicolons in JSX where avoidable.`
+
+// ── Endpoints ─────────────────────────────────────────────────────────────────
+export async function newSession(req, res) {
+    const id = createSession()
+    return res.json({ success: true, sessionId: id })
+}
+
+export async function getSessionData(req, res) {
+    const session = getSession(req.params.id)
+    if (!session) return res.status(404).json({ success: false, message: 'Session not found' })
+    return res.json({ success: true, session })
 }
 
 export async function listFiles(req, res) {
     try {
-        const files = getEditableFiles()
-        return res.json({ success: true, files })
+        return res.json({ success: true, files: getEditableFiles() })
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message })
     }
 }
 
-export async function suggestEdit(req, res) {
+export async function chat(req, res) {
     try {
-        const { instruction, targetFile } = req.body
-        if (!instruction?.trim()) {
-            return res.status(400).json({ success: false, message: 'Instruction required' })
+        const { sessionId, message, imageBase64, imageMimeType } = req.body
+        if (!message?.trim()) return res.status(400).json({ success: false, message: 'Message is required' })
+
+        const ai = genAI()
+        if (!ai) return res.status(503).json({ success: false, message: 'GEMINI_API_KEY not set. Add it in Secrets.' })
+
+        // Get or auto-create session
+        let sid = sessionId
+        if (!sid || !sessions.has(sid)) {
+            sid = createSession()
         }
+        const session = sessions.get(sid)
 
-        const genAI = getGenAI()
-        if (!genAI) {
-            return res.status(503).json({ success: false, message: 'GEMINI_API_KEY not configured. Please add it in Secrets.' })
-        }
+        const allFiles = getEditableFiles()
 
-        const { isCreate, isRedesign } = detectIntent(instruction)
-        const files = getEditableFiles()
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+        // ── PASS 1: Which files does the AI need to read? ──────────────────
+        const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-        let selectedFile = targetFile
-        let isNewFile = false
-        let newFilePath = null
+        const historyContext = session.messages.length > 0
+            ? `\nConversation so far:\n${session.messages.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Agent'}: ${m.text}`).join('\n')}`
+            : ''
 
-        if (!selectedFile) {
-            if (isCreate) {
-                // Ask AI to decide: edit existing or create new file
-                const decidePrompt = `You are a React code assistant for a Blinkit-clone e-commerce app (React + Vite + Tailwind CSS).
+        const changeContext = session.changeStack.length > 0
+            ? `\nFiles already modified this session:\n${session.changeStack.map(c => `- client/src/${c.file} (${c.instruction})`).join('\n')}`
+            : ''
 
-User instruction: "${instruction}"
+        const fileSelectParts = [
+            {
+                text: `${APP_CONTEXT}${historyContext}${changeContext}
 
 Available files in client/src/:
-${files.join('\n')}
+${allFiles.join('\n')}
 
-Should you CREATE a new file or EDIT an existing one to fulfill this request?
-If creating a new file, reply: CREATE:pages/NewPageName.jsx  (use a logical path relative to client/src/)
-If editing an existing file, reply: EDIT:path/to/file.jsx  (must be from the list above)
+User request: "${message}"
 
-Reply with ONLY one line in that exact format.`
-
-                const decideResult = await model.generateContent(decidePrompt)
-                const decision = decideResult.response.text().trim()
-
-                if (decision.startsWith('CREATE:')) {
-                    newFilePath = decision.replace('CREATE:', '').trim()
-                    isNewFile = true
-                    selectedFile = newFilePath
-                } else {
-                    selectedFile = decision.replace('EDIT:', '').trim().replace(/^(client\/src\/|src\/)/, '').replace(/`/g, '')
-                }
-            } else {
-                // Regular edit: auto-detect file
-                const fileSelectPrompt = `You are a code-editing assistant for a React e-commerce saree shop app.
-
-User instruction: "${instruction}"
-
-Available files in client/src/ (pick the single most relevant one):
-${files.join('\n')}
-
-Reply with ONLY the file path relative to client/src/, nothing else. No explanation, no backticks.
-Example reply: pages/Home.jsx`
-
-                const fileResult = await model.generateContent(fileSelectPrompt)
-                selectedFile = fileResult.response.text().trim().replace(/^(client\/src\/|src\/)/, '').replace(/`/g, '').trim()
+Which files do you need to READ to fulfill this request? Also, will you need to CREATE any new files?
+Reply with ONLY a JSON object like this (no markdown, no explanation):
+{
+  "read": ["pages/ProductPage.jsx", "components/ProductCard.jsx"],
+  "create": ["pages/AboutUs.jsx"]
+}
+If no files needed, use empty arrays. Max 5 files to read.`
             }
-        }
+        ]
 
-        // For edits, file must exist in our list
-        if (!isNewFile && !files.includes(selectedFile)) {
-            return res.status(400).json({
-                success: false,
-                message: `Could not identify the right file. Try selecting it manually from the dropdown.`,
-                availableFiles: files
+        if (imageBase64 && imageMimeType) {
+            fileSelectParts.unshift({
+                inlineData: { data: imageBase64, mimeType: imageMimeType }
             })
         }
 
-        const filePath = path.join(CLIENT_SRC, selectedFile)
-        let originalContent = ''
+        const fileSelectResult = await model.generateContent({ contents: [{ role: 'user', parts: fileSelectParts }] })
+        let fileSelectText = fileSelectResult.response.text().trim()
+        fileSelectText = fileSelectText.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '')
 
-        if (!isNewFile) {
-            originalContent = fs.readFileSync(filePath, 'utf-8')
+        let filesToRead = []
+        let filesToCreate = []
+        try {
+            const parsed = JSON.parse(fileSelectText)
+            filesToRead = (parsed.read || []).filter(f => allFiles.includes(f)).slice(0, 5)
+            filesToCreate = parsed.create || []
+        } catch { /* ignore, proceed with empty */ }
+
+        // Read the selected files
+        const fileContents = {}
+        for (const f of filesToRead) {
+            const content = safeReadFile(f)
+            if (content !== null) fileContents[f] = content
         }
 
-        // Build the AI prompt based on intent
-        let editPrompt
-        if (isNewFile) {
-            editPrompt = `You are a senior React developer building a Blinkit-clone e-commerce app.
-The app uses: React 18, Vite, Tailwind CSS, React Router, Redux Toolkit, React Hot Toast, React Icons.
-Design style: clean, modern, mobile-first, similar to Blinkit/quick-commerce apps.
+        // ── PASS 2: Generate the actual changes ────────────────────────────
+        const fileContentBlock = Object.entries(fileContents).map(([f, c]) =>
+            `=== client/src/${f} ===\n${c}`
+        ).join('\n\n')
 
-User request: "${instruction}"
+        const editParts = [
+            {
+                text: `${APP_CONTEXT}${historyContext}${changeContext}
 
-Create the file: client/src/${selectedFile}
+${fileContentBlock ? `Current file contents:\n${fileContentBlock}\n\n` : ''}User request: "${message}"
 
-Rules:
-- Return ONLY the complete file content — no explanation, no markdown, no code fences
-- Use React functional components with hooks
-- Use Tailwind CSS for all styling
-- Make it look professional and polished with good UI/UX
-- Import from react, react-router-dom, react-icons, react-redux as needed
-- Use consistent code style (2-space indent, single quotes)
-- Do NOT add comments explaining your code`
-        } else if (isRedesign) {
-            editPrompt = `You are a senior React developer and UI/UX designer.
-The app is a Blinkit-clone e-commerce app using React 18, Vite, Tailwind CSS, React Router, Redux Toolkit, React Icons.
-Design style: clean, modern, mobile-first.
+${filesToCreate.length > 0 ? `You will CREATE these new files: ${filesToCreate.join(', ')}\n` : ''}
 
-User request: "${instruction}"
+Instructions:
+1. Analyze the request carefully. If it mentions an error or bug, find and fix it.
+2. Make all necessary changes across multiple files if needed.
+3. For redesign/rebuild requests, do a full professional rewrite of the UI.
+4. For new page/component requests, create complete, polished code.
+5. Return a JSON object between <AGENT_RESPONSE> and </AGENT_RESPONSE> tags:
 
-Current file (client/src/${selectedFile}):
-${originalContent}
+<AGENT_RESPONSE>
+{
+  "explanation": "Clear explanation of what you are doing and why (2-4 sentences, friendly tone)",
+  "changes": [
+    {
+      "file": "relative/path/from/client-src.jsx",
+      "action": "edit",
+      "description": "Brief description of what changed in this file",
+      "content": "...complete file content..."
+    }
+  ]
+}
+</AGENT_RESPONSE>
 
-Rules:
-- Return ONLY the complete redesigned file content — no explanation, no markdown, no code fences
-- You MAY completely rewrite the layout, styling and structure — this is a redesign
-- Keep all existing logic, state, API calls, and functionality working correctly
-- Make it look significantly better and more modern using Tailwind CSS
-- Keep the same imports and hooks — just improve the visual design
-- Do NOT add comments explaining your changes`
-        } else {
-            editPrompt = `You are a code-editing AI assistant for a React e-commerce app.
+Action must be "edit" (modify existing) or "create" (new file). Always return the COMPLETE file content.
+If you cannot fulfill the request, return changes: [] and explain why in the explanation.`
+            }
+        ]
 
-User request: "${instruction}"
-
-File path: client/src/${selectedFile}
-File content:
-${originalContent}
-
-Rules:
-- Return ONLY the complete modified file content — no explanation, no markdown, no code fences
-- Preserve all existing imports, logic, and functionality unless explicitly asked to change them
-- Make only the targeted changes needed to fulfill the request
-- Keep the same code style, indentation, and conventions
-- Do NOT add comments explaining your changes`
+        if (imageBase64 && imageMimeType) {
+            editParts.unshift({
+                inlineData: { data: imageBase64, mimeType: imageMimeType }
+            })
         }
 
-        const editResult = await model.generateContent(editPrompt)
-        let modifiedContent = editResult.response.text().trim()
+        const editResult = await model.generateContent({ contents: [{ role: 'user', parts: editParts }] })
+        const editText = editResult.response.text()
 
-        // Strip markdown code fences if AI included them
-        modifiedContent = modifiedContent
-            .replace(/^```[\w]*\r?\n/, '')
-            .replace(/\r?\n```$/, '')
-            .replace(/^```[\w]*\n/, '')
-            .replace(/\n```$/, '')
+        // Extract JSON from tags
+        const match = editText.match(/<AGENT_RESPONSE>([\s\S]*?)<\/AGENT_RESPONSE>/)
+        if (!match) {
+            // Fallback: try to parse raw JSON
+            let parsed = null
+            try {
+                const raw = editText.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '')
+                parsed = JSON.parse(raw)
+            } catch { /* ignore */ }
 
-        // Generate a plain-English summary
-        const summaryPrompt = `In 1-2 short sentences, describe what this AI code change does, for a non-technical user.
-User asked: "${instruction}"
-Action taken: ${isNewFile ? 'Created new file' : isRedesign ? 'Redesigned existing page' : 'Edited existing file'} client/src/${selectedFile}
-Reply with ONLY the summary, no preamble.`
-        const summaryResult = await model.generateContent(summaryPrompt)
-        const summary = summaryResult.response.text().trim()
+            if (!parsed) {
+                return res.json({
+                    success: true,
+                    sessionId: sid,
+                    explanation: editText.trim() || 'I could not generate a structured response. Please rephrase your request.',
+                    changes: [],
+                })
+            }
+        }
+
+        let agentData
+        try {
+            const jsonStr = match ? match[1].trim() : editText
+            agentData = JSON.parse(jsonStr)
+        } catch {
+            return res.json({
+                success: true,
+                sessionId: sid,
+                explanation: 'I generated a response but could not parse it. Please try again.',
+                changes: [],
+            })
+        }
+
+        // Validate + enrich changes with original content
+        const enrichedChanges = []
+        for (const change of (agentData.changes || [])) {
+            if (!change.file || !change.content) continue
+            const safe = path.normalize(change.file).replace(/^(\.\.(\/|\\|$))+/, '')
+            const fullPath = path.join(CLIENT_SRC, safe)
+            if (!fullPath.startsWith(CLIENT_SRC)) continue
+
+            const exists = fs.existsSync(fullPath)
+            const original = exists ? (fs.readFileSync(fullPath, 'utf-8') || '') : ''
+
+            // Clean content
+            let content = change.content.trim()
+            content = content.replace(/^```[\w]*\r?\n/, '').replace(/\r?\n```$/, '').replace(/^```[\w]*\n/, '').replace(/\n```$/, '')
+
+            enrichedChanges.push({
+                file: safe,
+                action: exists ? 'edit' : 'create',
+                description: change.description || '',
+                content,
+                original,
+                isNewFile: !exists,
+            })
+        }
+
+        // Store user message in session
+        session.messages.push({
+            role: 'user',
+            text: message,
+            hasImage: !!imageBase64,
+            timestamp: new Date().toISOString(),
+        })
 
         return res.json({
             success: true,
-            file: selectedFile,
-            original: originalContent,
-            modified: modifiedContent,
-            summary,
-            isNewFile,
-            isRedesign,
+            sessionId: sid,
+            explanation: agentData.explanation || 'Here are the proposed changes:',
+            changes: enrichedChanges,
         })
     } catch (err) {
-        if (process.env.NODE_ENV !== 'production') console.error('[CodeAgent] suggest error:', err.message)
-        return res.status(500).json({ success: false, message: err.message || 'AI agent failed. Check your Gemini API key.' })
+        if (process.env.NODE_ENV !== 'production') console.error('[CodeAgent] chat error:', err)
+        return res.status(500).json({ success: false, message: err.message || 'AI agent failed' })
     }
 }
 
-export async function applyEdit(req, res) {
+export async function applyBatch(req, res) {
     try {
-        const { file, content, original } = req.body
-        if (!file || content === undefined) {
-            return res.status(400).json({ success: false, message: 'file and content are required' })
+        const { sessionId, changes, instruction } = req.body
+        if (!Array.isArray(changes) || changes.length === 0) {
+            return res.status(400).json({ success: false, message: 'No changes to apply' })
         }
 
-        const safe = path.normalize(file).replace(/^(\.\.(\/|\\|$))+/, '')
-        const filePath = path.join(CLIENT_SRC, safe)
-        if (!filePath.startsWith(CLIENT_SRC + path.sep) && filePath !== CLIENT_SRC) {
-            return res.status(403).json({ success: false, message: 'Access denied: only client/src files can be edited' })
+        const session = getSession(sessionId)
+        const applied = []
+
+        for (const change of changes) {
+            const safe = path.normalize(change.file).replace(/^(\.\.(\/|\\|$))+/, '')
+            const fullPath = path.join(CLIENT_SRC, safe)
+            if (!fullPath.startsWith(CLIENT_SRC)) continue
+
+            const isNewFile = !fs.existsSync(fullPath)
+            const before = isNewFile ? null : fs.readFileSync(fullPath, 'utf-8')
+
+            fs.mkdirSync(path.dirname(fullPath), { recursive: true })
+            fs.writeFileSync(fullPath, change.content, 'utf-8')
+
+            const changeId = randomUUID()
+            if (session) {
+                session.changeStack.push({
+                    id: changeId,
+                    file: safe,
+                    before,
+                    isNewFile,
+                    instruction: instruction || 'Applied change',
+                    timestamp: new Date().toISOString(),
+                })
+            }
+
+            applied.push({ file: safe, changeId, isNewFile })
         }
 
-        // Backup original content before overwriting
-        const isNewFile = !fs.existsSync(filePath)
-        const backupContent = isNewFile ? null : (original ?? fs.readFileSync(filePath, 'utf-8'))
-        backupStore.set(safe, { content: backupContent, isNewFile })
-
-        // Create parent directories if needed (for new files)
-        fs.mkdirSync(path.dirname(filePath), { recursive: true })
-        fs.writeFileSync(filePath, content, 'utf-8')
+        if (session) {
+            session.messages.push({
+                role: 'agent',
+                text: `Applied ${applied.length} file change(s): ${applied.map(a => a.file).join(', ')}`,
+                changesApplied: applied,
+                timestamp: new Date().toISOString(),
+            })
+        }
 
         return res.json({
             success: true,
-            message: `✅ ${isNewFile ? 'Created' : 'Applied changes to'} client/src/${safe}`,
-            canUndo: true,
-            isNewFile,
+            message: `✅ Applied ${applied.length} change(s)`,
+            applied,
         })
     } catch (err) {
-        if (process.env.NODE_ENV !== 'production') console.error('[CodeAgent] apply error:', err.message)
+        if (process.env.NODE_ENV !== 'production') console.error('[CodeAgent] applyBatch error:', err)
         return res.status(500).json({ success: false, message: err.message })
     }
 }
 
-export async function undoEdit(req, res) {
+export async function undoChange(req, res) {
     try {
-        const { file } = req.body
-        if (!file) return res.status(400).json({ success: false, message: 'file is required' })
+        const { sessionId, changeId } = req.body
+        const session = getSession(sessionId)
+        if (!session) return res.status(404).json({ success: false, message: 'Session not found. Start a new session.' })
 
-        const safe = path.normalize(file).replace(/^(\.\.(\/|\\|$))+/, '')
-        const backup = backupStore.get(safe)
+        const idx = session.changeStack.findIndex(c => c.id === changeId)
+        if (idx === -1) return res.status(404).json({ success: false, message: 'Change not found in session history.' })
 
-        if (!backup) {
-            return res.status(404).json({ success: false, message: 'No backup found for this file. Cannot undo.' })
+        const change = session.changeStack[idx]
+        const fullPath = path.join(CLIENT_SRC, change.file)
+        if (!fullPath.startsWith(CLIENT_SRC)) return res.status(403).json({ success: false, message: 'Access denied' })
+
+        if (change.isNewFile) {
+            if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath)
+        } else {
+            fs.writeFileSync(fullPath, change.before, 'utf-8')
         }
 
-        const filePath = path.join(CLIENT_SRC, safe)
+        session.changeStack.splice(idx, 1)
 
-        if (backup.isNewFile) {
-            // File was newly created — delete it on undo
-            if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
-            backupStore.delete(safe)
-            return res.json({ success: true, message: `↩️ Deleted newly created file client/src/${safe}` })
-        }
-
-        fs.writeFileSync(filePath, backup.content, 'utf-8')
-        backupStore.delete(safe)
-        return res.json({ success: true, message: `↩️ Reverted client/src/${safe} to previous version` })
+        return res.json({
+            success: true,
+            message: `↩️ Undid: ${change.isNewFile ? 'Deleted' : 'Reverted'} client/src/${change.file}`,
+        })
     } catch (err) {
-        if (process.env.NODE_ENV !== 'production') console.error('[CodeAgent] undo error:', err.message)
+        if (process.env.NODE_ENV !== 'production') console.error('[CodeAgent] undo error:', err)
         return res.status(500).json({ success: false, message: err.message })
     }
 }

@@ -46,6 +46,12 @@ const CardProduct = ({ data, grid = false }) => {
             </div>
           )}
 
+          {Boolean(data.discount) && (
+            <div className='absolute bottom-1.5 right-1.5 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm'>
+              SALE
+            </div>
+          )}
+
           {data.stock > 0 && data.stock <= 5 && (
             <div className='absolute top-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm'>
               Only {data.stock} left!
@@ -143,6 +149,12 @@ const CardProduct = ({ data, grid = false }) => {
         {Boolean(data.discount) && (
           <div className='absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm'>
             {data.discount}% OFF
+          </div>
+        )}
+
+        {Boolean(data.discount) && (
+          <div className='absolute bottom-2 right-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm'>
+            SALE
           </div>
         )}
 

@@ -7,6 +7,7 @@ export const colorPresets = {
   teal:   { primary: '#14b8a6', dark: '#0d9488', darker: '#0f766e', light: '#ccfbf1', text: '#0f766e', label: 'Teal'   },
   red:    { primary: '#ef4444', dark: '#dc2626', darker: '#b91c1c', light: '#fee2e2', text: '#b91c1c', label: 'Red'    },
   indigo: { primary: '#6366f1', dark: '#4f46e5', darker: '#4338ca', light: '#e0e7ff', text: '#4338ca', label: 'Indigo' },
+  golden: { primary: '#fbbf24', dark: '#f59e0b', darker: '#d97706', light: '#fffbeb', text: '#d97706', label: 'Golden' },
 }
 
 export function applyTheme(colorKey) {
