@@ -233,13 +233,13 @@ const Home = () => {
         )}
       </div>
 
-      {visibleCategories.map((c) => (
+      {visibleCategories.map((c, index) => (
         <React.Fragment key={c._id + 'CategorywiseProduct'}>
           <CategoryWiseProductDisplay id={c._id} name={c.name} />
-          {/* Section banner under Silk Sarees category only */}
-          {c.name.toLowerCase().includes('silk') && (
-            <div className='container mx-auto px-4 mb-2'>
-              <SectionBanner placement='section-silk' />
+          {/* Insert a section banner after every 2nd category */}
+          {(index + 1) % 2 === 0 && index < visibleCategories.length - 1 && (
+            <div className='container mx-auto px-4'>
+              <SectionBanner placement={`section-${Math.min(Math.floor((index + 1) / 2), 3)}`} />
             </div>
           )}
         </React.Fragment>

@@ -321,7 +321,8 @@ const BannerAdmin = () => {
 
       <div className='max-w-5xl mx-auto p-4'>
         <div className='bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-700'>
-          <strong>How it works:</strong> Each banner can contain <strong>2–4 slides</strong> that automatically rotate every 4 seconds on the homepage. Add multiple slides to create a rich carousel experience.
+          <strong>How it works:</strong> Each banner can contain <strong>2–4 slides</strong> that auto-rotate. 
+          <strong>Hero</strong> = top of homepage. <strong>Section 1/2/3</strong> = full-width banner between product sections (after 2nd, 4th, 6th category).
         </div>
 
         {loading ? (
@@ -389,9 +390,25 @@ const BannerAdmin = () => {
                             <span className='text-[10px] px-2 py-0.5 rounded-full font-semibold bg-purple-50 text-purple-700 border border-purple-200'>
                               {slides.length} slide{slides.length !== 1 ? 's' : ''}
                             </span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${banner.placement === 'section-silk' ? 'bg-pink-50 text-pink-700 border-pink-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                              {banner.placement === 'section-silk' ? 'Silk Section' : 'Hero'}
-                            </span>
+                            {(() => {
+                              const placementLabels = {
+                                'hero': 'Hero',
+                                'section-1': 'Section 1',
+                                'section-2': 'Section 2',
+                                'section-3': 'Section 3'
+                              }
+                              const placementColors = {
+                                'hero': 'bg-blue-50 text-blue-700 border-blue-200',
+                                'section-1': 'bg-pink-50 text-pink-700 border-pink-200',
+                                'section-2': 'bg-orange-50 text-orange-700 border-orange-200',
+                                'section-3': 'bg-teal-50 text-teal-700 border-teal-200'
+                              }
+                              return (
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${placementColors[banner.placement] || placementColors['hero']}`}>
+                                  {placementLabels[banner.placement] || 'Hero'}
+                                </span>
+                              )
+                            })()}
                             <span className='text-[10px] text-gray-400'>Order: {banner.displayOrder}</span>
                           </div>
                           {slides.length > 1 && (
@@ -463,10 +480,12 @@ const BannerAdmin = () => {
                     className='w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500 bg-white'
                   >
                     <option value='hero'>Homepage Hero (Main Banner)</option>
-                    <option value='section-silk'>Silk Sarees Section</option>
+                    <option value='section-1'>Section 1 — After 2nd Category</option>
+                    <option value='section-2'>Section 2 — After 4th Category</option>
+                    <option value='section-3'>Section 3 — After 6th Category</option>
                   </select>
                   <p className='text-[11px] text-gray-400 mt-1'>
-                    {form.placement === 'section-silk' ? 'Shows under Silk Sarees category on home page' : 'Shows at top of homepage'}
+                    {form.placement === 'hero' ? 'Shows at top of homepage' : `Shows between product sections on home page`}
                   </p>
                 </div>
               </div>
