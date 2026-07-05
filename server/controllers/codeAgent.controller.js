@@ -1,5 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenAI } from '@google/genai'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -51,14 +50,9 @@ function safeReadFile(relPath) {
     } catch { return null }
 }
 
-function genGemini() {
+function genAI() {
     if (!process.env.GEMINI_API_KEY) return null
-    return new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-}
-
-function genClaude() {
-    if (!process.env.ANTHROPIC_API_KEY) return null
-    return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 }
 
 // ── App context for AI ────────────────────────────────────────────────────────
@@ -100,19 +94,8 @@ export async function chat(req, res) {
         if (!message?.trim()) return res.status(400).json({ success: false, message: 'Message is required' })
 
         // ── Select AI model ─────────────────────────────────
-        const useClaude = model === 'claude'
-        let aiClient = null
-        let aiProvider = ''
-
-        if (useClaude) {
-            aiClient = genClaude()
-            aiProvider = 'claude'
-            if (!aiClient) return res.status(503).json({ success: false, message: 'ANTHROPIC_API_KEY not set. Add it in Secrets to use Claude.' })
-        } else {
-            aiClient = genGemini()
-            aiProvider = 'gemini'
-            if (!aiClient) return res.status(503).json({ success: false, message: 'GEMINI_API_KEY not set. Add it in Secrets to use Gemini.' })
-        }
+        const aiClient = genAI()
+        if (!aiClient) return res.status(503).json({ success: false, message: 'GEMINI_API_KEY not set. Add it in Secrets.' })
 
         // Get or auto-create session
         let sid = sessionId
@@ -149,27 +132,17 @@ If no files needed, use empty arrays. Max 5 files to read.`
 
         let fileSelectText = ''
 
-        if (aiProvider === 'gemini') {
-            const geminiModel = aiClient.getGenerativeModel({ model: 'gemini-2.5-flash' })
+        {
             const parts = [{ text: fileSelectPrompt }]
             if (imageBase64 && imageMimeType) {
                 parts.unshift({ inlineData: { data: imageBase64, mimeType: imageMimeType } })
             }
-            const result = await geminiModel.generateContent({ contents: [{ role: 'user', parts }] })
-            fileSelectText = result.response.text().trim()
-        } else {
-            // Claude
-            const content = [{ type: 'text', text: fileSelectPrompt }]
-            if (imageBase64 && imageMimeType) {
-                const mediaType = imageMimeType.startsWith('image/') ? imageMimeType : `image/${imageMimeType}`
-                content.unshift({ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } })
-            }
-            const result = await aiClient.messages.create({
-                model: 'claude-sonnet-5',
-                max_tokens: 2048,
-                messages: [{ role: 'user', content }]
+            const result = await aiClient.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: [{ role: 'user', parts }],
+                config: { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 2048 },
             })
-            fileSelectText = (result.content[0]?.text || '').trim()
+            fileSelectText = (result.text || '').trim()
         }
 
         fileSelectText = fileSelectText.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '')
@@ -226,30 +199,17 @@ If you cannot fulfill the request, return changes: [] and explain why in the exp
 
         let editText = ''
 
-        if (aiProvider === 'gemini') {
-            const geminiModel = aiClient.getGenerativeModel({ model: 'gemini-2.5-flash' })
+        {
             const parts = [{ text: editPrompt }]
             if (imageBase64 && imageMimeType) {
                 parts.unshift({ inlineData: { data: imageBase64, mimeType: imageMimeType } })
             }
-            const result = await geminiModel.generateContent({ contents: [{ role: 'user', parts }] })
-            editText = result.response.text()
-        } else {
-            // Claude
-            const content = [{ type: 'text', text: editPrompt }]
-            if (imageBase64 && imageMimeType) {
-                const mediaType = imageMimeType.startsWith('image/') ? imageMimeType : `image/${imageMimeType}`
-                content.unshift({ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } })
-            }
-            const result = await aiClient.messages.create({
-                model: 'claude-sonnet-5',
-                max_tokens: 8192,
-                messages: [{ role: 'user', content }]
+            const result = await aiClient.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: [{ role: 'user', parts }],
+                config: { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 8192 },
             })
-            editText = result.content[0]?.text || ''
-            console.log('========== CLAUDE RESPONSE ==========')
-console.log(editText)
-console.log('====================================')
+            editText = result.text || ''
         }
 
         // Extract JSON from tags
