@@ -257,6 +257,7 @@ export default function CodeAgent() {
     const [sending, setSending] = useState(false)
     const [undoing, setUndoing] = useState(null)
     const [image, setImage] = useState(null) // { dataUrl, base64, mimeType, name }
+    const [aiModel, setAiModel] = useState('gemini') // 'gemini' or 'claude'
     const chatEndRef = useRef(null)
     const fileInputRef = useRef(null)
     const textareaRef = useRef(null)
@@ -312,6 +313,7 @@ export default function CodeAgent() {
                     message: text,
                     imageBase64: imgSnapshot?.base64 || undefined,
                     imageMimeType: imgSnapshot?.mimeType || undefined,
+                    model: aiModel,
                 },
             })
 
@@ -329,7 +331,7 @@ export default function CodeAgent() {
 
             setMessages(prev => prev.filter(m => m.id !== thinkingMsg.id).concat(agentMsg))
         } catch (err) {
-            const errMsg = { id: `e-${Date.now()}`, role: 'agent', error: err?.response?.data?.message || 'Failed to reach AI. Check your ANTHROPIC_API_KEY in Secrets.' }
+            const errMsg = { id: `e-${Date.now()}`, role: 'agent', error: err?.response?.data?.message || `Failed to reach AI. Check your ${aiModel === 'claude' ? 'ANTHROPIC_API_KEY' : 'GEMINI_API_KEY'} in Secrets.` }
             setMessages(prev => prev.filter(m => m.id !== thinkingMsg.id).concat(errMsg))
         } finally {
             setSending(false)
@@ -430,6 +432,30 @@ export default function CodeAgent() {
                     <p className='text-xs text-gray-400'>
                         {sessionId ? <span className='text-green-500 font-mono'>● Session active</span> : 'Start typing to begin a session'}
                     </p>
+                </div>
+
+                {/* ── Model Selector ──────────────────────────────────────── */}
+                <div className='flex items-center bg-gray-100 rounded-lg p-0.5'>
+                    <button
+                        onClick={() => setAiModel('gemini')}
+                        className={`text-xs font-semibold px-2.5 py-1 rounded-md transition ${
+                            aiModel === 'gemini'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Gemini (Free)
+                    </button>
+                    <button
+                        onClick={() => setAiModel('claude')}
+                        className={`text-xs font-semibold px-2.5 py-1 rounded-md transition ${
+                            aiModel === 'claude'
+                                ? 'bg-white text-orange-600 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Claude 3.7 (Premium)
+                    </button>
                 </div>
                 <div className='flex items-center gap-2'>
                     {sessionId && (
