@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Anthropic from '@anthropic-ai/sdk'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -50,9 +50,9 @@ function safeReadFile(relPath) {
     } catch { return null }
 }
 
-function genAI() {
-    if (!process.env.GEMINI_API_KEY) return null
-    return new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+function genClaude() {
+    if (!process.env.ANTHROPIC_API_KEY) return null
+    return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 }
 
 // ── App context for AI ────────────────────────────────────────────────────────
@@ -93,8 +93,8 @@ export async function chat(req, res) {
         const { sessionId, message, imageBase64, imageMimeType } = req.body
         if (!message?.trim()) return res.status(400).json({ success: false, message: 'Message is required' })
 
-        const ai = genAI()
-        if (!ai) return res.status(503).json({ success: false, message: 'GEMINI_API_KEY not set. Add it in Secrets.' })
+        const claude = genClaude()
+        if (!claude) return res.status(503).json({ success: false, message: 'ANTHROPIC_API_KEY not set. Add it in Secrets.' })
 
         // Get or auto-create session
         let sid = sessionId
@@ -105,9 +105,6 @@ export async function chat(req, res) {
 
         const allFiles = getEditableFiles()
 
-        // ── PASS 1: Which files does the AI need to read? ──────────────────
-        const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' })
-
         const historyContext = session.messages.length > 0
             ? `\nConversation so far:\n${session.messages.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Agent'}: ${m.text}`).join('\n')}`
             : ''
@@ -116,8 +113,10 @@ export async function chat(req, res) {
             ? `\nFiles already modified this session:\n${session.changeStack.map(c => `- client/src/${c.file} (${c.instruction})`).join('\n')}`
             : ''
 
-        const fileSelectParts = [
+        // ── PASS 1: Which files does the AI need to read? ──────────────────
+        const fileSelectContent = [
             {
+                type: 'text',
                 text: `${APP_CONTEXT}${historyContext}${changeContext}
 
 Available files in client/src/:
@@ -136,13 +135,20 @@ If no files needed, use empty arrays. Max 5 files to read.`
         ]
 
         if (imageBase64 && imageMimeType) {
-            fileSelectParts.unshift({
-                inlineData: { data: imageBase64, mimeType: imageMimeType }
+            const mediaType = imageMimeType.startsWith('image/') ? imageMimeType : `image/${imageMimeType}`
+            fileSelectContent.unshift({
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: imageBase64 }
             })
         }
 
-        const fileSelectResult = await model.generateContent({ contents: [{ role: 'user', parts: fileSelectParts }] })
-        let fileSelectText = fileSelectResult.response.text().trim()
+        const fileSelectResult = await claude.messages.create({
+            model: 'claude-3-7-sonnet-20250219',
+            max_tokens: 2048,
+            messages: [{ role: 'user', content: fileSelectContent }]
+        })
+
+        let fileSelectText = (fileSelectResult.content[0]?.text || '').trim()
         fileSelectText = fileSelectText.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '')
 
         let filesToRead = []
@@ -165,8 +171,9 @@ If no files needed, use empty arrays. Max 5 files to read.`
             `=== client/src/${f} ===\n${c}`
         ).join('\n\n')
 
-        const editParts = [
+        const editContent = [
             {
+                type: 'text',
                 text: `${APP_CONTEXT}${historyContext}${changeContext}
 
 ${fileContentBlock ? `Current file contents:\n${fileContentBlock}\n\n` : ''}User request: "${message}"
@@ -200,13 +207,20 @@ If you cannot fulfill the request, return changes: [] and explain why in the exp
         ]
 
         if (imageBase64 && imageMimeType) {
-            editParts.unshift({
-                inlineData: { data: imageBase64, mimeType: imageMimeType }
+            const mediaType = imageMimeType.startsWith('image/') ? imageMimeType : `image/${imageMimeType}`
+            editContent.unshift({
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: imageBase64 }
             })
         }
 
-        const editResult = await model.generateContent({ contents: [{ role: 'user', parts: editParts }] })
-        const editText = editResult.response.text()
+        const editResult = await claude.messages.create({
+            model: 'claude-3-7-sonnet-20250219',
+            max_tokens: 8192,
+            messages: [{ role: 'user', content: editContent }]
+        })
+
+        const editText = editResult.content[0]?.text || ''
 
         // Extract JSON from tags
         const match = editText.match(/<AGENT_RESPONSE>([\s\S]*?)<\/AGENT_RESPONSE>/)

@@ -28,6 +28,7 @@ A full-stack quick-commerce (Blinkit Clone) application built with the MERN stac
 - `RAZORPAY_KEY_ID` — Razorpay public key ID
 - `RAZORPAY_KEY_SECRET` — Razorpay secret key
 - `FRONTEND_URL` — Frontend URL for CORS (set to Replit dev domain in shared env)
+- `ANTHROPIC_API_KEY` — Anthropic API key for AI code editing (Claude 3.7 Sonnet)
 
 ## Key Notes
 - Vite dev server proxies `/api/*` requests to `http://localhost:8080`

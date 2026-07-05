@@ -329,7 +329,7 @@ export default function CodeAgent() {
 
             setMessages(prev => prev.filter(m => m.id !== thinkingMsg.id).concat(agentMsg))
         } catch (err) {
-            const errMsg = { id: `e-${Date.now()}`, role: 'agent', error: err?.response?.data?.message || 'Failed to reach AI. Check your Gemini API key in Secrets.' }
+            const errMsg = { id: `e-${Date.now()}`, role: 'agent', error: err?.response?.data?.message || 'Failed to reach AI. Check your ANTHROPIC_API_KEY in Secrets.' }
             setMessages(prev => prev.filter(m => m.id !== thinkingMsg.id).concat(errMsg))
         } finally {
             setSending(false)
