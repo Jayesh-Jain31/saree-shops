@@ -423,41 +423,46 @@ export default function CodeAgent() {
     return (
         <div className='h-[calc(100vh-80px)] flex flex-col max-w-4xl mx-auto'>
             {/* ── Header ──────────────────────────────────────────────────── */}
-            <div className='flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0'>
-                <div className='w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow'>
-                    <MdAutoFixHigh size={20}/>
-                </div>
-                <div className='flex-1 min-w-0'>
-                    <h1 className='text-base font-bold text-gray-800'>Code AI Agent</h1>
-                    <p className='text-xs text-gray-400'>
-                        {sessionId ? <span className='text-green-500 font-mono'>● Session active</span> : 'Start typing to begin a session'}
-                    </p>
+            <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-100 bg-white flex-shrink-0'>
+                <div className='flex items-center gap-2.5 w-full sm:w-auto'>
+                    <div className='w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow flex-shrink-0'>
+                        <MdAutoFixHigh size={18}/>
+                    </div>
+                    <div className='flex-1 min-w-0'>
+                        <h1 className='text-sm sm:text-base font-bold text-gray-800 leading-tight'>Code AI Agent</h1>
+                        <p className='text-[10px] sm:text-xs text-gray-400 leading-tight'>
+                            {sessionId ? <span className='text-green-500 font-mono'>● Session active</span> : 'Start typing to begin a session'}
+                        </p>
+                    </div>
                 </div>
 
-                {/* ── Model Selector ──────────────────────────────────────── */}
-                <div className='flex items-center bg-gray-100 rounded-lg p-0.5'>
+                {/* ── Model Selector ────────────────────────────────────────── */}
+                <div className='flex items-center bg-gray-100 rounded-lg p-0.5 self-start sm:self-auto'>
                     <button
                         onClick={() => setAiModel('gemini')}
-                        className={`text-xs font-semibold px-2.5 py-1 rounded-md transition ${
+                        className={`text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-md transition ${
                             aiModel === 'gemini'
                                 ? 'bg-white text-blue-600 shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
                         }`}
                     >
-                        Gemini (Free)
+                        <span className='hidden sm:inline'>Gemini (Free)</span>
+                        <span className='sm:hidden'>Free</span>
                     </button>
                     <button
                         onClick={() => setAiModel('claude')}
-                        className={`text-xs font-semibold px-2.5 py-1 rounded-md transition ${
+                        className={`text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-md transition ${
                             aiModel === 'claude'
                                 ? 'bg-white text-orange-600 shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
                         }`}
                     >
-                        Claude 3.7 (Premium)
+                        <span className='hidden sm:inline'>Claude 3.7 (Premium)</span>
+                        <span className='sm:hidden'>Claude</span>
                     </button>
                 </div>
-                <div className='flex items-center gap-2'>
+
+                <div className='flex items-center gap-2 ml-auto'>
                     {sessionId && (
                         <span className='hidden sm:flex items-center gap-1 text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1'>
                             <HiSparkles size={11} className='text-violet-400'/> {undoStack.length} changes
@@ -473,18 +478,18 @@ export default function CodeAgent() {
             </div>
 
             {/* ── Chat thread ─────────────────────────────────────────────── */}
-            <div className='flex-1 overflow-y-auto px-4 py-4 bg-white'>
+            <div className='flex-1 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 bg-white'>
                 {/* Empty state */}
                 {isEmpty && (
-                    <div className='flex flex-col items-center justify-center h-full gap-6 pb-6'>
-                        <div className='text-center'>
-                            <div className='w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow-lg mx-auto mb-4'>
-                                <MdAutoFixHigh size={32}/>
+                    <div className='flex flex-col items-center justify-center h-full gap-4 sm:gap-6 pb-4 sm:pb-6'>
+                        <div className='text-center px-2'>
+                            <div className='w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow-lg mx-auto mb-3 sm:mb-4'>
+                                <MdAutoFixHigh size={28}/>
                             </div>
-                            <h2 className='text-lg font-bold text-gray-800 mb-1'>What do you want to build?</h2>
-                            <p className='text-sm text-gray-400 max-w-sm'>Describe a change, redesign, new feature, or paste an error. I'll read your code and make the changes — you approve each one.</p>
+                            <h2 className='text-base sm:text-lg font-bold text-gray-800 mb-1'>What do you want to build?</h2>
+                            <p className='text-xs sm:text-sm text-gray-400 max-w-sm'>Describe a change, redesign, new feature, or paste an error. I'll read your code and make the changes — you approve each one.</p>
                         </div>
-                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-xl'>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-xl px-1'>
                             {STARTERS.map((s, i) => (
                                 <button
                                     key={i}
@@ -496,7 +501,7 @@ export default function CodeAgent() {
                                 </button>
                             ))}
                         </div>
-                        <div className='flex flex-wrap justify-center gap-3 text-xs text-gray-400'>
+                        <div className='flex flex-wrap justify-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-400 px-2'>
                             <span className='flex items-center gap-1'><FiImage size={12} className='text-violet-400'/> Paste screenshot</span>
                             <span className='flex items-center gap-1'><FiZap size={12} className='text-violet-400'/> Multi-file edits</span>
                             <span className='flex items-center gap-1'><FiRotateCcw size={12} className='text-violet-400'/> Undo any change</span>
@@ -525,7 +530,7 @@ export default function CodeAgent() {
             <UndoStack stack={undoStack} onUndo={handleUndo} undoing={undoing}/>
 
             {/* ── Input area ──────────────────────────────────────────────── */}
-            <div className='flex-shrink-0 border-t border-gray-100 bg-white px-3 py-3'>
+            <div className='flex-shrink-0 border-t border-gray-100 bg-white px-2 sm:px-3 py-2 sm:py-3'>
                 {/* Image preview */}
                 {image && (
                     <div className='flex items-center gap-2 mb-2 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2'>
