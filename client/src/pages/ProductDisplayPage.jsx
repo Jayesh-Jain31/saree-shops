@@ -207,6 +207,15 @@ const ProductDisplayPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [params]);
 
+  // Auto-select first variant when product data loads
+  useEffect(() => {
+    if (data.variants && data.variants.length > 0) {
+      setSelectedVariantIndex(0);
+    } else {
+      setSelectedVariantIndex(null);
+    }
+  }, [data.variants]);
+
   useEffect(() => {
     if (!data.image || data.image.length <= 1) return;
     const iv = setInterval(() => setImage(prev => (prev + 1) % data.image.length), 4500);

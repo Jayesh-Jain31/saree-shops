@@ -165,7 +165,7 @@ If no files needed, use empty arrays. Max 5 files to read.`
                 content.unshift({ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } })
             }
             const result = await aiClient.messages.create({
-                model: 'claude-3-7-sonnet-20250219',
+                model: 'claude-sonnet-5',
                 max_tokens: 2048,
                 messages: [{ role: 'user', content }]
             })
@@ -242,7 +242,7 @@ If you cannot fulfill the request, return changes: [] and explain why in the exp
                 content.unshift({ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } })
             }
             const result = await aiClient.messages.create({
-                model: 'claude-3-7-sonnet-20250219',
+                model: 'claude-sonnet-5',
                 max_tokens: 8192,
                 messages: [{ role: 'user', content }]
             })
