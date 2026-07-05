@@ -250,24 +250,50 @@ If you cannot fulfill the request, return changes: [] and explain why in the exp
         }
 
         // Extract JSON from tags
-        const match = editText.match(/<AGENT_RESPONSE>([\s\S]*?)<\/AGENT_RESPONSE>/)
-        if (!match) {
-            // Fallback: try to parse raw JSON
-            let parsed = null
-            try {
-                const raw = editText.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '')
-                parsed = JSON.parse(raw)
-            } catch { /* ignore */ }
+const match = editText.match(/<AGENT_RESPONSE>([\s\S]*?)<\/AGENT_RESPONSE>/)
 
-            if (!parsed) {
-                return res.json({
-                    success: true,
-                    sessionId: sid,
-                    explanation: editText.trim() || 'I could not generate a structured response. Please rephrase your request.',
-                    changes: [],
-                })
-            }
-        }
+let agentData
+
+if (match) {
+  try {
+    agentData = JSON.parse(match[1].trim())
+  } catch (e) {
+    agentData = null
+  }
+} else {
+  try {
+    let cleaned = editText
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```$/, '')
+      .trim()
+
+    const first = cleaned.indexOf('{')
+    const last = cleaned.lastIndexOf('}')
+
+    if (first !== -1 && last !== -1) {
+      cleaned = cleaned.slice(first, last + 1)
+    }
+
+    agentData = JSON.parse(cleaned)
+  } catch (e) {
+    return res.json({
+      success: true,
+      sessionId: sid,
+      explanation: editText || 'AI returned an invalid response.',
+      changes: []
+    })
+  }
+}
+
+if (!agentData) {
+  return res.json({
+    success: true,
+    sessionId: sid,
+    explanation: editText || 'AI returned an invalid response.',
+    changes: []
+  })
+}
 
         let agentData
         try {
