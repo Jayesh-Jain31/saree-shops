@@ -106,7 +106,7 @@ export async function chat(req, res) {
         const allFiles = getEditableFiles()
 
         // ── PASS 1: Which files does the AI need to read? ──────────────────
-        const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+        const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
         const historyContext = session.messages.length > 0
             ? `\nConversation so far:\n${session.messages.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Agent'}: ${m.text}`).join('\n')}`
