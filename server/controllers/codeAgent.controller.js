@@ -247,6 +247,9 @@ If you cannot fulfill the request, return changes: [] and explain why in the exp
                 messages: [{ role: 'user', content }]
             })
             editText = result.content[0]?.text || ''
+            console.log('========== CLAUDE RESPONSE ==========')
+console.log(editText)
+console.log('====================================')
         }
 
         // Extract JSON from tags
