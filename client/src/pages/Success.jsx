@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { FaCheckCircle, FaMapMarkerAlt, FaTruck, FaBox, FaCreditCard, FaTag, FaGift } from 'react-icons/fa'
-import { MdCreditCard, MdLocalShipping } from 'react-icons/md'
+import { MdCreditCard, MdLocalShipping, MdAccountBalanceWallet } from 'react-icons/md'
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees'
 import { pricewithDiscount } from '../utils/PriceWithDiscount'
 import TruckAnimation from '../components/TruckAnimation'
@@ -219,6 +219,14 @@ const Success = () => {
                       {couponCode ? `Coupon (${couponCode})` : 'Coupon Discount'}
                     </span>
                     <span className='font-semibold'>- {DisplayPriceInRupees(couponDiscount)}</span>
+                  </div>
+                )}
+                {(serverOrder?.walletDeduction || state.walletDeduction) > 0 && (
+                  <div className='flex justify-between text-blue-600'>
+                    <span className='flex items-center gap-1'>
+                      <MdAccountBalanceWallet size={10} /> Wallet
+                    </span>
+                    <span className='font-semibold'>- {DisplayPriceInRupees(serverOrder?.walletDeduction || state.walletDeduction || 0)}</span>
                   </div>
                 )}
                 <div className='flex justify-between font-bold text-gray-800 border-t pt-1.5 text-sm'>

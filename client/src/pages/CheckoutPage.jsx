@@ -206,6 +206,7 @@ const CheckoutPage = () => {
       subTotalAmt: serverOrder?.subTotalAmt ?? totalPrice,
       couponCode: serverOrder?.couponCode || '',
       couponDiscount: serverOrder?.couponDiscount || 0,
+      walletDeduction: serverOrder?.walletDeduction || 0,
       paymentMethod: resolvedMethod,
       prepaidAmount: serverOrder?.prepaidAmount || 0,
       codAmount: serverOrder?.codAmount || 0,
@@ -835,7 +836,7 @@ const CheckoutPage = () => {
                 </button>
 
                 {/* Partial COD — Pay 30% online + 70% COD */}
-                {codEnabled && payableAmount > 0 && walletBalance < totalPrice && (
+                {codEnabled && payableAmount > 0 && (
                   <button
                     onClick={handlePartialCodPayment}
                     disabled={codLoading}

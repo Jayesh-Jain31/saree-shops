@@ -120,7 +120,7 @@ const ProductDisplayPage = () => {
   const [notifyRequested, setNotifyRequested] = useState(false);
   
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(null);
-  const variants = data.variants || [];
+  const variants = data?.variants || [];
   const selectedVariant = selectedVariantIndex !== null ? variants[selectedVariantIndex] : null;
 
   const [ratingDist, setRatingDist] = useState({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
@@ -136,7 +136,7 @@ const ProductDisplayPage = () => {
 
   const mainImageSrc = selectedVariant?.image 
       ? selectedVariant.image 
-      : (data.image?.[image] || null);
+      : (data?.image?.[image] || null);
 
   const fetchProductDetails = async () => {
     try {
@@ -144,7 +144,7 @@ const ProductDisplayPage = () => {
         ...SummaryApi.getProductDetails,
         data: { productId }
       });
-      if (response.data.success) {
+      if (response.data.success && response.data.data) {
         setData(response.data.data);
         addToRecentlyViewed(response.data.data);
       }
@@ -209,22 +209,22 @@ const ProductDisplayPage = () => {
 
   // Auto-select first variant when product data loads
   useEffect(() => {
-    if (data.variants && data.variants.length > 0) {
+    if (data?.variants && data.variants.length > 0) {
       setSelectedVariantIndex(0);
     } else {
       setSelectedVariantIndex(null);
     }
-  }, [data.variants]);
+  }, [data?.variants]);
 
   useEffect(() => {
-    if (!data.image || data.image.length <= 1) return;
+    if (!data?.image || data.image.length <= 1) return;
     const iv = setInterval(() => setImage(prev => (prev + 1) % data.image.length), 4500);
     return () => clearInterval(iv);
-  }, [data.image]);
+  }, [data?.image]);
 
   useEffect(() => {
-    if (data._id) setNotifyRequested(!!localStorage.getItem(`notify_stock_${data._id}`));
-  }, [data._id]);
+    if (data?._id) setNotifyRequested(!!localStorage.getItem(`notify_stock_${data._id}`));
+  }, [data?._id]);
 
   const handleCheckPincode = async () => {
     const cleaned = pincode.trim();
@@ -281,9 +281,9 @@ const ProductDisplayPage = () => {
     }
   };
 
-  const displayPrice = selectedVariant ? selectedVariant.price : pricewithDiscount(data.price, data.discount);
-  const displayStock = selectedVariant ? (selectedVariant.stock ?? 0) : data.stock;
-  const isBestseller = (data.reviewCount || 0) >= 1 || data.avgRating >= 4;
+  const displayPrice = selectedVariant ? selectedVariant.price : pricewithDiscount(data?.price, data?.discount);
+  const displayStock = selectedVariant ? (selectedVariant.stock ?? 0) : (data?.stock ?? 0);
+  const isBestseller = (data?.reviewCount || 0) >= 1 || (data?.avgRating || 0) >= 4;
   const totalReviews = reviews.length;
   const sortedReviews = [...reviews].sort((a, b) => {
     if (reviewSort === 'highest') return (b.rating || 0) - (a.rating || 0);
@@ -303,7 +303,7 @@ const ProductDisplayPage = () => {
             {mainImageSrc ? (
               <img 
                 src={mainImageSrc} 
-                alt={selectedVariant?.name || data.name} 
+                alt={selectedVariant?.name || data?.name || ''} 
                 className="w-full h-auto aspect-[3/4] object-cover cursor-zoom-in transition-transform duration-700 group-hover:scale-105"
                 onClick={() => setLightboxOpen(true)}
               />
@@ -313,9 +313,9 @@ const ProductDisplayPage = () => {
               </div>
             )}
             
-            {data.discount > 0 && !selectedVariant && (
+            {data?.discount > 0 && !selectedVariant && (
               <div className="absolute top-4 left-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg z-10">
-                {data.discount}% OFF
+                {data?.discount}% OFF
               </div>
             )}
 
@@ -358,19 +358,19 @@ const ProductDisplayPage = () => {
               <FaExpand className="text-xs" /> View full screen
             </button>
 
-            {!selectedVariant?.image && data.image.length > 1 && (
+            {!selectedVariant?.image && data?.image?.length > 1 && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                {data.image.map((_, i) => (
+                {data?.image?.map((_, i) => (
                   <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === image ? 'bg-white w-4' : 'bg-white/50'}`} />
                 ))}
               </div>
             )}
           </div>
 
-          {!selectedVariant?.image && data.image.length > 1 && (
+          {!selectedVariant?.image && data?.image?.length > 1 && (
             <div className="relative">
               <div ref={imageContainer} className="flex gap-3 overflow-x-auto pb-2 scroll-smooth no-scrollbar">
-                {data.image.map((img, index) => (
+                {data?.image?.map((img, index) => (
                   <button
                     key={index}
                     onClick={() => {
@@ -423,26 +423,26 @@ const ProductDisplayPage = () => {
             </div>
           )}
 
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 leading-tight">{data.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 leading-tight">{data?.name}</h1>
           
-          {data.unit && (
-            <p className="text-sm text-gray-500 -mt-2">{data.unit}</p>
+          {data?.unit && (
+            <p className="text-sm text-gray-500 -mt-2">{data?.unit}</p>
           )}
 
           <div className="flex items-center gap-4 flex-wrap">
-            {data.avgRating > 0 && (
+            {data?.avgRating > 0 && (
               <button 
                 onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} 
                 className="flex items-center gap-2 group"
               >
-                <span className="text-lg font-bold text-gray-800">{Number(data.avgRating).toFixed(1)}</span>
+                <span className="text-lg font-bold text-gray-800">{Number(data?.avgRating).toFixed(1)}</span>
                 <div className="flex text-amber-400">
                   {[1, 2, 3, 4, 5].map(s => (
-                    s <= Math.round(data.avgRating) ? <FaStar key={s} className="text-sm" /> : <FaRegStar key={s} className="text-sm" />
+                    s <= Math.round(data?.avgRating || 0) ? <FaStar key={s} className="text-sm" /> : <FaRegStar key={s} className="text-sm" />
                   ))}
                 </div>
                 <span className="text-sm text-gray-500 group-hover:text-rose-500 transition-colors">
-                  ({data.reviewCount || totalReviews} rating{(data.reviewCount || totalReviews) !== 1 ? 's' : ''})
+                  ({data?.reviewCount || totalReviews} rating{(data?.reviewCount || totalReviews) !== 1 ? 's' : ''})
                 </span>
               </button>
             )}
@@ -472,8 +472,8 @@ const ProductDisplayPage = () => {
               <div className="flex gap-3 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
                 {variants.map((v, index) => {
                   const isActive = selectedVariantIndex === index;
-                  const variantPrice = v.price ?? data.price ?? 0;
-                  const variantMRP = data.price ?? variantPrice;
+                  const variantPrice = v.price ?? data?.price ?? 0;
+                  const variantMRP = data?.price ?? variantPrice;
                   return (
                     <button
                       key={index}
@@ -504,7 +504,7 @@ const ProductDisplayPage = () => {
                         </p>
                         <div className="flex items-center gap-1 mt-0.5">
                           <span className="text-[11px] font-bold text-gray-800">₹{variantPrice.toLocaleString('en-IN')}</span>
-                          {data.discount > 0 && variantMRP > variantPrice && (
+                          {data?.discount > 0 && variantMRP > variantPrice && (
                             <span className="text-[9px] text-gray-400 line-through">₹{variantMRP.toLocaleString('en-IN')}</span>
                           )}
                         </div>
@@ -524,10 +524,10 @@ const ProductDisplayPage = () => {
 
           <div className="flex items-end gap-3">
             <span className="text-3xl font-bold text-gray-800">{DisplayPriceInRupees(displayPrice)}</span>
-            {!selectedVariant && data.discount > 0 && (
+            {!selectedVariant && data?.discount > 0 && (
               <>
-                <span className="text-lg text-gray-400 line-through">{DisplayPriceInRupees(data.price)}</span>
-                <span className="text-sm font-semibold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">{data.discount}% OFF</span>
+                <span className="text-lg text-gray-400 line-through">{DisplayPriceInRupees(data?.price)}</span>
+                <span className="text-sm font-semibold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">{data?.discount}% OFF</span>
               </>
             )}
           </div>
@@ -563,7 +563,7 @@ const ProductDisplayPage = () => {
               ) : (
                 <button 
                   onClick={() => {
-                    localStorage.setItem(`notify_stock_${data._id}`, 'true');
+                    localStorage.setItem(`notify_stock_${data?._id}`, 'true');
                     setNotifyRequested(true);
                     toast.success('You will be notified when back in stock!');
                   }}
@@ -663,7 +663,7 @@ const ProductDisplayPage = () => {
           </div>
 
           {/* ============ COLLAPSIBLE DESCRIPTION SECTIONS ============ */}
-          {data.description && (
+          {data?.description && (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
               <ProductDescriptionTabs data={data} />
             </div>
@@ -695,10 +695,10 @@ const ProductDisplayPage = () => {
         <div className="bg-white p-6 rounded-2xl border border-rose-100/50 shadow-sm mb-8">
           <div className="flex items-center gap-6 flex-wrap">
             <div className="text-center">
-              <span className="text-4xl font-bold text-gray-800">{data.avgRating ? Number(data.avgRating).toFixed(1) : '0'}</span>
+              <span className="text-4xl font-bold text-gray-800">{data?.avgRating ? Number(data?.avgRating).toFixed(1) : '0'}</span>
               <div className="flex text-amber-400 justify-center mt-1">
                 {[1, 2, 3, 4, 5].map(s => (
-                  s <= Math.round(data.avgRating || 0) ? <FaStar key={s} className="text-sm" /> : <FaRegStar key={s} className="text-sm" />
+                  s <= Math.round(data?.avgRating || 0) ? <FaStar key={s} className="text-sm" /> : <FaRegStar key={s} className="text-sm" />
                 ))}
               </div>
               <span className="text-xs text-gray-500">{totalReviews} ratings</span>
@@ -763,9 +763,9 @@ const ProductDisplayPage = () => {
         )}
       </div>
 
-      <YouMayAlsoLike productId={data._id} />
+      <YouMayAlsoLike productId={data?._id} />
       <RecentlyViewed />
-      <ProductQA productId={data._id} />
+      <ProductQA productId={data?._id} />
 
       {/* ============ LIGHTBOX ============ */}
       {lightboxOpen && (
@@ -773,7 +773,7 @@ const ProductDisplayPage = () => {
           <div className="relative max-w-5xl w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
             <img 
               src={mainImageSrc} 
-              alt={selectedVariant?.name || data.name} 
+              alt={selectedVariant?.name || data?.name || ''} 
               className="max-h-full max-w-full object-contain transition-transform duration-200"
               style={{ transform: `scale(${zoom}) translate(${panX}px, ${panY}px)` }}
               onTouchStart={(e) => {

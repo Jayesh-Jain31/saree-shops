@@ -18,6 +18,8 @@ const SectionBanner = ({ placement = 'section-1', className = '' }) => {
         if (res.data.success && res.data.data.length > 0) {
           const allSlides = []
           for (const banner of res.data.data) {
+            // Safety: skip banners that don't match the requested placement
+            if (banner.placement && banner.placement !== placement && banner.placement !== 'hero') continue
             if (banner.slides && banner.slides.length > 0) {
               allSlides.push(...banner.slides)
             } else if (banner.image) {
