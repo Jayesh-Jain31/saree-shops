@@ -1,10 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 import OrderModel from '../models/order.model.js'
 import ProductModel from '../models/product.model.js'
 import UserModel from '../models/user.model.js'
 import CouponModel from '../models/coupon.model.js'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 
 async function gatherStoreContext() {
     const now = new Date()
@@ -134,7 +134,6 @@ export async function aiAgentChat(req, res) {
         if (!message?.trim()) return res.status(400).json({ success: false, message: 'Message required' })
 
         const ctx = await gatherStoreContext()
-
         const istTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
 
         const systemPrompt = `You are Aria, a smart AI admin assistant for a premium saree e-commerce store. You help the admin manage orders, analytics, inventory, and coupons.
@@ -180,28 +179,36 @@ Rules:
 - After executing an action, confirm what was done.
 - Respond in the same language the admin uses.`
 
-        // Build history for Gemini — exclude the last entry (current user message,
-        // already being sent via sendMessage) and drop any leading 'model' turns
-        // because Gemini requires history to always start with a 'user' turn.
-        let chatHistory = history.slice(0, -1).slice(-12).map(h => ({
-            role: h.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: h.content }],
-        }))
-        while (chatHistory.length > 0 && chatHistory[0].role !== 'user') {
-            chatHistory.shift()
+        // Build conversation history — starts with system context as first user turn,
+        // then alternate user/model turns. Gemini requires history to start with 'user'.
+        const chatHistory = []
+
+        // Inject system prompt as initial user/model exchange so it's always in context
+        chatHistory.push({ role: 'user', parts: [{ text: systemPrompt }] })
+        chatHistory.push({ role: 'model', parts: [{ text: 'Understood! I am Aria, your AI admin assistant. How can I help you today?' }] })
+
+        // Append actual conversation history (exclude the current message — last entry)
+        const prevHistory = history.slice(0, -1).slice(-10)
+        for (const h of prevHistory) {
+            chatHistory.push({
+                role: h.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: h.content }],
+            })
         }
 
-        const chatModel = genAI.getGenerativeModel({
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            systemInstruction: systemPrompt,
+            contents: [
+                ...chatHistory,
+                { role: 'user', parts: [{ text: message }] }
+            ],
+            config: {
+                thinkingConfig: { thinkingBudget: 0 },
+                maxOutputTokens: 8192,
+            },
         })
 
-        const chat = chatModel.startChat({
-            history: chatHistory,
-        })
-
-        const result = await chat.sendMessage(message)
-        let responseText = result.response.text()
+        let responseText = response.text
 
         let actionResult = null
         const actionMatch = responseText.match(/<<<ACTION>>>([\s\S]*?)<<<END>>>/)
@@ -214,13 +221,13 @@ Rules:
                     responseText += `\n\n✅ **${actionResult.message}**`
                 }
             } catch (e) {
-                console.error('[AI] Action parse error:', e.message)
+                if (process.env.NODE_ENV !== 'production') console.error('[AI] Action parse error:', e.message)
             }
         }
 
         return res.json({ success: true, response: responseText, action: actionResult })
     } catch (error) {
-        console.error('[AI Agent] Error:', error.message)
-        return res.status(500).json({ success: false, message: 'AI agent error. Check your API key.' })
+        if (process.env.NODE_ENV !== 'production') console.error('[AI Agent] Error:', error.message)
+        return res.status(500).json({ success: false, message: 'AI agent is unavailable. Please try again.' })
     }
 }
