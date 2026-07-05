@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai'
+import Anthropic from '@anthropic-ai/sdk'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -55,6 +56,11 @@ function genAI() {
     return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 }
 
+function genClaude() {
+    if (!process.env.ANTHROPIC_API_KEY) return null
+    return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+}
+
 // ── App context for AI ────────────────────────────────────────────────────────
 const APP_CONTEXT = `You are an expert React developer working inside a Blinkit-clone quick-commerce e-commerce app.
 
@@ -94,8 +100,18 @@ export async function chat(req, res) {
         if (!message?.trim()) return res.status(400).json({ success: false, message: 'Message is required' })
 
         // ── Select AI model ─────────────────────────────────
-        const aiClient = genAI()
-        if (!aiClient) return res.status(503).json({ success: false, message: 'GEMINI_API_KEY not set. Add it in Secrets.' })
+        const useClaude = model === 'claude'
+        let aiClient, aiProvider
+
+        if (useClaude) {
+            aiClient = genClaude()
+            aiProvider = 'claude'
+            if (!aiClient) return res.status(503).json({ success: false, message: 'ANTHROPIC_API_KEY not set. Add it in Secrets to use Claude.' })
+        } else {
+            aiClient = genAI()
+            aiProvider = 'gemini'
+            if (!aiClient) return res.status(503).json({ success: false, message: 'GEMINI_API_KEY not set. Add it in Secrets to use Gemini.' })
+        }
 
         // Get or auto-create session
         let sid = sessionId
@@ -132,7 +148,7 @@ If no files needed, use empty arrays. Max 5 files to read.`
 
         let fileSelectText = ''
 
-        {
+        if (aiProvider === 'gemini') {
             const parts = [{ text: fileSelectPrompt }]
             if (imageBase64 && imageMimeType) {
                 parts.unshift({ inlineData: { data: imageBase64, mimeType: imageMimeType } })
@@ -143,6 +159,18 @@ If no files needed, use empty arrays. Max 5 files to read.`
                 config: { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 2048 },
             })
             fileSelectText = (result.text || '').trim()
+        } else {
+            const content = [{ type: 'text', text: fileSelectPrompt }]
+            if (imageBase64 && imageMimeType) {
+                const mediaType = imageMimeType.startsWith('image/') ? imageMimeType : `image/${imageMimeType}`
+                content.unshift({ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } })
+            }
+            const result = await aiClient.messages.create({
+                model: 'claude-sonnet-4-5',
+                max_tokens: 2048,
+                messages: [{ role: 'user', content }]
+            })
+            fileSelectText = (result.content[0]?.text || '').trim()
         }
 
         fileSelectText = fileSelectText.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '')
@@ -199,7 +227,7 @@ If you cannot fulfill the request, return changes: [] and explain why in the exp
 
         let editText = ''
 
-        {
+        if (aiProvider === 'gemini') {
             const parts = [{ text: editPrompt }]
             if (imageBase64 && imageMimeType) {
                 parts.unshift({ inlineData: { data: imageBase64, mimeType: imageMimeType } })
@@ -210,6 +238,18 @@ If you cannot fulfill the request, return changes: [] and explain why in the exp
                 config: { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 8192 },
             })
             editText = result.text || ''
+        } else {
+            const content = [{ type: 'text', text: editPrompt }]
+            if (imageBase64 && imageMimeType) {
+                const mediaType = imageMimeType.startsWith('image/') ? imageMimeType : `image/${imageMimeType}`
+                content.unshift({ type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } })
+            }
+            const result = await aiClient.messages.create({
+                model: 'claude-sonnet-4-5',
+                max_tokens: 8192,
+                messages: [{ role: 'user', content }]
+            })
+            editText = result.content[0]?.text || ''
         }
 
         // Extract JSON from tags
