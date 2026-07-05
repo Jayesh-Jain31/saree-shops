@@ -295,18 +295,7 @@ if (!agentData) {
   })
 }
 
-        let agentData
-        try {
-            const jsonStr = match ? match[1].trim() : editText
-            agentData = JSON.parse(jsonStr)
-        } catch {
-            return res.json({
-                success: true,
-                sessionId: sid,
-                explanation: 'I generated a response but could not parse it. Please try again.',
-                changes: [],
-            })
-        }
+        
 
         // Validate + enrich changes with original content
         const enrichedChanges = []
