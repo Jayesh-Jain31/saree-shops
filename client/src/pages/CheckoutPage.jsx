@@ -826,10 +826,12 @@ const CheckoutPage = () => {
               {/* Payment Buttons */}
               <div className='mt-5 space-y-3'>
                 <button
-                  onClick={handleRazorpayPayment}
+                  onClick={payableAmount <= 0 ? handlePlaceFreeOrder : handleRazorpayPayment}
                   className='w-full bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-xl text-white font-bold transition-all py-4 flex items-center justify-center gap-2.5 text-sm'
                 >
-                  <SiRazorpay size={20} />
+                  {payableAmount <= 0
+                    ? <MdAccountBalanceWallet size={20} />
+                    : <SiRazorpay size={20} />}
                   {payableAmount <= 0
                     ? 'Place Order (Wallet Full Cover)'
                     : `Pay ${DisplayPriceInRupees(payableAmount)} with Razorpay`}
@@ -863,7 +865,7 @@ const CheckoutPage = () => {
                   </button>
                 )}
 
-                {codEnabled ? (
+                {codEnabled && payableAmount > 0 ? (
                   <button
                     onClick={handleCashOnDelivery}
                     disabled={codLoading}
