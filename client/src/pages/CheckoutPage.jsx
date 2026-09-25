@@ -74,16 +74,31 @@ const CheckoutPage = () => {
   const payableAmount = Math.max(0, finalAmount - walletDeduction)
   const totalSavings = (notDiscountTotalPrice - totalPrice) + couponDiscount + walletDeduction
 
+  const refreshWalletAndGetAmounts = async () => {
+    setWalletLoading(true)
+    try {
+      const res = await Axios({ ...SummaryApi.getWallet })
+      if (!res.data.success) throw new Error('Unable to refresh wallet balance')
+
+      const latestWalletBalance = Number(res.data.data?.balance || 0)
+      const latestWalletDeduction = Math.min(latestWalletBalance, finalAmount)
+      const latestPayableAmount = Math.max(0, finalAmount - latestWalletDeduction)
+
+      setWalletBalance(latestWalletBalance)
+
+      return {
+        latestWalletBalance,
+        latestWalletDeduction,
+        latestPayableAmount,
+      }
+    } finally {
+      setWalletLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!user?._id) return
-    const fetchWallet = async () => {
-      setWalletLoading(true)
-      try {
-        const res = await Axios({ ...SummaryApi.getWallet })
-        if (res.data.success) setWalletBalance(res.data.data.balance || 0)
-      } catch {} finally { setWalletLoading(false) }
-    }
-    fetchWallet()
+    refreshWalletAndGetAmounts().catch(() => {})
   }, [user?._id])
 
   useEffect(() => {
@@ -294,9 +309,13 @@ const CheckoutPage = () => {
     } catch (error) { AxiosToastError(error) }
   }
 
-  const handlePlaceFreeOrder = async () => {
+  const handlePlaceFreeOrder = async (walletBalanceOverride = walletBalance, walletDeductionOverride = walletDeduction) => {
     const selectedAddr = addressList[selectAddress]
     if (!selectedAddr?._id || !selectedAddr?.status) { setShowAddressPopup(true); return }
+
+    const effectiveWalletBalance = Number(walletBalanceOverride || 0)
+    const effectiveWalletDeduction = Number(walletDeductionOverride ?? Math.min(effectiveWalletBalance, finalAmount))
+
     try {
       const response = await Axios({
         ...SummaryApi.CashOnDeliveryOrder,
@@ -309,7 +328,7 @@ const CheckoutPage = () => {
           discountAmt: couponDiscount,
           couponCode: appliedCoupon?.code || '',
           couponDiscount,
-          walletDeduction,
+          walletDeduction: effectiveWalletDeduction,
           loyaltyPointsUsed,
           loyaltyDiscount,
         }
@@ -324,11 +343,11 @@ const CheckoutPage = () => {
     } catch (error) { AxiosToastError(error) }
   }
 
-  const handleRazorpayPayment = async () => {
+  const handleRazorpayPayment = async (payableAmountOverride = payableAmount, walletDeductionOverride = walletDeduction) => {
     // Never open Razorpay when wallet fully covers the calculated payable amount.
     // The wallet-only flow must first validate/select an address, then place the order directly.
-    if (payableAmount <= 0) {
-      await handlePlaceFreeOrder()
+    if (payableAmountOverride <= 0) {
+      await handlePlaceFreeOrder(walletBalance, walletDeductionOverride)
       return
     }
 
@@ -341,7 +360,7 @@ const CheckoutPage = () => {
       const razorpayKeyId = configRes.data?.keyId
       if (!razorpayKeyId) { toast.error('Razorpay is not configured. Please contact support.'); return }
       const toastId = toast.loading('Initializing payment...')
-      const rzpOrderAmt = payableAmount
+      const rzpOrderAmt = payableAmountOverride
       const response = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: rzpOrderAmt, list_items: cartItemsList } })
       toast.dismiss(toastId)
       if (!response.data.success) { toast.error('Failed to create payment order.'); return }
@@ -412,8 +431,8 @@ const CheckoutPage = () => {
           try {
             const itemsSnapshot        = [...cartItemsList]
             const selectedAddrSnapshot = addressList[selectAddress]
-            const finalPayable = payableAmount
-            const finalWalletDeduction = walletDeduction
+            const finalPayable = payableAmountOverride
+            const finalWalletDeduction = walletDeductionOverride
 
             // COD selected inside Magic Checkout popup
             if (paymentResponse.method === 'cod' || !paymentResponse.razorpay_signature) {
@@ -453,6 +472,29 @@ const CheckoutPage = () => {
       const razorpay = new window.Razorpay(options)
       razorpay.open()
     } catch (error) { toast.dismiss(); AxiosToastError(error) }
+  }
+
+  const handleCheckoutPayment = async () => {
+    try {
+      // Always refresh the server wallet balance at the exact moment checkout is submitted.
+      // Do not trust the previously rendered payable amount for the payment decision.
+      const {
+        latestWalletBalance,
+        latestWalletDeduction,
+        latestPayableAmount,
+      } = await refreshWalletAndGetAmounts()
+
+      if (latestPayableAmount <= 0) {
+        // Wallet fully covers the current order: require/select address, then place directly.
+        // Razorpay is never initialized or opened for this path.
+        await handlePlaceFreeOrder(latestWalletBalance, latestWalletDeduction)
+        return
+      }
+
+      await handleRazorpayPayment(latestPayableAmount, latestWalletDeduction)
+    } catch (error) {
+      AxiosToastError(error)
+    }
   }
 
   const handlePartialCodPayment = async () => {
@@ -831,8 +873,9 @@ const CheckoutPage = () => {
               {/* Payment Buttons */}
               <div className='mt-5 space-y-3'>
                 <button
-                  onClick={payableAmount <= 0 ? handlePlaceFreeOrder : handleRazorpayPayment}
-                  className='w-full bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-xl text-white font-bold transition-all py-4 flex items-center justify-center gap-2.5 text-sm'
+                  onClick={handleCheckoutPayment}
+                  disabled={walletLoading}
+                  className='w-full bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-xl text-white font-bold transition-all py-4 flex items-center justify-center gap-2.5 text-sm disabled:opacity-70 disabled:cursor-not-allowed'
                 >
                   {payableAmount <= 0
                     ? <MdAccountBalanceWallet size={20} />
