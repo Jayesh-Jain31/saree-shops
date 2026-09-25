@@ -79,6 +79,254 @@ async function creditReferralReward(userId) {
     }
 }
 
+export async function WalletOrderController(request, response) {
+    try {
+        const userId = request.userId
+        const {
+            list_items = [],
+            addressId,
+            subTotalAmt = 0,
+            deliveryCharge = 0,
+            couponCode = "",
+            couponDiscount = 0,
+            loyaltyPointsUsed = 0,
+            loyaltyDiscount = 0,
+        } = request.body
+
+        if (!addressId) {
+            return response.status(400).json({
+                message: "Please select a delivery address.",
+                error: true,
+                success: false
+            })
+        }
+
+        const address = await AddressModel.findOne({
+            _id: addressId,
+            userId,
+            status: true
+        }).lean()
+
+        if (!address) {
+            return response.status(400).json({
+                message: "Please select a valid delivery address.",
+                error: true,
+                success: false
+            })
+        }
+
+        if (!Array.isArray(list_items) || list_items.length === 0) {
+            return response.status(400).json({
+                message: "Your cart is empty.",
+                error: true,
+                success: false
+            })
+        }
+
+        const orderTotal = Math.max(
+            0,
+            Number(subTotalAmt || 0) +
+            Number(deliveryCharge || 0) -
+            Number(couponDiscount || 0) -
+            Number(loyaltyDiscount || 0)
+        )
+
+        if (orderTotal <= 0) {
+            return response.status(400).json({
+                message: "Invalid wallet order amount.",
+                error: true,
+                success: false
+            })
+        }
+
+        const wallet = await WalletModel.findOne({ userId })
+        const walletBalance = Number(wallet?.balance || 0)
+
+        if (walletBalance + 0.01 < orderTotal) {
+            return response.status(400).json({
+                message: "Wallet balance no longer covers this order. Please continue with online payment.",
+                error: true,
+                success: false,
+                walletCovered: false,
+                walletBalance,
+                orderTotal
+            })
+        }
+
+        const items = list_items.map(el => ({
+            productId: el.productId._id,
+            product_details: {
+                name: el.productId.name,
+                image: el.productId.image,
+                discount: el.productId.discount || 0,
+            },
+            variant: {
+                name: el.variant?.name || '',
+                image: el.variant?.image || '',
+            },
+            quantity: el.quantity || 1,
+            price: el.variant?.price ?? el.productId.price ?? 0,
+        }))
+
+        const freeGift = await getActiveFreeGiftInternal(subTotalAmt || 0)
+        if (freeGift) {
+            items.push({
+                productId: freeGift.productId._id,
+                product_details: {
+                    name: freeGift.productId.name,
+                    image: freeGift.productId.image,
+                    discount: 0
+                },
+                quantity: 1,
+                price: 0,
+                isFreeGift: true,
+            })
+        }
+
+        const pendingLoyaltyPoints = await getPendingPointsCount(subTotalAmt).catch(() => 0)
+
+        // Debit the exact authoritative wallet-covered order total before creating the order.
+        // This endpoint contains no COD restriction, OTP, fraud-COD, or Razorpay logic.
+        try {
+            await debitWalletInternal(
+                userId,
+                orderTotal,
+                `Payment for wallet order ${Date.now()}`,
+                `WALLET-${new mongoose.Types.ObjectId()}`
+            )
+        } catch (walletErr) {
+            return response.status(400).json({
+                message: walletErr.message || "Insufficient wallet balance",
+                error: true,
+                success: false
+            })
+        }
+
+        let order
+        try {
+            order = await OrderModel.create({
+                userId,
+                orderId: `ORD-${new mongoose.Types.ObjectId()}`,
+                items,
+                paymentId: "",
+                payment_status: "WALLET",
+                delivery_address: addressId,
+                delivery_address_snapshot: {
+                    name: address.name || '',
+                    mobile: String(address.mobile || ''),
+                    address_line: address.address_line || '',
+                    city: address.city || '',
+                    state: address.state || '',
+                    pincode: String(address.pincode || ''),
+                    country: address.country || 'India',
+                    landmark: address.landmark || '',
+                },
+                subTotalAmt: Number(subTotalAmt || 0),
+                deliveryCharge: Number(deliveryCharge || 0),
+                totalAmt: orderTotal,
+                discountAmt: Number(couponDiscount || 0),
+                couponCode: couponCode || '',
+                couponDiscount: Number(couponDiscount || 0),
+                walletDeduction: orderTotal,
+                loyaltyPointsUsed: Number(loyaltyPointsUsed || 0),
+                loyaltyDiscount: Number(loyaltyDiscount || 0),
+                orderStatus: "Confirmed",
+                loyaltyPointsPending: pendingLoyaltyPoints,
+                loyaltyPointsProcessed: false,
+            })
+        } catch (orderErr) {
+            // Compensate if order creation fails after the wallet debit.
+            try {
+                const refundWallet = await WalletModel.findOne({ userId })
+                if (refundWallet) {
+                    refundWallet.balance = parseFloat((Number(refundWallet.balance || 0) + orderTotal).toFixed(2))
+                    refundWallet.transactions.unshift({
+                        type: 'credit',
+                        amount: orderTotal,
+                        description: 'Wallet refund for failed order creation',
+                        reference: 'WALLET_ORDER_ROLLBACK',
+                        balanceAfter: refundWallet.balance
+                    })
+                    await refundWallet.save()
+                }
+            } catch (refundErr) {
+                console.error('[Wallet Order] Rollback failed:', refundErr.message)
+            }
+            throw orderErr
+        }
+
+        await CartProductModel.deleteMany({ userId })
+        await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
+        await decrementStock(order.items)
+        creditReferralReward(userId).catch(() => {})
+        createNotification(
+            userId,
+            `Your wallet-paid order ${order.orderId} has been placed successfully! 🛍️`,
+            'success',
+            '/dashboard/myorders'
+        ).catch(() => {})
+
+        try {
+            const customer = await UserModel.findById(userId)
+            const mobile = customer?.mobile || address.mobile
+
+            if (customer?.email) {
+                await sendEmail({
+                    sendTo: customer.email,
+                    subject: `Order Confirmed - ${order.orderId}`,
+                    html: orderConfirmationTemplate({
+                        orderId: order.orderId,
+                        items: order.items,
+                        totalAmt: order.totalAmt,
+                        payment_status: order.payment_status,
+                    })
+                })
+            }
+
+            if (mobile) {
+                sendOrderConfirmationWhatsApp({
+                    mobile,
+                    name: customer?.name || address.name,
+                    orderId: order.orderId,
+                    totalAmt: order.totalAmt,
+                    paymentMethod: order.payment_status,
+                    items: order.items,
+                }).catch(() => {})
+            }
+
+            SettingModel.findOne({ key: 'admin_whatsapp_number' }).then(setting => {
+                if (setting?.value) {
+                    sendAdminNewOrderAlert(setting.value, {
+                        orderId: order.orderId,
+                        customerName: customer?.name || address.name,
+                        customerMobile: mobile,
+                        totalAmt: order.totalAmt,
+                        paymentMethod: order.payment_status,
+                        itemCount: order.items?.length,
+                    }).catch(() => {})
+                }
+            }).catch(() => {})
+        } catch (notifyErr) {
+            if (process.env.NODE_ENV !== 'production') {
+                console.log("Wallet order notification failed:", notifyErr.message)
+            }
+        }
+
+        return response.json({
+            message: "Order placed successfully using wallet balance.",
+            error: false,
+            success: true,
+            data: order,
+        })
+    } catch (error) {
+        return response.status(500).json({
+            message: error.message || error,
+            error: true,
+            success: false
+        })
+    }
+}
+
 export async function CashOnDeliveryOrderController(request, response) {
     try {
         const userId = request.userId
