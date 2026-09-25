@@ -38,18 +38,45 @@ export const creditWallet = async (req, res) => {
 }
 
 export const debitWalletInternal = async (userId, amount, description, reference = '') => {
-    if (!amount || amount <= 0) return
-    const wallet = await WalletModel.findOne({ userId })
-    if (!wallet || wallet.balance < amount) throw new Error('Insufficient wallet balance')
-    wallet.balance = parseFloat((wallet.balance - amount).toFixed(2))
-    wallet.transactions.unshift({
-        type: 'debit',
-        amount,
-        description: description || 'Order payment',
-        reference,
-        balanceAfter: wallet.balance
-    })
-    await wallet.save()
+    const debitAmount = Number(Number(amount || 0).toFixed(2))
+    if (debitAmount <= 0) return
+
+    // Atomic balance check + debit. This prevents two simultaneous checkouts
+    // from both reading the same wallet balance and spending it twice.
+    const wallet = await WalletModel.findOneAndUpdate(
+        {
+            userId,
+            balance: { $gte: debitAmount }
+        },
+        {
+            $inc: { balance: -debitAmount }
+        },
+        { new: true }
+    )
+
+    if (!wallet) {
+        throw new Error('Insufficient wallet balance')
+    }
+
+    // Record the transaction using the balance returned by the atomic update.
+    // If transaction-history persistence fails, the debit itself remains valid.
+    try {
+        wallet.transactions.unshift({
+            type: 'debit',
+            amount: debitAmount,
+            description: description || 'Order payment',
+            reference,
+            balanceAfter: Number(wallet.balance || 0)
+        })
+        await wallet.save()
+    } catch (transactionErr) {
+        console.error('[Wallet] Debit succeeded but transaction history update failed:', transactionErr.message)
+    }
+
+    return {
+        amount: debitAmount,
+        balanceAfter: Number(wallet.balance || 0)
+    }
 }
 
 export const debitWallet = async (req, res) => {
