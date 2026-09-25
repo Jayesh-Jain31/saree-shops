@@ -325,6 +325,13 @@ const CheckoutPage = () => {
   }
 
   const handleRazorpayPayment = async () => {
+    // Never open Razorpay when wallet fully covers the calculated payable amount.
+    // The wallet-only flow must first validate/select an address, then place the order directly.
+    if (payableAmount <= 0) {
+      await handlePlaceFreeOrder()
+      return
+    }
+
     const selectedAddr = addressList[selectAddress]
     if (!selectedAddr?._id || !selectedAddr?.status) { setShowAddressPopup(true); return }
     try {
@@ -334,8 +341,7 @@ const CheckoutPage = () => {
       const razorpayKeyId = configRes.data?.keyId
       if (!razorpayKeyId) { toast.error('Razorpay is not configured. Please contact support.'); return }
       const toastId = toast.loading('Initializing payment...')
-      // Wallet covers full: open Razorpay popup with full total for address confirmation
-      const rzpOrderAmt = payableAmount <= 0 ? totalPrice : payableAmount
+      const rzpOrderAmt = payableAmount
       const response = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: rzpOrderAmt, list_items: cartItemsList } })
       toast.dismiss(toastId)
       if (!response.data.success) { toast.error('Failed to create payment order.'); return }
@@ -406,24 +412,23 @@ const CheckoutPage = () => {
           try {
             const itemsSnapshot        = [...cartItemsList]
             const selectedAddrSnapshot = addressList[selectAddress]
-            const isWalletFull = payableAmount <= 0
-            const finalPayable = isWalletFull ? 0 : payableAmount
-            const finalWalletDeduction = isWalletFull ? totalPrice : walletDeduction
+            const finalPayable = payableAmount
+            const finalWalletDeduction = walletDeduction
 
-            // COD selected inside Magic Checkout popup (or wallet full-cover treated as COD)
+            // COD selected inside Magic Checkout popup
             if (paymentResponse.method === 'cod' || !paymentResponse.razorpay_signature) {
-              const codToastId = toast.loading(isWalletFull ? 'Placing wallet order...' : 'Placing COD order...')
+              const codToastId = toast.loading('Placing COD order...')
               const codRes = await Axios({
                 ...SummaryApi.CashOnDeliveryOrder,
                 data: { list_items: cartItemsList, addressId: selectedAddrSnapshot?._id, subTotalAmt: totalPrice, deliveryCharge, totalAmt: finalPayable, discountAmt: couponDiscount, couponCode: appliedCoupon?.code || '', couponDiscount, walletDeduction: finalWalletDeduction, loyaltyPointsUsed, loyaltyDiscount, razorpay_order_id: paymentResponse.razorpay_order_id || razorpayOrder.id }
               })
               toast.dismiss(codToastId)
               if (codRes.data.success) {
-                toast.success(isWalletFull ? 'Order placed using wallet!' : 'COD order placed successfully!')
+                toast.success('COD order placed successfully!')
                 if (fetchCartItem) fetchCartItem()
                 if (fetchOrder) fetchOrder()
-                navigate('/success', { state: buildSuccessState(codRes.data.data, selectedAddrSnapshot, itemsSnapshot, finalPayable, isWalletFull ? 'Wallet' : 'COD') })
-              } else { toast.error(isWalletFull ? 'Failed to place wallet order.' : 'Failed to place COD order.') }
+                navigate('/success', { state: buildSuccessState(codRes.data.data, selectedAddrSnapshot, itemsSnapshot, finalPayable, 'COD') })
+              } else { toast.error('Failed to place COD order.') }
               return
             }
 
