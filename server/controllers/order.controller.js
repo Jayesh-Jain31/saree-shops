@@ -123,13 +123,13 @@ export async function WalletOrderController(request, response) {
             })
         }
 
-        const orderTotal = Math.max(
+        const orderTotal = Number(Math.max(
             0,
             Number(subTotalAmt || 0) +
             Number(deliveryCharge || 0) -
             Number(couponDiscount || 0) -
             Number(loyaltyDiscount || 0)
-        )
+        ).toFixed(2))
 
         if (orderTotal <= 0) {
             return response.status(400).json({
@@ -142,7 +142,7 @@ export async function WalletOrderController(request, response) {
         const wallet = await WalletModel.findOne({ userId })
         const walletBalance = Number(wallet?.balance || 0)
 
-        if (walletBalance + 0.01 < orderTotal) {
+        if (walletBalance + 0.000001 < orderTotal) {
             return response.status(400).json({
                 message: "Wallet balance no longer covers this order. Please continue with online payment.",
                 error: true,
@@ -255,9 +255,21 @@ export async function WalletOrderController(request, response) {
             throw orderErr
         }
 
-        await CartProductModel.deleteMany({ userId })
-        await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
-        await decrementStock(order.items)
+        // Order is already paid and persisted. Housekeeping must not turn a
+        // successful wallet payment into a frontend 500/error response.
+        try {
+            await CartProductModel.deleteMany({ userId })
+            await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
+        } catch (cleanupErr) {
+            console.error('[Wallet Order] Cart cleanup failed:', cleanupErr.message)
+        }
+
+        try {
+            await decrementStock(order.items)
+        } catch (stockErr) {
+            console.error('[Wallet Order] Stock decrement failed after order creation:', stockErr.message)
+        }
+
         creditReferralReward(userId).catch(() => {})
         createNotification(
             userId,
@@ -317,6 +329,7 @@ export async function WalletOrderController(request, response) {
             error: false,
             success: true,
             data: order,
+            walletBalanceAfter: Number((await WalletModel.findOne({ userId }).select('balance').lean())?.balance || 0),
         })
     } catch (error) {
         return response.status(500).json({
