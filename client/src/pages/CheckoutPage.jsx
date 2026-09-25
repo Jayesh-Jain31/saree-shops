@@ -210,6 +210,7 @@ const CheckoutPage = () => {
     const resolvedMethod = status === 'CASH ON DELIVERY' ? 'COD'
       : status === 'PAID' ? 'Razorpay'
       : status === 'PARTIAL COD' ? 'Partial COD'
+      : status === 'WALLET' ? 'Wallet'
       : method
     return {
       text: 'Order',
@@ -318,17 +319,14 @@ const CheckoutPage = () => {
 
     try {
       const response = await Axios({
-        ...SummaryApi.CashOnDeliveryOrder,
+        ...SummaryApi.WalletOrder,
         data: {
           list_items: cartItemsList,
           addressId: selectedAddr._id,
           subTotalAmt: totalPrice,
           deliveryCharge,
-          totalAmt: 0,
-          discountAmt: couponDiscount,
           couponCode: appliedCoupon?.code || '',
           couponDiscount,
-          walletDeduction: effectiveWalletDeduction,
           loyaltyPointsUsed,
           loyaltyDiscount,
         }
