@@ -41,34 +41,37 @@ export const debitWalletInternal = async (userId, amount, description, reference
     const debitAmount = Number(Number(amount || 0).toFixed(2))
     if (debitAmount <= 0) return
 
-    // Atomic balance check + debit. This prevents two simultaneous checkouts
-    // from both reading the same wallet balance and spending it twice.
+    // Atomically reserve/debit the wallet balance. This prevents concurrent
+    // checkout requests from spending the same balance twice.
     const wallet = await WalletModel.findOneAndUpdate(
-        {
-            userId,
-            balance: { $gte: debitAmount }
-        },
-        {
-            $inc: { balance: -debitAmount }
-        },
+        { userId, balance: { $gte: debitAmount } },
+        { $inc: { balance: -debitAmount } },
         { new: true }
     )
 
-    if (!wallet) {
-        throw new Error('Insufficient wallet balance')
-    }
+    if (!wallet) throw new Error('Insufficient wallet balance')
 
-    // Record the transaction using the balance returned by the atomic update.
-    // If transaction-history persistence fails, the debit itself remains valid.
+    // Append the ledger entry without saving the stale wallet document back.
+    // This avoids overwriting a newer balance if another wallet operation
+    // happens between the debit and the ledger update.
     try {
-        wallet.transactions.unshift({
-            type: 'debit',
-            amount: debitAmount,
-            description: description || 'Order payment',
-            reference,
-            balanceAfter: Number(wallet.balance || 0)
-        })
-        await wallet.save()
+        await WalletModel.updateOne(
+            { _id: wallet._id },
+            {
+                $push: {
+                    transactions: {
+                        $each: [{
+                            type: 'debit',
+                            amount: debitAmount,
+                            description: description || 'Order payment',
+                            reference,
+                            balanceAfter: Number(wallet.balance || 0)
+                        }],
+                        $position: 0
+                    }
+                }
+            }
+        )
     } catch (transactionErr) {
         console.error('[Wallet] Debit succeeded but transaction history update failed:', transactionErr.message)
     }
