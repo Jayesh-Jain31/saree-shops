@@ -65,13 +65,17 @@ const CheckoutPage = () => {
     if (deliveryInfo.freeDeliveryAbove > 0 && totalPrice >= deliveryInfo.freeDeliveryAbove) return 0
     return deliveryInfo.deliveryCharge
   })()
-  const baseAmount = appliedCoupon ? appliedCoupon.finalAmount : totalPrice
-  const finalAmount = baseAmount + deliveryCharge
-  const couponDiscount = appliedCoupon ? appliedCoupon.discountAmount : 0
-  const walletDeduction = Math.min(walletBalance, finalAmount)
+  // Keep checkout money values at paise precision so a ₹0.001 floating-point
+  // difference can never send a fully wallet-covered order into Razorpay.
+  const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100
+  const baseAmount = appliedCoupon ? Number(appliedCoupon.finalAmount || 0) : Number(totalPrice || 0)
+  const finalAmount = roundMoney(baseAmount + Number(deliveryCharge || 0))
+  const couponDiscount = roundMoney(appliedCoupon ? appliedCoupon.discountAmount : 0)
+  const normalizedWalletBalance = roundMoney(walletBalance)
+  const walletDeduction = roundMoney(Math.min(normalizedWalletBalance, finalAmount))
   const loyaltyPointsUsed = 0
   const loyaltyDiscount = 0
-  const payableAmount = Math.max(0, finalAmount - walletDeduction)
+  const payableAmount = roundMoney(Math.max(0, finalAmount - walletDeduction))
   const totalSavings = (notDiscountTotalPrice - totalPrice) + couponDiscount + walletDeduction
 
   const refreshWalletAndGetAmounts = async () => {
@@ -80,9 +84,9 @@ const CheckoutPage = () => {
       const res = await Axios({ ...SummaryApi.getWallet })
       if (!res.data.success) throw new Error('Unable to refresh wallet balance')
 
-      const latestWalletBalance = Number(res.data.data?.balance || 0)
-      const latestWalletDeduction = Math.min(latestWalletBalance, finalAmount)
-      const latestPayableAmount = Math.max(0, finalAmount - latestWalletDeduction)
+      const latestWalletBalance = roundMoney(res.data.data?.balance)
+      const latestWalletDeduction = roundMoney(Math.min(latestWalletBalance, finalAmount))
+      const latestPayableAmount = roundMoney(Math.max(0, finalAmount - latestWalletDeduction))
 
       setWalletBalance(latestWalletBalance)
 
@@ -310,12 +314,9 @@ const CheckoutPage = () => {
     } catch (error) { AxiosToastError(error) }
   }
 
-  const handlePlaceFreeOrder = async (walletBalanceOverride = walletBalance, walletDeductionOverride = walletDeduction) => {
+  const handlePlaceFreeOrder = async () => {
     const selectedAddr = addressList[selectAddress]
     if (!selectedAddr?._id || !selectedAddr?.status) { setShowAddressPopup(true); return }
-
-    const effectiveWalletBalance = Number(walletBalanceOverride || 0)
-    const effectiveWalletDeduction = Number(walletDeductionOverride ?? Math.min(effectiveWalletBalance, finalAmount))
 
     try {
       const response = await Axios({
@@ -344,8 +345,8 @@ const CheckoutPage = () => {
   const handleRazorpayPayment = async (payableAmountOverride = payableAmount, walletDeductionOverride = walletDeduction) => {
     // Never open Razorpay when wallet fully covers the calculated payable amount.
     // The wallet-only flow must first validate/select an address, then place the order directly.
-    if (payableAmountOverride <= 0) {
-      await handlePlaceFreeOrder(walletBalance, walletDeductionOverride)
+    if (roundMoney(payableAmountOverride) <= 0) {
+      await handlePlaceFreeOrder()
       return
     }
 
@@ -482,10 +483,10 @@ const CheckoutPage = () => {
         latestPayableAmount,
       } = await refreshWalletAndGetAmounts()
 
-      if (latestPayableAmount <= 0) {
+      if (roundMoney(latestPayableAmount) <= 0) {
         // Wallet fully covers the current order: require/select address, then place directly.
         // Razorpay is never initialized or opened for this path.
-        await handlePlaceFreeOrder(latestWalletBalance, latestWalletDeduction)
+        await handlePlaceFreeOrder()
         return
       }
 
