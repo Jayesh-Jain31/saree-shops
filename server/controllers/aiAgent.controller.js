@@ -1,10 +1,10 @@
-import { GoogleGenAI } from '@google/genai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import OrderModel from '../models/order.model.js'
 import ProductModel from '../models/product.model.js'
 import UserModel from '../models/user.model.js'
 import CouponModel from '../models/coupon.model.js'
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 
 async function gatherStoreContext() {
     const now = new Date()
@@ -196,19 +196,21 @@ Rules:
             })
         }
 
-        const response = await ai.models.generateContent({
+        const model = ai.getGenerativeModel({
             model: 'gemini-2.5-flash',
-            contents: [
-                ...chatHistory,
-                { role: 'user', parts: [{ text: message }] }
-            ],
-            config: {
-                thinkingConfig: { thinkingBudget: 0 },
+            generationConfig: {
                 maxOutputTokens: 8192,
             },
         })
 
-        let responseText = response.text
+        const response = await model.generateContent({
+            contents: [
+                ...chatHistory,
+                { role: 'user', parts: [{ text: message }] }
+            ],
+        })
+
+        let responseText = response.response.text()
 
         let actionResult = null
         const actionMatch = responseText.match(/<<<ACTION>>>([\s\S]*?)<<<END>>>/)
