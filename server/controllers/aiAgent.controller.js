@@ -4,7 +4,13 @@ import ProductModel from '../models/product.model.js'
 import UserModel from '../models/user.model.js'
 import CouponModel from '../models/coupon.model.js'
 
-const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+let ai = null
+
+function getGeminiClient() {
+    if (!process.env.GEMINI_API_KEY) return null
+    if (!ai) ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+    return ai
+}
 
 async function gatherStoreContext() {
     const now = new Date()
@@ -196,7 +202,15 @@ Rules:
             })
         }
 
-        const model = ai.getGenerativeModel({
+        const gemini = getGeminiClient()
+        if (!gemini) {
+            return res.status(503).json({
+                success: false,
+                message: 'AI agent is not configured. Please add GEMINI_API_KEY in the backend environment variables.'
+            })
+        }
+
+        const model = gemini.getGenerativeModel({
             model: 'gemini-2.5-flash',
             generationConfig: {
                 maxOutputTokens: 8192,
