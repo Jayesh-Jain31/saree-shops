@@ -182,16 +182,16 @@ process.on('unhandledRejection', (reason) => {
     console.error('[startup] Unhandled rejection:', reason)
 })
 
-connectDB()
-    .then(() => {
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log('Server is running on 0.0.0.0:', PORT)
-            console.log('Health check: /healthz')
-            startLoyaltyCron()
-            startBlastCron()
-        })
-    })
-    .catch((error) => {
-        console.error('[startup] Database initialization failed:', error)
-        process.exit(1)
-    })
+// Start HTTP first so Northflank can see a healthy process even while MongoDB
+// is connecting. API requests that need MongoDB will become available once the
+// connection succeeds.
+app.listen(PORT, '0.0.0.0', () => {
+    console.log('Server is running on 0.0.0.0:', PORT)
+    console.log('Health check: /healthz')
+    startLoyaltyCron()
+    startBlastCron()
+})
+
+connectDB().catch((error) => {
+    console.error('[startup] Database initialization failed:', error)
+})
