@@ -147,6 +147,15 @@ app.get('/api/config/razorpay-key', (req, res) => {
 // ── Static serving in production ──────────────────────────────────────
 const PORT = process.env.PORT || 8080
 
+app.get('/healthz', (req, res) => {
+    res.status(200).json({
+        ok: true,
+        service: 'saree-shops-api',
+        uptime: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+    })
+})
+
 app.get('/', (req, res) => {
     res.json({ message: "API is running 🚀" })
 })
@@ -165,10 +174,24 @@ if (process.env.NODE_ENV === 'production') {
     }
 }
 
-connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log('Server is running', PORT)
-        startLoyaltyCron()
-        startBlastCron()
-    })
+process.on('uncaughtException', (error) => {
+    console.error('[startup] Uncaught exception:', error)
 })
+
+process.on('unhandledRejection', (reason) => {
+    console.error('[startup] Unhandled rejection:', reason)
+})
+
+connectDB()
+    .then(() => {
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log('Server is running on 0.0.0.0:', PORT)
+            console.log('Health check: /healthz')
+            startLoyaltyCron()
+            startBlastCron()
+        })
+    })
+    .catch((error) => {
+        console.error('[startup] Database initialization failed:', error)
+        process.exit(1)
+    })
