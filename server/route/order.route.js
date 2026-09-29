@@ -2,7 +2,6 @@ import { Router } from 'express'
 import auth from '../middleware/auth.js'
 import {
     CashOnDeliveryOrderController,
-    WalletOrderController,
     getOrderDetailsController,
     getOrderByIdController,
     cancelOrderController,
@@ -16,7 +15,6 @@ import {
 const orderRouter = Router()
 
 orderRouter.post("/cash-on-delivery", auth, CashOnDeliveryOrderController)
-orderRouter.post("/wallet", auth, WalletOrderController)
 orderRouter.get("/order-list", auth, getOrderDetailsController)
 orderRouter.get("/order-details/:id", auth, getOrderByIdController)
 orderRouter.put("/cancel/:id", auth, cancelOrderController)
