@@ -76,12 +76,15 @@ const authLimiter = rateLimit({
 // ── Core middleware ───────────────────────────────────────────────────
 // Gzip compress all responses for faster transfer
 app.use(compression())
-const allowedOrigins = [
+const configuredFrontendUrls = [
+    ...(process.env.FRONTEND_URLS || '').split(','),
     process.env.FRONTEND_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+    process.env.NORTHFLANK_URL,
     'https://sareeshops.vercel.app',
     'http://localhost:5000',
     'http://localhost:3000',
-].filter(Boolean)
+].filter(Boolean).map(url => url.trim().replace(/\/$/, ''))
 
 app.use(cors({
     origin: (origin, callback) => {

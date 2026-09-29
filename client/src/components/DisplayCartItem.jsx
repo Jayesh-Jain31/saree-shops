@@ -12,29 +12,13 @@ import imageEmpty from '../assets/empty_cart.webp'
 import toast from 'react-hot-toast'
 import Axios from '../utils/Axios'
 import SummaryApi from '../common/SummaryApi'
-import AxiosToastError from '../utils/AxiosToastError'
-
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
-    if (document.getElementById('razorpay-script')) { resolve(true); return }
-    const script = document.createElement('script')
-    script.id = 'razorpay-script'
-    script.src = 'https://checkout.razorpay.com/v1/magic-checkout.js'
-    script.onload = () => resolve(true)
-    script.onerror = () => resolve(false)
-    document.body.appendChild(script)
-  })
-}
 
 const DisplayCartItem = ({ close }) => {
-  const { notDiscountTotalPrice, totalPrice, totalQty, fetchCartItem, fetchOrder } = useGlobalContext()
+  const { notDiscountTotalPrice, totalPrice, totalQty } = useGlobalContext()
   const cartItem   = useSelector(state => state.cartItem.cart)
   const user       = useSelector(state => state.user)
-  const addressList = useSelector(state => state.addresses.addressList)
-  const siteName   = useSelector(state => state.site.name)
   const navigate   = useNavigate()
 
-  const [payLoading, setPayLoading]       = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
   const [dataLoading, setDataLoading]     = useState(false)
   const [giftProgress, setGiftProgress]   = useState(null)
@@ -74,129 +58,13 @@ const DisplayCartItem = ({ close }) => {
   const handleCheckout = async () => {
     if (!user?._id) { toast('Please Login'); return }
 
-    setPayLoading(true)
-    try {
-      const scriptLoaded = await loadRazorpayScript()
-      if (!scriptLoaded) { toast.error('Failed to load Razorpay.'); setPayLoading(false); return }
+    // Keep checkout logic in CheckoutPage. The previous cart-only Razorpay
+    // flow opened a payment popup even when the wallet made the payable
+    // amount zero and did not have the selected-address/full-wallet path.
+    if (close) close()
+    navigate('/checkout')
+    return
 
-      const configRes = await Axios({ url: '/api/config/razorpay-key', method: 'get' })
-      const razorpayKeyId = configRes.data?.keyId
-      if (!razorpayKeyId) { toast.error('Payment not configured.'); setPayLoading(false); return }
-
-      // Wallet covers full amount: create Razorpay order with full total to open popup for address
-      // Actual payment will be zero; popup is purely for address collection + confirmation
-      const rzpOrderAmt = payableAmount <= 0 ? totalPrice : payableAmount
-      const orderRes = await Axios({ ...SummaryApi.razorpayOrder, data: { totalAmt: rzpOrderAmt, list_items: cartItem } })
-      if (!orderRes.data.success) { toast.error('Failed to create payment order.'); setPayLoading(false); return }
-
-      const razorpayOrder = orderRes.data.data
-      const rzpFreeGift   = orderRes.data.freeGift || null
-      const defaultAddr   = addressList.filter(a => a.status)[0] || null
-      const customerMobile = user?.mobile || defaultAddr?.mobile || ''
-      const customerName   = user?.name   || defaultAddr?.name   || ''
-      const customerEmail  = user?.email  || ''
-
-      const options = {
-        key: razorpayKeyId,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        name: siteName || 'Saree Shop',
-        description: 'Order Payment',
-        image: '/logo.png',
-        order_id: razorpayOrder.id,
-        one_click_checkout: true,
-        show_coupons: true,
-        prefill: {
-          name:    customerName,
-          email:   customerEmail,
-          contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
-          ...(rzpFreeGift && {
-            promotional_tag: [{ tag: 'free gift item', variant_id: rzpFreeGift.giftVariantId }]
-          }),
-        },
-        ...(defaultAddr && {
-          customer_details: {
-            name:    customerName,
-            contact: customerMobile ? `+91${String(customerMobile).replace(/\D/g, '').slice(-10)}` : '',
-            email:   customerEmail,
-            shipping_address: {
-              line1:   defaultAddr.address_line || '',
-              line2:   defaultAddr.landmark     || '',
-              city:    defaultAddr.city         || '',
-              state:   defaultAddr.state        || '',
-              zipcode: String(defaultAddr.pincode || ''),
-              country: 'IN',
-            }
-          }
-        }),
-        config: {
-          display: {
-            blocks: { cod: { name: 'Cash on Delivery', instruments: [{ method: 'cod' }] } },
-            sequence: ['block.cod'],
-            preferences: { show_default_blocks: true }
-          }
-        },
-        handler: async (paymentResponse) => {
-          try {
-            const itemsSnapshot = [...cartItem]
-            const addrSnapshot  = defaultAddr
-            // Wallet full cover: totalAmt is 0, full amount deducted from wallet
-            const isWalletFull = payableAmount <= 0
-            const finalPayable = isWalletFull ? 0 : payableAmount
-            const finalWalletDeduction = isWalletFull ? totalPrice : walletDeduction
-            const orderData = {
-              list_items: itemsSnapshot,
-              addressId: addrSnapshot?._id || '',
-              subTotalAmt: totalPrice,
-              totalAmt: finalPayable,
-              walletDeduction: finalWalletDeduction,
-              loyaltyPointsUsed,
-              loyaltyDiscount,
-              razorpay_order_id: paymentResponse.razorpay_order_id || razorpayOrder.id,
-            }
-
-            if (paymentResponse.method === 'cod' || !paymentResponse.razorpay_signature) {
-              const codToastId = toast.loading(isWalletFull ? 'Placing wallet order...' : 'Placing COD order...')
-              const codRes = await Axios({ ...SummaryApi.CashOnDeliveryOrder, data: orderData })
-              toast.dismiss(codToastId)
-              if (codRes.data.success) {
-                toast.success(isWalletFull ? 'Order placed using wallet!' : 'COD order placed!')
-                if (fetchCartItem) fetchCartItem()
-                if (fetchOrder) fetchOrder()
-                if (close) close()
-                navigate('/success', { state: { text: 'Order', address: addrSnapshot, items: itemsSnapshot, totalAmount: finalPayable, deliveryCharge: 0, paymentMethod: isWalletFull ? 'Wallet' : 'COD', orderDate: new Date().toISOString() } })
-              } else { toast.error(isWalletFull ? 'Failed to place wallet order.' : 'Failed to place COD order.') }
-              return
-            }
-
-            const verifyToastId = toast.loading('Verifying payment...')
-            const verifyRes = await Axios({
-              ...SummaryApi.razorpayVerify,
-              data: {
-                razorpay_order_id:  paymentResponse.razorpay_order_id,
-                razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                razorpay_signature: paymentResponse.razorpay_signature,
-                ...orderData,
-              }
-            })
-            toast.dismiss(verifyToastId)
-            if (verifyRes.data.success) {
-              toast.success('Payment successful! Order placed.')
-              if (fetchCartItem) fetchCartItem()
-              if (fetchOrder) fetchOrder()
-              if (close) close()
-              navigate('/success', { state: { text: 'Order', address: addrSnapshot, items: itemsSnapshot, totalAmount: finalPayable, deliveryCharge: 0, paymentMethod: 'Razorpay', orderDate: new Date().toISOString() } })
-            } else { toast.error('Payment verification failed.') }
-          } catch (err) { toast.dismiss(); AxiosToastError(err) }
-        },
-        theme: { color: '#16a34a' },
-        modal: { ondismiss: () => { setPayLoading(false) }, escape: true }
-      }
-
-      setPayLoading(false)
-      const razorpay = new window.Razorpay(options)
-      razorpay.open()
-    } catch (error) { setPayLoading(false); AxiosToastError(error) }
   }
 
   return (
@@ -390,7 +258,6 @@ const DisplayCartItem = ({ close }) => {
           <div className='px-4 py-4 border-t bg-white flex-shrink-0'>
             <button
               onClick={handleCheckout}
-              disabled={payLoading}
               className='w-full btn-primary rounded-2xl py-4 font-bold text-base flex items-center justify-between px-5 active:scale-98 transition-transform disabled:opacity-70'
             >
               <div className='text-left'>
@@ -399,7 +266,7 @@ const DisplayCartItem = ({ close }) => {
               </div>
               <div className='flex items-center gap-2'>
                 <FaShoppingCart size={15} />
-                <span>{payLoading ? 'Loading...' : 'Checkout'}</span>
+                <span>Checkout</span>
               </div>
             </button>
           </div>
