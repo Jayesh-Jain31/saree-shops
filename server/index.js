@@ -147,15 +147,6 @@ app.get('/api/config/razorpay-key', (req, res) => {
 // ── Static serving in production ──────────────────────────────────────
 const PORT = process.env.PORT || 8080
 
-app.get('/healthz', (req, res) => {
-    res.status(200).json({
-        ok: true,
-        service: 'saree-shops-api',
-        uptime: Math.floor(process.uptime()),
-        timestamp: new Date().toISOString(),
-    })
-})
-
 app.get('/', (req, res) => {
     res.json({ message: "API is running 🚀" })
 })
@@ -174,24 +165,10 @@ if (process.env.NODE_ENV === 'production') {
     }
 }
 
-process.on('uncaughtException', (error) => {
-    console.error('[startup] Uncaught exception:', error)
-})
-
-process.on('unhandledRejection', (reason) => {
-    console.error('[startup] Unhandled rejection:', reason)
-})
-
-// Start HTTP first so Northflank can see a healthy process even while MongoDB
-// is connecting. API requests that need MongoDB will become available once the
-// connection succeeds.
-app.listen(PORT, '0.0.0.0', () => {
-    console.log('Server is running on 0.0.0.0:', PORT)
-    console.log('Health check: /healthz')
-    startLoyaltyCron()
-    startBlastCron()
-})
-
-connectDB().catch((error) => {
-    console.error('[startup] Database initialization failed:', error)
+connectDB().then(() => {
+    app.listen(PORT, () => {
+        console.log('Server is running', PORT)
+        startLoyaltyCron()
+        startBlastCron()
+    })
 })
