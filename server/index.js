@@ -146,6 +146,7 @@ app.get('/api/config/razorpay-key', (req, res) => {
 
 // ── Static serving in production ──────────────────────────────────────
 const PORT = process.env.PORT || 8080
+const HOST = process.env.HOST || '0.0.0.0'
 
 app.get('/', (req, res) => {
     res.json({ message: "API is running 🚀" })
@@ -166,8 +167,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log('Server is running', PORT)
+    app.listen(PORT, HOST, () => {
+        console.log(`Server is running on ${HOST}:${PORT}`)
         startLoyaltyCron()
         startBlastCron()
     })

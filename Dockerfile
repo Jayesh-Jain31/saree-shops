@@ -6,7 +6,9 @@ WORKDIR /app
 
 # Copy & install server deps
 COPY server/package*.json ./server/
-RUN cd server && npm install --production --no-audit --no-fund
+# The lockfile may be generated inside Replit's package firewall. Northflank
+# must resolve packages from the public registry instead.
+RUN cd server && npm install --production --no-audit --no-fund --package-lock=false
 
 # Copy server source
 COPY server/ ./server/
