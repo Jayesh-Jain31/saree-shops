@@ -46,7 +46,7 @@ const orderConfirmationTemplate = ({ orderId, items, totalAmt, payment_status })
             </div>
 
             <p style="color:#888;font-size:13px;text-align:center;">
-                Payment: <strong>${payment_status === 'PAID' ? 'Online (Razorpay)' : 'Cash on Delivery'}</strong>
+                Payment: <strong>${payment_status === 'WALLET' ? 'Wallet' : payment_status === 'PAID' ? 'Online (Razorpay)' : 'Cash on Delivery'}</strong>
             </p>
         </div>
         <div style="background:#f9fafb;padding:16px;text-align:center;border-top:1px solid #e5e5e5;">

@@ -82,7 +82,22 @@ async function creditReferralReward(userId) {
 export async function CashOnDeliveryOrderController(request, response) {
     try {
         const userId = request.userId
-        const { list_items, totalAmt, addressId, subTotalAmt, deliveryCharge = 0, discountAmt = 0, couponCode = "", couponDiscount = 0, walletDeduction = 0, loyaltyPointsUsed = 0, loyaltyDiscount = 0, razorpay_order_id = "" } = request.body
+        const {
+            list_items,
+            totalAmt,
+            addressId,
+            subTotalAmt,
+            deliveryCharge = 0,
+            discountAmt = 0,
+            couponCode = "",
+            couponDiscount = 0,
+            walletDeduction: requestedWalletDeduction = 0,
+            loyaltyPointsUsed = 0,
+            loyaltyDiscount = 0,
+            razorpay_order_id = "",
+        } = request.body
+        const walletOnly = request.body.walletOnly === true || request.body.paymentMethod === 'WALLET'
+        let walletDeduction = Math.max(0, Number(requestedWalletDeduction) || 0)
 
         // If this COD came from inside the Razorpay popup, check for a popup-applied coupon
         // NOTE: Do NOT recalculate totalAmt here — wait until delivery charge is resolved below,
@@ -124,28 +139,50 @@ export async function CashOnDeliveryOrderController(request, response) {
             })
         }
 
-        // Check if COD is restricted for this customer
-        const userCheck = await UserModel.findById(userId).select('codRestricted')
-        if (userCheck?.codRestricted) {
-            return response.status(403).json({
-                message: 'Cash on Delivery is not available for your account. Please use online payment.',
-                error: true, success: false
-            })
-        }
+        let fraud = { riskScore: 0, riskLevel: 'low', reasons: [] }
+        if (!walletOnly) {
+            // Check if COD is restricted for this customer
+            const userCheck = await UserModel.findById(userId).select('codRestricted')
+            if (userCheck?.codRestricted) {
+                return response.status(403).json({
+                    message: 'Cash on Delivery is not available for your account. Please use online payment.',
+                    error: true, success: false
+                })
+            }
 
-        // Fraud detection for COD orders
-        const fraud = await assessOrderRisk({ userId, totalAmt, items })
-        if (fraud.shouldBlock) {
-            return response.status(403).json({
-                message: 'This order cannot be placed. Please contact support or choose online payment.',
-                error: true,
-                success: false,
-                fraudBlocked: true,
-            })
+            // Fraud detection is only needed for orders with cash due on delivery.
+            fraud = await assessOrderRisk({ userId, totalAmt, items })
+            if (fraud.shouldBlock) {
+                return response.status(403).json({
+                    message: 'This order cannot be placed. Please contact support or choose online payment.',
+                    error: true,
+                    success: false,
+                    fraudBlocked: true,
+                })
+            }
         }
 
         if (loyaltyPointsUsed > 0) {
             await redeemPointsInternal(userId, loyaltyPointsUsed, 'pending')
+        }
+
+        if (walletOnly && !addressId) {
+            return response.status(400).json({
+                message: 'Please select a delivery address before paying with wallet.',
+                error: true,
+                success: false,
+            })
+        }
+
+        if (walletOnly) {
+            const walletAddress = await AddressModel.findOne({ _id: addressId, userId, status: true }).lean()
+            if (!walletAddress) {
+                return response.status(400).json({
+                    message: 'The selected delivery address is invalid. Please select another address.',
+                    error: true,
+                    success: false,
+                })
+            }
         }
 
         // Build delivery_address_snapshot.
@@ -194,10 +231,30 @@ export async function CashOnDeliveryOrderController(request, response) {
         // Recalculate total from authoritative resolved values.
         // Do NOT use frontend totalAmt directly — it was computed before the popup ran and
         // may have a different coupon / delivery charge than what the user actually confirmed.
-        const finalTotalAmt = Math.max(
+        const totalBeforeWallet = Math.max(
             0,
-            subTotalAmt + resolvedDeliveryCharge - finalCouponDiscount - (walletDeduction || 0) - (loyaltyDiscount || 0)
+            Number(subTotalAmt || 0) + Number(resolvedDeliveryCharge || 0) -
+            Number(finalCouponDiscount || 0) - Number(loyaltyDiscount || 0)
         )
+        walletDeduction = Math.min(walletDeduction, totalBeforeWallet)
+        const finalTotalAmt = Math.max(0, totalBeforeWallet - walletDeduction)
+
+        if (walletOnly && finalTotalAmt > 0.01) {
+            return response.status(400).json({
+                message: `Wallet balance does not cover this order. Please pay the remaining ₹${finalTotalAmt.toFixed(2)} online or by COD.`,
+                error: true,
+                success: false,
+                remainingAmount: finalTotalAmt,
+            })
+        }
+
+        if (walletOnly && walletDeduction <= 0) {
+            return response.status(400).json({
+                message: 'No wallet balance is available for this order.',
+                error: true,
+                success: false,
+            })
+        }
 
         console.log("[COD] ORDER AMOUNTS:", {
             subTotalAmt, resolvedDeliveryCharge, finalCouponDiscount, walletDeduction, loyaltyDiscount, finalTotalAmt,
@@ -210,8 +267,8 @@ export async function CashOnDeliveryOrderController(request, response) {
             userId: userId,
             orderId: `ORD-${new mongoose.Types.ObjectId()}`,
             items: items,
-            paymentId: "",
-            payment_status: "CASH ON DELIVERY",
+            paymentId: walletOnly ? "WALLET" : "",
+            payment_status: walletOnly ? "WALLET" : "CASH ON DELIVERY",
             delivery_address: null,
             delivery_address_snapshot,
             subTotalAmt: subTotalAmt,
@@ -232,8 +289,27 @@ export async function CashOnDeliveryOrderController(request, response) {
 
         console.log(`[COD] ${pendingLoyaltyPoints} loyalty pts pending for order ${order.orderId} (credited to wallet after return period)`)
 
-        // Flag suspicious orders (score >= 30) for admin review
-        if (fraud.riskScore >= 30) {
+        // Debit wallet server-side. For a wallet-only order, failure must cancel
+        // the order instead of silently creating an unpaid order.
+        if (walletDeduction > 0) {
+            try {
+                await debitWalletInternal(userId, walletDeduction, `Payment for order ${order.orderId}`, order.orderId)
+            } catch (walletErr) {
+                if (walletOnly) {
+                    await OrderModel.deleteOne({ _id: order._id })
+                    return response.status(400).json({
+                        message: walletErr.message || 'Insufficient wallet balance. Please refresh and try again.',
+                        error: true,
+                        success: false,
+                    })
+                }
+                console.error(`[COD] Wallet debit failed for order ${order.orderId}:`, walletErr.message)
+            }
+        }
+
+        // Flag suspicious COD orders (score >= 30) for admin review only after
+        // payment-side validation has completed.
+        if (!walletOnly && fraud.riskScore >= 30) {
             FraudFlagModel.create({
                 type: 'order',
                 orderId: order._id,
@@ -245,20 +321,16 @@ export async function CashOnDeliveryOrderController(request, response) {
             }).catch(() => {})
         }
 
-        // Debit wallet server-side (safe for all order flows)
-        if (walletDeduction > 0) {
-            try {
-                await debitWalletInternal(userId, walletDeduction, `Payment for order ${order.orderId}`, order.orderId)
-            } catch (walletErr) {
-                console.error(`[COD] Wallet debit failed for order ${order.orderId}:`, walletErr.message)
-            }
-        }
-
         await CartProductModel.deleteMany({ userId: userId })
         await UserModel.updateOne({ _id: userId }, { shopping_cart: [] })
         await decrementStock(order.items)
         creditReferralReward(userId).catch(() => {})
-        createNotification(userId, `Your COD order ${order.orderId} has been placed successfully! 🛍️`, 'success', '/dashboard/myorders').catch(() => {})
+        createNotification(
+            userId,
+            `${walletOnly ? 'Your wallet order' : 'Your COD order'} ${order.orderId} has been placed successfully! 🛍️`,
+            'success',
+            '/dashboard/myorders'
+        ).catch(() => {})
 
         try {
             const user = await UserModel.findById(userId)
@@ -916,7 +988,8 @@ export async function cancelOrderController(request, response) {
         } catch {}
 
         const ps = (order.payment_status || '').toUpperCase()
-        const isCOD = !order.paymentId || ps.includes('CASH') || ps === 'COD'
+        const isWallet = ps === 'WALLET'
+        const isCOD = !isWallet && (!order.paymentId || ps.includes('CASH') || ps === 'COD')
         const isPartialCOD = ps === 'PARTIAL COD'
 
         let walletRefunded = 0
@@ -945,7 +1018,7 @@ export async function cancelOrderController(request, response) {
         // Online or Partial COD: trigger Razorpay refund for the prepaid portion
         let refundError = null
 
-        if (!isCOD && order.paymentId) {
+        if (!isCOD && !isWallet && order.paymentId) {
             const refundAmount = isPartialCOD
                 ? Math.max(0, (order.prepaidAmount || 0))
                 : Math.max(0, (order.totalAmt || 0) - (order.walletDeduction || 0))

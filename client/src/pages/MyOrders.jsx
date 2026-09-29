@@ -8,7 +8,7 @@ import {
   FaBoxOpen, FaCheckCircle, FaMoneyBillWave, FaCreditCard,
   FaSearch, FaFilter, FaChevronRight, FaTimes, FaTruck
 } from 'react-icons/fa'
-import { MdAccessTime, MdDeliveryDining, MdDone, MdInventory, MdPending } from 'react-icons/md'
+import { MdAccessTime, MdDeliveryDining, MdDone, MdInventory, MdPending, MdAccountBalanceWallet } from 'react-icons/md'
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -61,6 +61,11 @@ const PaymentBadge = ({ status, prepaidAmount, codAmount }) => {
   if (s === 'PARTIAL COD') return (
     <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200'>
       <FaCreditCard size={10} /> Partial COD
+    </span>
+  )
+  if (s === 'WALLET') return (
+    <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200'>
+      <MdAccountBalanceWallet size={11} /> Wallet
     </span>
   )
   return (
@@ -174,6 +179,7 @@ const MyOrders = () => {
       const ps = order?.payment_status?.toUpperCase() || ''
       const matchesPayment = filterPayment === 'all' ||
         (filterPayment === 'paid' && ps === 'PAID') ||
+        (filterPayment === 'wallet' && ps === 'WALLET') ||
         (filterPayment === 'cod' && ps === 'CASH ON DELIVERY') ||
         (filterPayment === 'partial_cod' && ps === 'PARTIAL COD')
 
@@ -243,6 +249,7 @@ const MyOrders = () => {
                 >
                   <option value='all'>All Payment</option>
                   <option value='paid'>Online Paid</option>
+                  <option value='wallet'>Wallet</option>
                   <option value='partial_cod'>Partial COD</option>
                   <option value='cod'>COD</option>
                 </select>

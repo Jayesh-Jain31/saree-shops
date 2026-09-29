@@ -14,7 +14,7 @@ import {
 } from 'react-icons/fa'
 import {
   MdAccessTime, MdDone, MdInventory, MdPending, MdEdit, MdSave,
-  MdClose, MdLocalShipping, MdDeliveryDining, MdEmail
+  MdClose, MdLocalShipping, MdDeliveryDining, MdEmail, MdAccountBalanceWallet
 } from 'react-icons/md'
 
 const STATUS_OPTIONS = ['Pending', 'Confirmed', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled']
@@ -62,6 +62,11 @@ const PaymentBadge = ({ status }) => {
   if (s === 'PARTIAL COD') return (
     <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200'>
       <FaCreditCard size={9} />Partial COD
+    </span>
+  )
+  if (s === 'WALLET') return (
+    <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200'>
+      <MdAccountBalanceWallet size={10} />Wallet
     </span>
   )
   return (
@@ -155,7 +160,9 @@ const OrderDetailDrawer = ({ orderId, onClose, onStatusUpdate }) => {
     <div><h3>Delivery Address</h3><p style="font-size:13px;line-height:1.5">${addr.address_line || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.pincode || ''}</p>
     ${addr.mobile ? `<p style="font-size:12px;color:#666">📞 ${esc(addr.mobile)}</p>` : ''}</div></div>
     <div style="margin-bottom:16px"><h3>Payment</h3>
-    ${order.payment_status?.toUpperCase() === 'PAID'
+     ${order.payment_status?.toUpperCase() === 'WALLET'
+       ? '<span class="badge" style="background:#dbeafe;color:#1d4ed8">Wallet Paid</span>'
+       : order.payment_status?.toUpperCase() === 'PAID'
       ? '<span class="badge bg-green">Online Paid</span>'
       : order.payment_status?.toUpperCase() === 'PARTIAL COD'
       ? `<span class="badge bg-indigo">Partial COD</span> <span style="font-size:11px;color:#6366f1;margin-left:8px">Online: \u20b9${order.prepaidAmount || 0} | COD: \u20b9${order.codAmount || 0}</span>`

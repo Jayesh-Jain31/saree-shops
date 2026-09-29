@@ -209,6 +209,7 @@ const CheckoutPage = () => {
     const status = serverOrder?.payment_status || ''
     const resolvedMethod = status === 'CASH ON DELIVERY' ? 'COD'
       : status === 'PAID' ? 'Razorpay'
+      : status === 'WALLET' ? 'Wallet'
       : status === 'PARTIAL COD' ? 'Partial COD'
       : method
     return {
@@ -329,6 +330,8 @@ const CheckoutPage = () => {
           couponCode: appliedCoupon?.code || '',
           couponDiscount,
           walletDeduction: effectiveWalletDeduction,
+          walletOnly: true,
+          paymentMethod: 'WALLET',
           loyaltyPointsUsed,
           loyaltyDiscount,
         }
