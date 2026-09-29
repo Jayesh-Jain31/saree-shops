@@ -1,4 +1,4 @@
-export const baseURL = import.meta.env.VITE_BACKEND_URL || "https://site--saree-shops--ksk4rx7578qn.code.run";
+export const baseURL = import.meta.env.VITE_BACKEND_URL || "";
 
 const SummaryApi = {
     register : { url : '/api/user/register', method : 'post' },
@@ -39,7 +39,6 @@ getProduct : { url : '/api/product/get', method : 'get' },
     updateAddress : { url : '/api/address/update', method : 'put' },
     disableAddress : { url : '/api/address/disable', method : 'delete' },
     CashOnDeliveryOrder : { url : "/api/order/cash-on-delivery", method : 'post' },
-    WalletOrder : { url : "/api/order/wallet", method : 'post' },
     getOrderItems : { url : '/api/order/order-list', method : 'get' },
     getOrderById : { url : '/api/order/order-details', method : 'get' },
     cancelOrder : { url : '/api/order/cancel', method : 'put' },
