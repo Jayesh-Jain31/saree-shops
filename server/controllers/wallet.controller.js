@@ -38,48 +38,18 @@ export const creditWallet = async (req, res) => {
 }
 
 export const debitWalletInternal = async (userId, amount, description, reference = '') => {
-    const debitAmount = Number(Number(amount || 0).toFixed(2))
-    if (debitAmount <= 0) return
-
-    // Atomically reserve/debit the wallet balance. This prevents concurrent
-    // checkout requests from spending the same balance twice.
-    const wallet = await WalletModel.findOneAndUpdate(
-        { userId, balance: { $gte: debitAmount } },
-        { $inc: { balance: -debitAmount } },
-        { new: true }
-    )
-
-    if (!wallet) throw new Error('Insufficient wallet balance')
-
-    // Append the ledger entry without saving the stale wallet document back.
-    // This avoids overwriting a newer balance if another wallet operation
-    // happens between the debit and the ledger update.
-    try {
-        await WalletModel.updateOne(
-            { _id: wallet._id },
-            {
-                $push: {
-                    transactions: {
-                        $each: [{
-                            type: 'debit',
-                            amount: debitAmount,
-                            description: description || 'Order payment',
-                            reference,
-                            balanceAfter: Number(wallet.balance || 0)
-                        }],
-                        $position: 0
-                    }
-                }
-            }
-        )
-    } catch (transactionErr) {
-        console.error('[Wallet] Debit succeeded but transaction history update failed:', transactionErr.message)
-    }
-
-    return {
-        amount: debitAmount,
-        balanceAfter: Number(wallet.balance || 0)
-    }
+    if (!amount || amount <= 0) return
+    const wallet = await WalletModel.findOne({ userId })
+    if (!wallet || wallet.balance < amount) throw new Error('Insufficient wallet balance')
+    wallet.balance = parseFloat((wallet.balance - amount).toFixed(2))
+    wallet.transactions.unshift({
+        type: 'debit',
+        amount,
+        description: description || 'Order payment',
+        reference,
+        balanceAfter: wallet.balance
+    })
+    await wallet.save()
 }
 
 export const debitWallet = async (req, res) => {
