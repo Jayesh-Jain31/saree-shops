@@ -1,4 +1,3 @@
-import { GoogleGenAI } from '@google/genai'
 import Anthropic from '@anthropic-ai/sdk'
 import fs from 'fs'
 import path from 'path'
@@ -51,9 +50,22 @@ function safeReadFile(relPath) {
     } catch { return null }
 }
 
-function genAI() {
+let geminiSdkUnavailable = false
+
+async function genAI() {
     if (!process.env.GEMINI_API_KEY) return null
-    return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    try {
+        // Load the optional SDK only when the code-agent endpoint is used.
+        // A missing AI package must not prevent the storefront API from booting.
+        const { GoogleGenAI } = await import('@google/genai')
+        return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    } catch (error) {
+        geminiSdkUnavailable = true
+        if (process.env.NODE_ENV !== 'production') {
+            console.error('[CodeAgent] Gemini SDK unavailable:', error.message)
+        }
+        return null
+    }
 }
 
 function genClaude() {
@@ -108,9 +120,14 @@ export async function chat(req, res) {
             aiProvider = 'claude'
             if (!aiClient) return res.status(503).json({ success: false, message: 'ANTHROPIC_API_KEY not set. Add it in Secrets to use Claude.' })
         } else {
-            aiClient = genAI()
+            aiClient = await genAI()
             aiProvider = 'gemini'
-            if (!aiClient) return res.status(503).json({ success: false, message: 'GEMINI_API_KEY not set. Add it in Secrets to use Gemini.' })
+            if (!aiClient) {
+                const message = geminiSdkUnavailable
+                    ? 'The Gemini AI package is unavailable in this deployment. Rebuild the backend dependencies and try again.'
+                    : 'GEMINI_API_KEY not set. Add it in Secrets to use Gemini.'
+                return res.status(503).json({ success: false, message })
+            }
         }
 
         // Get or auto-create session
